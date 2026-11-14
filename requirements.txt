@@ -1,3 +1,4 @@
-# QGIS (and its PyQt5) cannot be installed with pip: see docs/README.md.
-# Without QGIS the app still starts with a placeholder map if PyQt5 is present.
-PyQt5>=5.15 ; python_version < "4"
+# Field Shift targets QGIS 4 (Qt6 / PyQt6).
+# QGIS and its PyQt6 build cannot be installed with pip: see docs/README.md.
+# Without QGIS the app still starts with a placeholder map if PyQt6 is present.
+PyQt6>=6.5

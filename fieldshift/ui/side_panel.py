@@ -11,7 +11,7 @@ VECTOR_FILTER = "Vector files (*.geojson *.json *.shp *.gpkg *.kml);;All files (
 RASTER_FILTER = "Raster files (*.tif *.tiff *.nc *.hdf *.img);;All files (*)"
 
 # role used to store the layer id on each list item
-LAYER_ID_ROLE = QtCore.Qt.UserRole
+LAYER_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole
 
 
 # panel with the layer list, layer actions, cursor position and an empty
@@ -47,8 +47,8 @@ class SidePanel(QtWidgets.QWidget):
         for info in self.view.layers():
             item = QtWidgets.QListWidgetItem(f"{info.name}  [{info.kind.value}]")
             item.setData(LAYER_ID_ROLE, info.id)
-            item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
-            item.setCheckState(QtCore.Qt.Checked if info.visible else QtCore.Qt.Unchecked)
+            item.setFlags(item.flags() | QtCore.Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(QtCore.Qt.CheckState.Checked if info.visible else QtCore.Qt.CheckState.Unchecked)
             self.layer_list.addItem(item)
         self.layer_list.blockSignals(False)
 
@@ -123,7 +123,7 @@ class SidePanel(QtWidgets.QWidget):
             self.view.remove_layer(item.data(LAYER_ID_ROLE))
 
     def _on_item_changed(self, item):
-        visible = item.checkState() == QtCore.Qt.Checked
+        visible = item.checkState() == QtCore.Qt.CheckState.Checked
         self.view.set_layer_visible(item.data(LAYER_ID_ROLE), visible)
 
     def _on_item_double_clicked(self, item):

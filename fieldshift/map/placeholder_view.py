@@ -25,7 +25,7 @@ class PlaceholderMapView(MapView):
                 "QGIS is not installed.\n"
                 "Install QGIS (see docs/README.md) to see the map."
             )
-            label.setAlignment(QtCore.Qt.AlignCenter)
+            label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
             label.setStyleSheet("background:#dde6ea; color:#333; font-size:14px;")
             self._widget = label
         return self._widget

@@ -3,7 +3,7 @@ This is the official Nasa Space Apps 2026 Repository for the contributions of th
 
 ![Field Shift main window](docs/images/screenshot.png)
 
-**Field Shift** is a Python desktop app built on top of QGIS: a map on the
+**Field Shift** is a Python desktop app built on top of **QGIS 4 (Qt6)**: a map on the
 left, a panel on the right. The map is hidden behind an abstraction layer
 (`fieldshift/map/`), so new features never call QGIS directly, and
 performance-critical code can be written in C++ (`cpp/`) and called from
@@ -12,7 +12,7 @@ Python.
 ## Quick start
 
 ```bash
-# 1. install QGIS with its Python bindings (see docs/README.md for your OS)
+# 1. install QGIS 4 with its Python bindings (see docs/README.md for your OS)
 # 2. optional: build the C++ core
 make cpp
 # 3. run

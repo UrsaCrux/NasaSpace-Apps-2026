@@ -446,6 +446,14 @@ def ndvi_array(nir, red)
 
 NDVI of two equally long sequences; returns a list of floats
 
+## `fieldshift/qt.py`
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `QT_MAJOR` | major Qt version actually loaded (6 expected) | 18 |
+
 ## `fieldshift/ui/main_window.py`
 
 ### Classes

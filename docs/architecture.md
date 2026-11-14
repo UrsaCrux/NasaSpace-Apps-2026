@@ -52,6 +52,9 @@
   every backend (see [map-abstraction.md](map-abstraction.md)).
 - QGIS-only power features can use `QgisMapView.canvas()`, but keep that code
   in `fieldshift/map/`.
-- Import Qt from `fieldshift.qt`, never from `PyQt5` directly: QGIS ships its
+- Import Qt from `fieldshift.qt`, never from `PyQt6` directly: QGIS ships its
   own PyQt build.
+- Qt6 rules: write enums fully scoped (`Qt.Orientation.Horizontal`,
+  `Qt.ItemDataRole.UserRole`, `Qt.CheckState.Checked`) and call `exec()`,
+  not `exec_()`.
 - Only C types cross the Python/C++ boundary.

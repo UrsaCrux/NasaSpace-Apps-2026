@@ -4,7 +4,7 @@ import os
 import sys
 from pathlib import Path
 
-from fieldshift.qt import HAS_QGIS, QtWidgets
+from fieldshift.qt import HAS_QGIS, QT_MAJOR, QtWidgets
 from fieldshift.map import LayerSpec, create_map_view
 from fieldshift.ui import MainWindow
 
@@ -39,7 +39,7 @@ def main(argv=None):
 
     window = MainWindow(view)
     window.show()
-    code = app.exec_()
+    code = app.exec()
 
     if HAS_QGIS:
         app.exitQgis()
@@ -53,12 +53,18 @@ def _create_application(argv):
     if not HAS_QGIS:
         return QtWidgets.QApplication(argv)
 
-    from qgis.core import QgsApplication
+    from qgis.core import Qgis, QgsApplication
+
+    if Qgis.versionInt() < 40000 or QT_MAJOR < 6:
+        print(f"warning: Field Shift targets QGIS 4 / Qt6, found QGIS "
+              f"{Qgis.version()} / Qt{QT_MAJOR}", file=sys.stderr)
 
     prefix = os.environ.get("QGIS_PREFIX_PATH")
     if prefix:
         QgsApplication.setPrefixPath(prefix, True)
-    # QgsApplication wants argv as bytes
-    app = QgsApplication([a.encode() for a in argv], True)
+    try:
+        app = QgsApplication(argv, True)
+    except TypeError:  # some builds want argv as bytes
+        app = QgsApplication([a.encode() for a in argv], True)
     app.initQgis()
     return app

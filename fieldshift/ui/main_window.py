@@ -19,7 +19,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.view = view
         self.panel = SidePanel(view)
 
-        splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         splitter.addWidget(view.widget())
         splitter.addWidget(self.panel)
         splitter.setStretchFactor(0, MAP_STRETCH)
