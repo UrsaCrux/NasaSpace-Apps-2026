@@ -107,6 +107,34 @@ class _ViewContract:
         self.assertFalse(self.view.is_drawing())
         self.assertEqual(cancelled, [True])
 
+    def test_double_click_on_a_layer(self):
+        clicked = []
+        self.view.layer_double_clicked.connect(lambda *a: clicked.append(a))
+        layer_id = self.add_square_layer("field")
+        self.double_click_square()
+        self.assertEqual([c[0] for c in clicked], [layer_id])
+        lon, lat = clicked[0][1:]
+        self.assertTrue(-70.70 <= lon <= -70.69 and -33.41 <= lat <= -33.40)
+
+    def test_double_click_ignores_locked_hidden_and_drawing(self):
+        clicked = []
+        self.view.layer_double_clicked.connect(lambda *a: clicked.append(a))
+        locked = self.add_square_layer("base", locked=True)
+        self.double_click_square()
+        self.assertEqual(clicked, [])                       # locked
+        layer_id = self.add_square_layer("field")
+        self.view.set_layer_visible(layer_id, False)
+        self.double_click_square()
+        self.assertEqual(clicked, [])                       # hidden
+        self.view.set_layer_visible(layer_id, True)
+        self.view.start_polygon_drawing()
+        self.double_click_square()
+        self.assertEqual(clicked, [])                       # drawing
+        self.view.cancel_drawing()
+        self.double_click_square()
+        self.assertEqual([c[0] for c in clicked], [layer_id])
+        self.assertNotEqual(layer_id, locked)
+
     def make_spec(self, name):
         return LayerSpec.vector(name, "Point?crs=EPSG:4326")
 
@@ -115,9 +143,26 @@ class _ViewContract:
     def close_polygon(self, vertices):
         raise NotImplementedError
 
+    # (str name, **options)
+    # adds a layer with the SQUARE polygon; returns its id
+    def add_square_layer(self, name, **options):
+        raise NotImplementedError
+
+    # ()
+    # double-clicks the middle of SQUARE on the map
+    def double_click_square(self):
+        raise NotImplementedError
+
 
 class PlaceholderViewTest(_ViewContract, unittest.TestCase):
     backend = "placeholder"
+
+    def add_square_layer(self, name, **options):
+        self._square_id = self.view.add_layer(LayerSpec.vector(name, "square.geojson", **options))
+        return self._square_id
+
+    def double_click_square(self):
+        self.view.simulate_double_click(self._square_id, -70.695, -33.405)
 
     def close_polygon(self, vertices):
         self.view.simulate_polygon(vertices)
@@ -151,6 +196,58 @@ class QgisViewTest(_ViewContract, unittest.TestCase):
         self.assertTrue(settings.format().buffer().enabled())          # halo
         self.assertEqual(settings.format().color().name(), "#ffffff")
 
+    def add_square_layer(self, name, **options):
+        import json
+        ring = [list(v) for v in SQUARE] + [list(SQUARE[0])]
+        path = os.path.join(tempfile.mkdtemp(prefix="fieldshift-test-"), f"{name}.geojson")
+        with open(path, "w") as fh:
+            json.dump({"type": "FeatureCollection", "features": [{
+                "type": "Feature", "properties": {"name": name},
+                "geometry": {"type": "Polygon", "coordinates": [ring]}}]}, fh)
+        return self.view.add_layer(LayerSpec.vector(name, path, **options))
+
+    def double_click_square(self):
+        from fieldshift.qt import QtCore
+        lon = sum(v[0] for v in SQUARE) / len(SQUARE)
+        lat = sum(v[1] for v in SQUARE) / len(SQUARE)
+        pos = self._pixels([(lon, lat)])[0]
+        self.view.canvas().mapTool().canvasDoubleClickEvent(self._mouse(
+            QtCore.QEvent.Type.MouseButtonDblClick, pos, QtCore.Qt.MouseButton.LeftButton))
+
+    def test_click_does_not_recentre_but_drag_pans(self):
+        from fieldshift.qt import QtCore
+        Left, NoButton = QtCore.Qt.MouseButton.LeftButton, QtCore.Qt.MouseButton.NoButton
+        Type = QtCore.QEvent.Type
+        self._pixels(SQUARE)
+        canvas, tool = self.view.canvas(), self.view.canvas().mapTool()
+        start = QtCore.QPointF(700, 100)
+        before = canvas.center()
+        tool.canvasPressEvent(self._mouse(Type.MouseButtonPress, start, Left))
+        tool.canvasReleaseEvent(self._mouse(Type.MouseButtonRelease, start, Left))
+        self.assertAlmostEqual(canvas.center().x(), before.x(), places=3)    # plain click
+        self.assertAlmostEqual(canvas.center().y(), before.y(), places=3)
+        end = QtCore.QPointF(500, 200)
+        tool.canvasPressEvent(self._mouse(Type.MouseButtonPress, start, Left))
+        tool.canvasMoveEvent(self._mouse(Type.MouseMove, end, NoButton, Left))
+        tool.canvasReleaseEvent(self._mouse(Type.MouseButtonRelease, end, Left, NoButton))
+        self.assertGreater(abs(canvas.center().x() - before.x()), 1)         # drag
+
+    def test_double_click_on_empty_map_still_zooms_in(self):
+        from fieldshift.qt import QtCore
+        clicked = []
+        self.view.layer_double_clicked.connect(lambda *a: clicked.append(a))
+        self.add_square_layer("field")
+        self.double_click_square()
+        scale_after_hit = self.view.canvas().scale()
+        self.view.zoom_to_extent(-70.72, -33.42, -70.67, -33.39)     # same view again
+        scale = self.view.canvas().scale()
+        self.assertAlmostEqual(scale_after_hit, scale, delta=scale * 0.001)   # hit: no zoom
+        corner = self._pixels([(-70.719, -33.419)])[0]               # no field here
+        self.view.canvas().mapTool().canvasDoubleClickEvent(self._mouse(
+            QtCore.QEvent.Type.MouseButtonDblClick, corner, QtCore.Qt.MouseButton.LeftButton))
+        self.assertEqual(len(clicked), 1)                            # only the first one
+        self.assertLess(self.view.canvas().scale(), scale)           # empty: zoomed in
+
     def close_polygon(self, vertices):
         from qgis.core import QgsPointXY
         self._pixels(vertices)          # zoom in: vertices must be pixels apart
@@ -171,9 +268,12 @@ class QgisViewTest(_ViewContract, unittest.TestCase):
         return [to_pixel.transform(self.view._to_map.transform(QgsPointXY(lon, lat))).toQPointF()
                 for lon, lat in vertices]
 
-    def _mouse(self, kind, pos, button):
+    def _mouse(self, kind, pos, button, buttons=None):
         from qgis.gui import QgsMapMouseEvent
-        return QgsMapMouseEvent(self.view.canvas(), kind, pos.toPoint(), button)
+        from fieldshift.qt import QtCore
+        buttons = button if buttons is None else buttons
+        return QgsMapMouseEvent(self.view.canvas(), kind, pos.toPoint(), button, buttons,
+                                QtCore.Qt.KeyboardModifier.NoModifier)
 
     def _click(self, pos, button=None):
         from fieldshift.qt import QtCore

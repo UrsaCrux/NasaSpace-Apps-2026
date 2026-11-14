@@ -44,6 +44,7 @@ class SidePanel(QtWidgets.QWidget):
         self.fields.selection_changed.connect(self._sync_checks)
         view.cursor_moved.connect(self._on_cursor)
         view.clicked.connect(self._on_click)
+        view.layer_double_clicked.connect(self._on_map_double_click)
         self.refresh_layers()
 
     # ()
@@ -185,6 +186,20 @@ class SidePanel(QtWidgets.QWidget):
         layer_id = item.data(LAYER_ID_ROLE)
         if self.fields.is_field(layer_id):
             self.fields.zoom_to(layer_id)
+
+    # double click on a field in the map: tick its checkbox (or untick it if
+    # it was ticked) and highlight its row. other layers and clicks made
+    # while drawing are ignored
+    def _on_map_double_click(self, layer_id, lon, lat):
+        if self.view.is_drawing() or not self.fields.is_field(layer_id):
+            return
+        self.fields.set_selected(layer_id, not self.fields.is_selected(layer_id))
+        for row in range(self.layer_list.count()):
+            item = self.layer_list.item(row)
+            if item.data(LAYER_ID_ROLE) == layer_id:
+                self.layer_list.setCurrentItem(item)
+                self.layer_list.scrollToItem(item)
+                break
 
     def _on_cursor(self, lon, lat):
         self.cursor_label.setText(f"{lon:.5f}, {lat:.5f}")

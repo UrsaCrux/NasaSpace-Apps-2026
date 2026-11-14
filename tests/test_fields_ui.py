@@ -198,6 +198,29 @@ class FieldsWindowTest(_TempFields):
         self.assertEqual(list(self.folder.glob("*.geojson")), [])
         self.assertFalse(self.bar.export_button.isEnabled())
 
+    def test_double_click_on_a_field_in_the_map_toggles_its_checkbox(self):
+        a = self.draw("A")
+        b = self.draw("B")
+        self.view.simulate_double_click(b, -70.69, -33.40)
+        self.assertEqual(self.window.fields.selected(), [b])
+        self.assertEqual(self.select(b).checkState(), QtCore.Qt.CheckState.Checked)
+        self.assertEqual(self.panel.layer_list.currentItem().data(QtCore.Qt.ItemDataRole.UserRole), b)
+        self.assertEqual(self.panel.data_box.table.rowCount(), 1)
+        self.view.simulate_double_click(a, -70.69, -33.40)
+        self.assertEqual(self.window.fields.selected(), [a, b])
+        self.view.simulate_double_click(b, -70.69, -33.40)         # ticked: unticks
+        self.assertEqual(self.window.fields.selected(), [a])
+        self.assertEqual(self.panel.layer_list.currentItem().data(QtCore.Qt.ItemDataRole.UserRole), b)
+
+    def test_double_click_while_drawing_or_on_other_layers_does_nothing(self):
+        a = self.draw("A")
+        other = self.view.add_layer(LayerSpec.vector("NDVI", "x.geojson"))
+        self.view.layer_double_clicked.emit(other, 0, 0)           # not a field
+        self.assertEqual(self.window.fields.selected(), [])
+        self.bar.draw_button.click()                               # drawing
+        self.panel._on_map_double_click(a, 0, 0)
+        self.assertEqual(self.window.fields.selected(), [])
+
     def test_other_layers_are_listed_and_removed_without_asking(self):
         mine = self.view.add_layer(LayerSpec.vector("NDVI", "x.geojson"))
         self.assertEqual(self.labels(), ["NDVI  [vector]"])

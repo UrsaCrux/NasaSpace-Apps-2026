@@ -48,6 +48,11 @@ LayerSpec.raster("NDVI", "/path/ndvi.tif")
 | `layers_changed` | – |
 | `polygon_drawn` | `vertices`: list of `(lon, lat)`, first vertex not repeated |
 | `drawing_cancelled` | – |
+| `layer_double_clicked` | `layer_id, lon, lat`: double click on a feature of a visible, unlocked layer (topmost first), never while drawing. The map does not zoom in on that click |
+
+The default tool (`PickPanTool`, `fieldshift/map/pick_tool.py`) pans by
+dragging. A click without dragging does not recentre the map, so it does not
+jump under the cursor when the user double-clicks a field.
 
 ### Drawing a polygon
 

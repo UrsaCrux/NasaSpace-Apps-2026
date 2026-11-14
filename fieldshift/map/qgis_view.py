@@ -6,6 +6,8 @@ from qgis.core import (
     Qgis,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
+    QgsFeatureRequest,
+    QgsGeometry,
     QgsPalLayerSettings,
     QgsPointXY,
     QgsProject,
@@ -16,9 +18,10 @@ from qgis.core import (
     QgsVectorLayer,
     QgsVectorLayerSimpleLabeling,
 )
-from qgis.gui import QgsMapCanvas, QgsMapToolEmitPoint, QgsMapToolPan
+from qgis.gui import QgsMapCanvas, QgsMapToolEmitPoint
 
 from fieldshift.map.layer import LayerInfo, LayerKind
+from fieldshift.map.pick_tool import PickPanTool
 from fieldshift.map.polygon_tool import PolygonDrawTool
 from fieldshift.map.view import MapView
 from fieldshift.qt import QtGui
@@ -27,6 +30,8 @@ from fieldshift.qt import QtGui
 WGS84 = QgsCoordinateReferenceSystem("EPSG:4326")
 # CRS the canvas draws in (same as web tiles)
 WEB_MERCATOR = QgsCoordinateReferenceSystem("EPSG:3857")
+# a double click counts as "on a feature" within this many pixels of it
+PICK_TOLERANCE_PX = 4
 # initial extent in lon/lat (Web Mercator is undefined at the poles)
 WORLD = QgsRectangle(-180, -85, 180, 85)
 
@@ -53,7 +58,7 @@ class QgisMapView(MapView):
         self._to_map = QgsCoordinateTransform(WGS84, WEB_MERCATOR, self._project)
         self._to_wgs = QgsCoordinateTransform(WEB_MERCATOR, WGS84, self._project)
 
-        self._pan_tool = QgsMapToolPan(canvas)
+        self._pan_tool = PickPanTool(canvas, self._on_double_click)
         self._click_tool = QgsMapToolEmitPoint(canvas)
         self._click_tool.canvasClicked.connect(self._on_click)
         self._draw_tool = PolygonDrawTool(canvas, self._on_polygon_done,
@@ -191,6 +196,27 @@ class QgisMapView(MapView):
         visible = [self._project.mapLayer(i) for i in self._order if i not in self._hidden]
         self._canvas.setLayers([layer for layer in visible if layer is not None])
         self._canvas.refresh()
+
+    # (QgsPointXY point)
+    # double click while panning: reports the topmost visible, unlocked
+    # vector feature under point (canvas CRS). True when there was one
+    def _on_double_click(self, point):
+        tolerance = self._canvas.mapUnitsPerPixel() * PICK_TOLERANCE_PX
+        box = QgsRectangle(point.x() - tolerance, point.y() - tolerance,
+                           point.x() + tolerance, point.y() + tolerance)
+        for layer_id in self._order:                      # top layer first
+            layer = self._project.mapLayer(layer_id)
+            if (layer_id in self._hidden or layer_id in self._locked
+                    or not isinstance(layer, QgsVectorLayer)):
+                continue
+            to_layer = QgsCoordinateTransform(WEB_MERCATOR, layer.crs(), self._project)
+            area = QgsGeometry.fromRect(to_layer.transformBoundingBox(box))
+            request = QgsFeatureRequest().setFilterRect(area.boundingBox())
+            if any(f.geometry().intersects(area) for f in layer.getFeatures(request)):
+                p = self._to_wgs.transform(point)
+                self.layer_double_clicked.emit(layer_id, p.x(), p.y())
+                return True
+        return False
 
     def _on_move(self, point):
         p = self._to_wgs.transform(point)
