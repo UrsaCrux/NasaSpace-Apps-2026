@@ -80,6 +80,14 @@ class FieldStoreTest(unittest.TestCase):
         self.assertEqual(props[0]["created"], "2026-01-01T00:00:00+00:00")
         self.assertGreater(props[0]["area_ha"], 0)
 
+    def test_export_some_names(self):
+        self.store.create("A", SQUARE)
+        self.store.create("B", SQUARE)
+        out = Path(self._tmp.name) / "b.geojson"
+        self.assertEqual(self.store.export(out, ["b"]), 1)
+        data = json.loads(out.read_text("utf-8"))
+        self.assertEqual([f["properties"]["name"] for f in data["features"]], ["B"])
+
     def test_broken_files_are_skipped(self):
         self.store.create("ok", SQUARE)
         (self.folder / "broken.geojson").write_text("{not json", "utf-8")

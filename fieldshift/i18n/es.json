@@ -3,15 +3,13 @@
   "common.save": "Guardar",
   "common.cancel": "Cancelar",
   "common.delete": "Eliminar",
-
   "fields.title": "Terrenos",
   "fields.list_title": "Mis terrenos",
-  "fields.list_tooltip": "Haz clic en un terreno para acercarte. Desmárcalo para ocultarlo.",
+  "fields.list_tooltip": "Marca terrenos para ver sus datos, exportarlos o eliminarlos. Haz clic en un nombre para acercarte.",
   "fields.empty": "Aún no hay terrenos. Haz clic en «Marcar terreno», bajo el mapa, para marcar el primero.",
   "fields.draw": "Marcar terreno",
   "fields.drawing": "Dibujando… (Esc para cancelar)",
   "fields.hint": "Haz clic para agregar puntos. Doble clic, clic derecho o clic en el primer punto para terminar (mínimo 3 puntos). Backspace borra el último punto, Esc cancela.",
-  "fields.export": "Exportar terrenos…",
   "fields.export_title": "Exportar terrenos",
   "fields.export_filter": "GeoJSON (*.geojson)",
   "fields.export_default_file": "terrenos.geojson",
@@ -24,5 +22,14 @@
   "fields.error_duplicate": "Ya existe un terreno llamado «{name}».",
   "fields.save_failed": "No se pudo guardar el terreno: {error}",
   "fields.remove_title": "Eliminar terreno",
-  "fields.remove_confirm": "¿Eliminar «{name}»? No se puede deshacer."
+  "fields.remove_confirm": "¿Eliminar «{name}»? No se puede deshacer.",
+  "fields.export_all": "Exportar todos los terrenos…",
+  "fields.export_selected": "Exportar marcados ({count})…",
+  "fields.remove_many_confirm": "¿Eliminar estos {count} terrenos? No se puede deshacer.",
+  "data.title": "Datos del terreno",
+  "data.empty": "Marca uno o más terrenos para ver sus datos.",
+  "data.col_name": "Nombre",
+  "data.col_area": "Área (ha)",
+  "data.col_created": "Creado",
+  "data.total": "{count} terreno(s) · {area} ha en total"
 }

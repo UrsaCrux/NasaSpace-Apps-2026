@@ -14,7 +14,7 @@ from fieldshift import i18n  # noqa: E402
 from fieldshift.fields import FieldStore  # noqa: E402
 from fieldshift.fields.manager import FieldsManager  # noqa: E402
 from fieldshift.map import LayerSpec, create_map_view  # noqa: E402
-from fieldshift.qt import QtCore  # noqa: E402
+from fieldshift.qt import HAS_QGIS, QtCore  # noqa: E402
 from qt_app import get_app  # noqa: E402
 
 SQUARE = [(-70.70, -33.40), (-70.69, -33.40), (-70.69, -33.41), (-70.70, -33.41)]
@@ -73,6 +73,27 @@ class FieldsManagerTest(_TempFields):
         xmin, ymin, xmax, ymax = zoom.call_args.args
         self.assertLess(xmin, -70.70)
         self.assertGreater(ymax, -33.40)
+
+    def test_selection(self):
+        changes = []
+        self.fields.selection_changed.connect(lambda: changes.append(1))
+        a = self.fields.add("A", SQUARE)
+        b = self.fields.add("B", SQUARE)
+        self.fields.set_selected(b, True)
+        self.fields.set_selected(a, True)
+        self.fields.set_selected(a, True)                  # no change, no event
+        self.assertEqual(self.fields.selected(), [a, b])   # oldest first
+        self.fields.remove(a)
+        self.assertEqual(self.fields.selected(), [b])
+        self.assertEqual(len(changes), 3)
+
+    def test_export_only_some(self):
+        self.fields.add("A", SQUARE)
+        b = self.fields.add("B", SQUARE)
+        out = Path(self._tmp.name) / "some.geojson"
+        self.assertEqual(self.fields.export(out, [b]), 1)
+        names = [f["properties"]["name"] for f in json.loads(out.read_text("utf-8"))["features"]]
+        self.assertEqual(names, ["B"])
 
     def test_saved_fields_are_loaded(self):
         FieldStore(self.folder).create("Old", SQUARE)
@@ -176,6 +197,87 @@ class FieldsWindowTest(_TempFields):
         self.select(mine)
         self.panel._remove_selected()
         self.assertEqual([i.id for i in self.view.layers()], [self.base])
+
+
+    def check(self, layer_id, checked=True):
+        state = QtCore.Qt.CheckState.Checked if checked else QtCore.Qt.CheckState.Unchecked
+        self.select(layer_id).setCheckState(state)
+
+    def test_real_click_on_checkbox_chooses_field_without_crash(self):
+        # regression: rebuilding the list inside the checkbox signal deleted
+        # the clicked item and PyQt aborted the app
+        import importlib
+        QtTest = importlib.import_module("qgis.PyQt.QtTest" if HAS_QGIS else "PyQt6.QtTest")
+        from fieldshift.qt import QtWidgets
+        layer_id = self.draw("A")
+        self.window.resize(1200, 800)
+        self.window.show()
+        lst = self.panel.layer_list
+        rect = lst.visualItemRect(lst.item(0))
+        option = QtWidgets.QStyleOptionViewItem()
+        option.rect = rect
+        option.features = QtWidgets.QStyleOptionViewItem.ViewItemFeature.HasCheckIndicator
+        box = lst.style().subElementRect(
+            QtWidgets.QStyle.SubElement.SE_ItemViewItemCheckIndicator, option, lst)
+        with mock.patch.object(self.view, "zoom_to_extent") as zoom:
+            QtTest.QTest.mouseClick(lst.viewport(), QtCore.Qt.MouseButton.LeftButton,
+                                    QtCore.Qt.KeyboardModifier.NoModifier, box.center())
+            get_app().processEvents()
+            self.assertEqual(self.window.fields.selected(), [layer_id])
+            zoom.assert_not_called()                       # checkbox: choose only
+            QtTest.QTest.mouseClick(lst.viewport(), QtCore.Qt.MouseButton.LeftButton,
+                                    QtCore.Qt.KeyboardModifier.NoModifier, rect.center())
+            get_app().processEvents()
+            zoom.assert_called_once()                      # name: zoom
+        self.window.hide()
+
+    def test_checked_fields_show_their_data(self):
+        a = self.draw("A")
+        b = self.draw("B")
+        data = self.panel.data_box
+        self.assertTrue(data.table.isHidden())
+        self.check(a)
+        self.check(b)
+        self.assertEqual(data.table.rowCount(), 2)
+        self.assertEqual(data.table.item(1, 0).text(), "B")
+        area = self.window.fields.field(a).area_ha
+        self.assertEqual(data.table.item(0, 1).text(), f"{area:.2f}")
+        self.assertIn(f"{2 * area:.2f} ha", data.total_label.text())
+        self.check(a, False)
+        self.assertEqual(data.table.rowCount(), 1)
+
+    def test_list_follows_selection_made_in_code(self):
+        a = self.draw("A")
+        self.window.fields.set_selected(a, True)
+        self.assertEqual(self.select(a).checkState(), QtCore.Qt.CheckState.Checked)
+
+    def test_export_checked_fields(self):
+        self.draw("A")
+        b = self.draw("B")
+        self.assertEqual(self.bar.export_button.text(), "Export all fields…")
+        self.check(b)
+        self.assertEqual(self.bar.export_button.text(), "Export checked (1)…")
+        out = str(Path(self._tmp.name) / "chosen")
+        with mock.patch("fieldshift.qt.QtWidgets.QFileDialog.getSaveFileName",
+                        return_value=(out, "")), \
+                mock.patch("fieldshift.ui.dialogs.inform") as inform:
+            self.bar._on_export_clicked()
+        inform.assert_called_once()
+        data = json.loads(Path(out + ".geojson").read_text("utf-8"))
+        self.assertEqual([f["properties"]["name"] for f in data["features"]], ["B"])
+
+    def test_delete_checked_fields(self):
+        a = self.draw("A")
+        b = self.draw("B")
+        self.draw("C")
+        self.check(a)
+        self.check(b)
+        self.assertTrue(self.panel.delete_button.isEnabled())
+        with mock.patch("fieldshift.ui.dialogs.confirm", return_value=True) as ask:
+            self.panel._remove_selected()
+        self.assertIn("2", ask.call_args.args[2])
+        self.assertEqual(self.labels(), ["C"])
+        self.assertEqual(self.window.fields.selected(), [])
 
 
 class FieldNameDialogTest(unittest.TestCase):

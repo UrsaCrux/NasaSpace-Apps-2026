@@ -27,7 +27,10 @@ class FieldsManager:
         self.store = store if store is not None else FieldStore()
         # emitted with no arguments after a field is added or removed
         self.fields_changed = Event()
+        # emitted with no arguments when the set of chosen fields changes
+        self.selection_changed = Event()
         self._fields = {}          # layer id -> Field
+        self._selected = set()     # layer ids of the fields the user checked
         for field in self.store.fields():
             try:
                 self._show(field)
@@ -49,6 +52,32 @@ class FieldsManager:
     def field(self, layer_id):
         return self._fields.get(layer_id)
 
+    # ()
+    # layer ids of every field, oldest first
+    def layer_ids(self):
+        return list(self._fields)
+
+    # ()
+    # layer ids of the fields the user chose, oldest first
+    def selected(self):
+        return [i for i in self._fields if i in self._selected]
+
+    # (str layer_id)
+    # True when the user chose this field
+    def is_selected(self, layer_id):
+        return layer_id in self._selected
+
+    # (str layer_id, bool selected)
+    # adds a field to the chosen ones or takes it out
+    def set_selected(self, layer_id, selected):
+        if layer_id not in self._fields or (layer_id in self._selected) == selected:
+            return
+        if selected:
+            self._selected.add(layer_id)
+        else:
+            self._selected.discard(layer_id)
+        self.selection_changed.emit()
+
     # (str name, list vertices)
     # saves a new field and shows it on the map; returns its layer id.
     # raises ValueError (bad name or polygon, layer cannot load) or OSError
@@ -69,9 +98,13 @@ class FieldsManager:
         field = self._fields.pop(layer_id, None)
         if field is None:
             return False
+        was_selected = layer_id in self._selected
+        self._selected.discard(layer_id)
         self.view.remove_layer(layer_id)
         self.store.delete(field.name)
         self.fields_changed.emit()
+        if was_selected:
+            self.selection_changed.emit()
         return True
 
     # (str layer_id)
@@ -87,10 +120,13 @@ class FieldsManager:
         self.view.zoom_to_extent(min(lons) - dx, min(lats) - dy,
                                  max(lons) + dx, max(lats) + dy)
 
-    # (str path)
-    # writes every field to one GeoJSON file; returns how many. raises OSError
-    def export(self, path):
-        return self.store.export(path)
+    # (str path, list layer_ids = None)
+    # writes these fields (all when None) to one GeoJSON file; returns how
+    # many. raises OSError
+    def export(self, path, layer_ids=None):
+        names = None if layer_ids is None else [
+            self._fields[i].name for i in layer_ids if i in self._fields]
+        return self.store.export(path, names)
 
     def _show(self, field):
         spec = LayerSpec.vector(field.name, str(field.path), fill_color=FIELD_FILL,

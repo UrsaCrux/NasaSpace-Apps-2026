@@ -68,7 +68,8 @@ class FieldNameDialog(QtWidgets.QDialog):
         self.save_button.setEnabled(problem is None)
 
 
-# bar placed under the map: draws new fields and exports all of them
+# bar placed under the map: draws new fields and exports the checked ones
+# (all of them when none is checked)
 class FieldsBar(QtWidgets.QFrame):
 
     # (MapView view, FieldsManager fields, QWidget parent = None)
@@ -87,7 +88,7 @@ class FieldsBar(QtWidgets.QFrame):
         self.hint_label = QtWidgets.QLabel(tr("fields.hint"))
         self.hint_label.setObjectName("drawHint")
         self.hint_label.setWordWrap(True)
-        self.export_button = QtWidgets.QPushButton(tr("fields.export"))
+        self.export_button = QtWidgets.QPushButton(tr("fields.export_all"))
         self.export_button.clicked.connect(lambda: self._on_export_clicked())
 
         row = QtWidgets.QHBoxLayout(self)
@@ -100,6 +101,7 @@ class FieldsBar(QtWidgets.QFrame):
         view.polygon_drawn.connect(self._on_polygon_drawn)
         view.drawing_cancelled.connect(self._show_state)
         fields.fields_changed.connect(self._show_state)
+        fields.selection_changed.connect(self._show_state)
         self._show_state()
 
     # -- slots -------------------------------------------------------------
@@ -130,7 +132,7 @@ class FieldsBar(QtWidgets.QFrame):
         if not path.lower().endswith((".geojson", ".json")):
             path += ".geojson"
         try:
-            count = self.fields.export(path)
+            count = self.fields.export(path, self.fields.selected() or None)
         except OSError as exc:
             dialogs.inform(self, tr("fields.export_title"), tr("fields.export_failed", error=exc))
             return
@@ -144,6 +146,9 @@ class FieldsBar(QtWidgets.QFrame):
         self.draw_button.setChecked(drawing)
         self.draw_button.setText(tr("fields.drawing") if drawing else tr("fields.draw"))
         self.hint_label.setVisible(drawing)
+        chosen = len(self.fields.selected())
+        self.export_button.setText(tr("fields.export_selected", count=chosen) if chosen
+                                   else tr("fields.export_all"))
         self.export_button.setEnabled(self.fields.count() > 0)
 
     def _ask_name(self):

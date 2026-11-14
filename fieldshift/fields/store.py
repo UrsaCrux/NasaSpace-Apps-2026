@@ -109,11 +109,14 @@ class FieldStore:
         field.path.unlink(missing_ok=True)
         return True
 
-    # (str path)
-    # writes every field to one GeoJSON FeatureCollection (EPSG:4326);
-    # returns how many fields were written
-    def export(self, path):
+    # (str path, list names = None)
+    # writes the fields with these names (all when None) to one GeoJSON
+    # FeatureCollection (EPSG:4326); returns how many fields were written
+    def export(self, path, names=None):
         fields = self.fields()
+        if names is not None:
+            wanted = {n.strip().casefold() for n in names}
+            fields = [f for f in fields if f.name.casefold() in wanted]
         collection = {"type": "FeatureCollection",
                       "features": [to_feature(f) for f in fields]}
         Path(path).write_text(json.dumps(collection, ensure_ascii=False, indent=2),

@@ -5,14 +5,17 @@ from fieldshift.fields.manager import FieldsManager
 from fieldshift.i18n import tr
 from fieldshift.qt import QtCore, QtWidgets
 from fieldshift.ui import dialogs
+from fieldshift.ui.fields_data import FieldsDataBox
 
 # role used to store the layer id on each list item
 LAYER_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole
 
 
-# panel with the user's fields (and any other non-base layer), cursor
-# position and an empty "Tools" box where new features are meant to be added.
-# base layers (LayerInfo.locked) stay on the map but are not listed
+# panel with the user's fields (and any other non-base layer), the data of
+# the checked fields, cursor position and an empty "Tools" box where new
+# features are meant to be added. a field's checkbox chooses it (for data,
+# export, delete); for other layers it shows / hides them. base layers
+# (LayerInfo.locked) stay on the map but are not listed
 class SidePanel(QtWidgets.QWidget):
 
     # (MapView view, QWidget parent = None, FieldsManager fields = None)
@@ -27,6 +30,9 @@ class SidePanel(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self._build_header())
         layout.addWidget(self._build_layers_box())
+        # data of the checked fields (see fields_data.py)
+        self.data_box = FieldsDataBox(self.fields)
+        layout.addWidget(self.data_box)
         layout.addWidget(self._build_position_box())
         # contributors: put new feature widgets inside this box
         self.tools_box = self._build_tools_box()
@@ -35,6 +41,7 @@ class SidePanel(QtWidgets.QWidget):
 
         view.layers_changed.connect(self.refresh_layers)
         self.fields.fields_changed.connect(self.refresh_layers)
+        self.fields.selection_changed.connect(self._sync_checks)
         view.cursor_moved.connect(self._on_cursor)
         view.clicked.connect(self._on_click)
         self.refresh_layers()
@@ -51,7 +58,9 @@ class SidePanel(QtWidgets.QWidget):
             item = QtWidgets.QListWidgetItem(text)
             item.setData(LAYER_ID_ROLE, info.id)
             item.setFlags(item.flags() | QtCore.Qt.ItemFlag.ItemIsUserCheckable)
-            item.setCheckState(QtCore.Qt.CheckState.Checked if info.visible else QtCore.Qt.CheckState.Unchecked)
+            checked = (self.fields.is_selected(info.id) if self.fields.is_field(info.id)
+                       else info.visible)
+            item.setCheckState(QtCore.Qt.CheckState.Checked if checked else QtCore.Qt.CheckState.Unchecked)
             self.layer_list.addItem(item)
         self.layer_list.blockSignals(False)
         self.empty_label.setVisible(self.layer_list.count() == 0)
@@ -109,30 +118,71 @@ class SidePanel(QtWidgets.QWidget):
 
     # -- slots -------------------------------------------------------------
 
-    def _remove_selected(self):
+    # ()
+    # what Delete acts on: the checked fields, else the highlighted row
+    def _delete_targets(self):
+        checked = self.fields.selected()
+        if checked:
+            return checked
         item = self.layer_list.currentItem()
-        if item is None:
+        return [item.data(LAYER_ID_ROLE)] if item is not None else []
+
+    def _remove_selected(self):
+        targets = self._delete_targets()
+        fields = [i for i in targets if self.fields.is_field(i)]
+        for layer_id in targets:
+            if layer_id not in fields:
+                self.view.remove_layer(layer_id)      # not a field: no file to lose
+        if not fields:
             return
-        layer_id = item.data(LAYER_ID_ROLE)
-        field = self.fields.field(layer_id)
-        if field is None:
-            self.view.remove_layer(layer_id)
-        elif dialogs.confirm(self, tr("fields.remove_title"),
-                             tr("fields.remove_confirm", name=field.name),
-                             tr("common.delete"), danger=True):
-            self.fields.remove(layer_id)
+        if len(fields) == 1:
+            text = tr("fields.remove_confirm", name=self.fields.field(fields[0]).name)
+        else:
+            text = tr("fields.remove_many_confirm", count=len(fields))
+        if dialogs.confirm(self, tr("fields.remove_title"), text,
+                           tr("common.delete"), danger=True):
+            for layer_id in fields:
+                self.fields.remove(layer_id)
+
+    # ticks the checkboxes of the chosen fields in place (no rebuild)
+    def _sync_checks(self):
+        self.layer_list.blockSignals(True)
+        for row in range(self.layer_list.count()):
+            item = self.layer_list.item(row)
+            layer_id = item.data(LAYER_ID_ROLE)
+            if self.fields.is_field(layer_id):
+                checked = self.fields.is_selected(layer_id)
+                item.setCheckState(QtCore.Qt.CheckState.Checked if checked
+                                   else QtCore.Qt.CheckState.Unchecked)
+        self.layer_list.blockSignals(False)
+        self._update_delete_button()
 
     def _update_delete_button(self, *_):
-        self.delete_button.setEnabled(self.layer_list.currentItem() is not None)
+        self.delete_button.setEnabled(bool(self._delete_targets()))
 
+    # Qt is still handling the click on this item: never rebuild the list
+    # here (that deletes the item and crashes), only record the change
     def _on_item_changed(self, item):
-        visible = item.checkState() == QtCore.Qt.CheckState.Checked
-        self.view.set_layer_visible(item.data(LAYER_ID_ROLE), visible)
+        layer_id = item.data(LAYER_ID_ROLE)
+        checked = item.checkState() == QtCore.Qt.CheckState.Checked
+        self._checkbox_clicked = True
+        QtCore.QTimer.singleShot(0, self._forget_checkbox_click)
+        if self.fields.is_field(layer_id):
+            self.fields.set_selected(layer_id, checked)
+        else:
+            QtCore.QTimer.singleShot(0, lambda: self.view.set_layer_visible(layer_id, checked))
+
+    def _forget_checkbox_click(self):
+        self._checkbox_clicked = False
 
     def _on_item_double_clicked(self, item):
-        self.view.zoom_to_layer(item.data(LAYER_ID_ROLE))
+        if item is not None:
+            self.view.zoom_to_layer(item.data(LAYER_ID_ROLE))
 
+    # a click on the name zooms to the field; a click on the checkbox does not
     def _on_item_clicked(self, item):
+        if item is None or getattr(self, "_checkbox_clicked", False):
+            return
         layer_id = item.data(LAYER_ID_ROLE)
         if self.fields.is_field(layer_id):
             self.fields.zoom_to(layer_id)
