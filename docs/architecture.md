@@ -4,8 +4,8 @@
 ┌──────────────────────────── MainWindow (QSplitter) ────────────────────────────┐
 │                                                  │                             │
 │   MapView.widget()                               │   SidePanel                 │
-│   (QgsMapCanvas)                                 │   my fields · position ·    │
-│                                                  │   tools                     │
+│   (QgsMapCanvas)                                 │   my fields · field data ·  │
+│                                                  │   position · tools          │
 │   FieldsBar: [Draw field]     [Export fields…]   │                             │
 └──────────────────────────────────────────────────┴─────────────────────────────┘
           ▲  add_layer / set_center / ...                │
@@ -25,8 +25,10 @@
    the left and the `SidePanel` on the right of a `QSplitter` (3:1 stretch,
    the user can drag the divider). Under the map sits the `FieldsBar`. Both
    share one `FieldsManager` (`fieldshift/fields/manager.py`), which saves
-   the user's fields as GeoJSON and shows them as map layers. Base layers
-   (`locked`) stay on the map but are not listed in the panel. The UI only
+   the user's fields as GeoJSON and shows them as map layers, and remembers
+   which fields the user checked in the panel list: the "Field data" box
+   shows them, "Export" and "Delete" act on them. Base layers (`locked`)
+   stay on the map but are not listed in the panel. The UI only
    knows `MapView`, `LayerSpec`, `LayerInfo` and `LayerKind`.
 2. **Map abstraction** (`fieldshift/map/`): an engine-independent API. All
    coordinates are longitude/latitude in degrees. Notifications are plain

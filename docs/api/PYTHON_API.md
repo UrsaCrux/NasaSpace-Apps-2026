@@ -59,7 +59,7 @@ def count(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 39
+- **Line:** 42
 
 how many fields are on the map
 
@@ -70,7 +70,7 @@ def is_field(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 44
+- **Line:** 47
 
 True when the layer is a saved field
 
@@ -81,9 +81,53 @@ def field(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 49
+- **Line:** 52
 
 the Field shown by this layer, or None
+
+#### `FieldsManager.layer_ids`
+
+```python
+def layer_ids(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 57
+
+layer ids of every field, oldest first
+
+#### `FieldsManager.selected`
+
+```python
+def selected(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 62
+
+layer ids of the fields the user chose, oldest first
+
+#### `FieldsManager.is_selected`
+
+```python
+def is_selected(self, layer_id)
+```
+
+- **Arguments:** `(str layer_id)`
+- **Line:** 67
+
+True when the user chose this field
+
+#### `FieldsManager.set_selected`
+
+```python
+def set_selected(self, layer_id, selected)
+```
+
+- **Arguments:** `(str layer_id, bool selected)`
+- **Line:** 72
+
+adds a field to the chosen ones or takes it out
 
 #### `FieldsManager.add`
 
@@ -92,7 +136,7 @@ def add(self, name, vertices)
 ```
 
 - **Arguments:** `(str name, list vertices)`
-- **Line:** 55
+- **Line:** 84
 
 saves a new field and shows it on the map; returns its layer id. raises ValueError (bad name or polygon, layer cannot load) or OSError
 
@@ -103,7 +147,7 @@ def remove(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 68
+- **Line:** 97
 
 removes a field from the map and deletes its file; returns False when the layer is not a field
 
@@ -114,20 +158,20 @@ def zoom_to(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 79
+- **Line:** 112
 
 centres and zooms the map on a field, with some margin around it
 
 #### `FieldsManager.export`
 
 ```python
-def export(self, path)
+def export(self, path, layer_ids=None)
 ```
 
-- **Arguments:** `(str path)`
-- **Line:** 92
+- **Arguments:** `(str path, list layer_ids = None)`
+- **Line:** 126
 
-writes every field to one GeoJSON file; returns how many. raises OSError
+writes these fields (all when None) to one GeoJSON file; returns how many. raises OSError
 
 ### Variables
 
@@ -136,6 +180,7 @@ writes every field to one GeoJSON file; returns how many. raises OSError
 | `FIELD_FILL` | look of fields on the map: semi-transparent fill (#AARRGGBB), solid outline | 10 |
 | `ZOOM_MARGIN` | extra space around a field when zooming to it (fraction of its size) | 15 |
 | `FieldsManager.fields_changed` | emitted with no arguments after a field is added or removed | 29 |
+| `FieldsManager.selection_changed` | emitted with no arguments when the set of chosen fields changes | 31 |
 
 ## `fieldshift/fields/store.py`
 
@@ -243,13 +288,13 @@ deletes the field file; returns False when there is no such field
 #### `FieldStore.export`
 
 ```python
-def export(self, path)
+def export(self, path, names=None)
 ```
 
-- **Arguments:** `(str path)`
+- **Arguments:** `(str path, list names = None)`
 - **Line:** 115
 
-writes every field to one GeoJSON FeatureCollection (EPSG:4326); returns how many fields were written
+writes the fields with these names (all when None) to one GeoJSON FeatureCollection (EPSG:4326); returns how many fields were written
 
 #### `to_feature`
 
@@ -258,7 +303,7 @@ def to_feature(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 137
+- **Line:** 140
 
 GeoJSON Feature (dict) of a field, with a closed polygon ring
 
@@ -269,7 +314,7 @@ def polygon_area_ha(vertices)
 ```
 
 - **Arguments:** `(list vertices)`
-- **Line:** 149
+- **Line:** 152
 
 area in hectares of a lon/lat polygon, on a sphere (error well under 1 %)
 
@@ -976,9 +1021,9 @@ dialog asking for the name of a new field: required, unique, pre-filled with the
 class FieldsBar(QtWidgets.QFrame)
 ```
 
-- **Line:** 72
+- **Line:** 73
 
-bar placed under the map: draws new fields and exports all of them
+bar placed under the map: draws new fields and exports the checked ones (all of them when none is checked)
 
 ### Functions
 
@@ -1011,7 +1056,7 @@ def __init__(self, view, fields, parent=None)
 ```
 
 - **Arguments:** `(MapView view, FieldsManager fields, QWidget parent = None)`
-- **Line:** 76
+- **Line:** 77
 
 builds the bar and listens to the drawing events of the view
 
@@ -1020,6 +1065,55 @@ builds the bar and listens to the drawing events of the view
 | Name | Description | Line |
 |------|-------------|------|
 | `BAR_STYLE` | look of the bar and of its main button | 14 |
+
+## `fieldshift/ui/fields_data.py`
+
+### Classes
+
+#### `FieldsDataBox`
+
+```python
+class FieldsDataBox(QtWidgets.QGroupBox)
+```
+
+- **Line:** 23
+
+box listing the checked fields in a small table, with the total area
+
+### Functions
+
+#### `format_created`
+
+```python
+def format_created(iso_text)
+```
+
+- **Arguments:** `(str iso_text)`
+- **Line:** 15
+
+creation date in local time ("2026-11-14 09:30"); the raw text if unreadable
+
+#### `FieldsDataBox.__init__`
+
+```python
+def __init__(self, fields, parent=None)
+```
+
+- **Arguments:** `(FieldsManager fields, QWidget parent = None)`
+- **Line:** 27
+
+builds the box and follows the checked fields
+
+#### `FieldsDataBox.refresh`
+
+```python
+def refresh(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 61
+
+fills the table with the fields checked right now
 
 ## `fieldshift/ui/main_window.py`
 
@@ -1064,9 +1158,9 @@ builds the splitter layout around an already created map view
 class SidePanel(QtWidgets.QWidget)
 ```
 
-- **Line:** 16
+- **Line:** 19
 
-panel with the user's fields (and any other non-base layer), cursor position and an empty "Tools" box where new features are meant to be added. base layers (LayerInfo.locked) stay on the map but are not listed
+panel with the user's fields (and any other non-base layer), the data of the checked fields, cursor position and an empty "Tools" box where new features are meant to be added. a field's checkbox chooses it (for data, export, delete); for other layers it shows / hides them. base layers (LayerInfo.locked) stay on the map but are not listed
 
 ### Functions
 
@@ -1077,7 +1171,7 @@ def __init__(self, view, parent=None, fields=None)
 ```
 
 - **Arguments:** `(MapView view, QWidget parent = None, FieldsManager fields = None)`
-- **Line:** 21
+- **Line:** 24
 
 builds the panel and subscribes to the view events; creates its own FieldsManager when none is shared
 
@@ -1088,7 +1182,7 @@ def refresh_layers(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 44
+- **Line:** 51
 
 rebuilds the list from view.layers(), leaving out the base layers
 
@@ -1096,5 +1190,6 @@ rebuilds the list from view.layers(), leaving out the base layers
 
 | Name | Description | Line |
 |------|-------------|------|
-| `LAYER_ID_ROLE` | role used to store the layer id on each list item | 10 |
-| `SidePanel.tools_box` | contributors: put new feature widgets inside this box | 32 |
+| `LAYER_ID_ROLE` | role used to store the layer id on each list item | 11 |
+| `SidePanel.data_box` | data of the checked fields (see fields_data.py) | 34 |
+| `SidePanel.tools_box` | contributors: put new feature widgets inside this box | 38 |
