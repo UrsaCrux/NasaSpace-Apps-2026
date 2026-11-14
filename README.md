@@ -28,7 +28,7 @@ fieldshift/            Python application
 │   ├── view.py        abstract MapView: the only map API the UI uses
 │   ├── qgis_view.py   QGIS implementation (QgsMapCanvas)
 │   └── placeholder_view.py   used when QGIS is not installed
-├── ui/                main window (map + fields bar left, panel right), dialogs
+├── ui/                main window (map + fields bar left, panel right), field dialog, dialogs
 ├── fields/            the user's fields: GeoJSON store and FieldsManager
 ├── i18n/              user-visible texts per language (en.json, es.json)
 └── native/            ctypes bindings for the C++ library

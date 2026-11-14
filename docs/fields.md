@@ -24,6 +24,15 @@ Each file is a FeatureCollection with one Feature (EPSG:4326). Properties:
 Files without `color` or `data` (older versions) open with grey and with
 prefilled data. "Export" writes the same properties.
 
+## Editing a field
+
+Each row of "My fields" has an **Edit** button. It opens the same dialog as
+"Draw field", with the current name, colour and data. Saving rewrites the
+file (renamed if the name changed; the field's own name is not a duplicate),
+redraws the map layer and updates the list and the data box. The checkbox of
+the field stays as it was. The code is `FieldStore.update` and
+`FieldsManager.update`; the button is drawn by `ui/field_list.py`.
+
 ## Zone data: one list
 
 The data of the zone (soil type, pH, annual rainfall, irrigation) are
