@@ -12,7 +12,7 @@ from fieldshift.ui import MainWindow
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 # offline country outlines, drawn below the tiles (visible without internet).
-# base layers are "locked": the panel does not let the user remove them
+# base layers are "locked": the panel does not list them, so they cannot be removed
 COUNTRIES = LayerSpec.vector("Countries", str(DATA_DIR / "countries.geojson"),
                              fill_color="#f2efe9", stroke_color="#9a8f80", locked=True)
 

@@ -1,13 +1,13 @@
 {
+  "common.ok": "OK",
   "common.save": "Save",
   "common.cancel": "Cancel",
-  "common.remove": "Remove",
-
-  "layers.base_title": "Base layer",
-  "layers.base_message": "“{name}” is a base layer and cannot be removed. Uncheck it to hide it.",
-  "layers.field_tag": "field",
+  "common.delete": "Delete",
 
   "fields.title": "Fields",
+  "fields.list_title": "My fields",
+  "fields.list_tooltip": "Click a field to zoom to it. Uncheck it to hide it.",
+  "fields.empty": "No fields yet. Click “Draw field” under the map to mark your first one.",
   "fields.draw": "Draw field",
   "fields.drawing": "Drawing… (Esc to cancel)",
   "fields.hint": "Click to add points. Double-click, right-click or click the first point to finish (3 points minimum). Backspace removes the last point, Esc cancels.",
@@ -23,6 +23,6 @@
   "fields.error_empty": "Write a name.",
   "fields.error_duplicate": "There is already a field called “{name}”.",
   "fields.save_failed": "Could not save the field: {error}",
-  "fields.remove_title": "Remove field",
-  "fields.remove_confirm": "Remove the field “{name}”? Its saved file will be deleted too."
+  "fields.remove_title": "Delete field",
+  "fields.remove_confirm": "Delete “{name}”? This cannot be undone."
 }

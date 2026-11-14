@@ -1,13 +1,13 @@
 {
+  "common.ok": "Aceptar",
   "common.save": "Guardar",
   "common.cancel": "Cancelar",
-  "common.remove": "Eliminar",
-
-  "layers.base_title": "Capa base",
-  "layers.base_message": "«{name}» es una capa base y no se puede eliminar. Desmárcala para ocultarla.",
-  "layers.field_tag": "terreno",
+  "common.delete": "Eliminar",
 
   "fields.title": "Terrenos",
+  "fields.list_title": "Mis terrenos",
+  "fields.list_tooltip": "Haz clic en un terreno para acercarte. Desmárcalo para ocultarlo.",
+  "fields.empty": "Aún no hay terrenos. Haz clic en «Marcar terreno», bajo el mapa, para marcar el primero.",
   "fields.draw": "Marcar terreno",
   "fields.drawing": "Dibujando… (Esc para cancelar)",
   "fields.hint": "Haz clic para agregar puntos. Doble clic, clic derecho o clic en el primer punto para terminar (mínimo 3 puntos). Backspace borra el último punto, Esc cancela.",
@@ -24,5 +24,5 @@
   "fields.error_duplicate": "Ya existe un terreno llamado «{name}».",
   "fields.save_failed": "No se pudo guardar el terreno: {error}",
   "fields.remove_title": "Eliminar terreno",
-  "fields.remove_confirm": "¿Eliminar el terreno «{name}»? También se borrará su archivo guardado."
+  "fields.remove_confirm": "¿Eliminar «{name}»? No se puede deshacer."
 }

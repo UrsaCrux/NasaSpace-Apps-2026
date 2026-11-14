@@ -13,7 +13,7 @@ class LayerKind(Enum):
 
 # what to load: the UI builds one of these and hands it to MapView.add_layer.
 # options may hold "provider" (force a data provider), "locked" (True: a base
-# layer the UI must not remove) and, for vectors, "fill_color" /
+# layer the panel does not list, so the user cannot remove it) and, for vectors, "fill_color" /
 # "stroke_color" (CSS colour strings, "#AARRGGBB" for transparency) and
 # "stroke_width" (millimetres)
 @dataclass(frozen=True)
