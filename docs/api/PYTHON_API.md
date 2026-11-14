@@ -22,8 +22,120 @@ creates the QApplication (QgsApplication when QGIS is present), shows the main w
 | Name | Description | Line |
 |------|-------------|------|
 | `DATA_DIR` | folder with the bundled datasets | 12 |
-| `COUNTRIES` | offline country outlines, drawn below the tiles (visible without internet). base layers are "locked": the panel does not let the user remove them | 16 |
+| `COUNTRIES` | offline country outlines, drawn below the tiles (visible without internet). base layers are "locked": the panel does not list them, so they cannot be removed | 16 |
 | `DEFAULT_BASEMAP` | OpenStreetMap tile layer loaded at start-up | 20 |
+
+## `fieldshift/fields/manager.py`
+
+### Classes
+
+#### `FieldsManager`
+
+```python
+class FieldsManager
+```
+
+- **Line:** 21
+
+the user's fields: saves them with a FieldStore and shows each one as a MapView layer. the UI (fields bar, side panel, future field sheets) shares one FieldsManager
+
+### Functions
+
+#### `FieldsManager.__init__`
+
+```python
+def __init__(self, view, store=None)
+```
+
+- **Arguments:** `(MapView view, FieldStore store = None)`
+- **Line:** 25
+
+loads the fields saved in earlier sessions onto the map
+
+#### `FieldsManager.count`
+
+```python
+def count(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 39
+
+how many fields are on the map
+
+#### `FieldsManager.is_field`
+
+```python
+def is_field(self, layer_id)
+```
+
+- **Arguments:** `(str layer_id)`
+- **Line:** 44
+
+True when the layer is a saved field
+
+#### `FieldsManager.field`
+
+```python
+def field(self, layer_id)
+```
+
+- **Arguments:** `(str layer_id)`
+- **Line:** 49
+
+the Field shown by this layer, or None
+
+#### `FieldsManager.add`
+
+```python
+def add(self, name, vertices)
+```
+
+- **Arguments:** `(str name, list vertices)`
+- **Line:** 55
+
+saves a new field and shows it on the map; returns its layer id. raises ValueError (bad name or polygon, layer cannot load) or OSError
+
+#### `FieldsManager.remove`
+
+```python
+def remove(self, layer_id)
+```
+
+- **Arguments:** `(str layer_id)`
+- **Line:** 68
+
+removes a field from the map and deletes its file; returns False when the layer is not a field
+
+#### `FieldsManager.zoom_to`
+
+```python
+def zoom_to(self, layer_id)
+```
+
+- **Arguments:** `(str layer_id)`
+- **Line:** 79
+
+centres and zooms the map on a field, with some margin around it
+
+#### `FieldsManager.export`
+
+```python
+def export(self, path)
+```
+
+- **Arguments:** `(str path)`
+- **Line:** 92
+
+writes every field to one GeoJSON file; returns how many. raises OSError
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `FIELD_FILL` | look of fields on the map: semi-transparent fill (#AARRGGBB), solid outline | 10 |
+| `ZOOM_MARGIN` | extra space around a field when zooming to it (fraction of its size) | 15 |
+| `FieldsManager.fields_changed` | emitted with no arguments after a field is added or removed | 29 |
 
 ## `fieldshift/fields/store.py`
 
@@ -321,7 +433,7 @@ class LayerSpec
 
 - **Line:** 20
 
-what to load: the UI builds one of these and hands it to MapView.add_layer. options may hold "provider" (force a data provider), "locked" (True: a base layer the UI must not remove) and, for vectors, "fill_color" / "stroke_color" (CSS colour strings, "#AARRGGBB" for transparency) and "stroke_width" (millimetres)
+what to load: the UI builds one of these and hands it to MapView.add_layer. options may hold "provider" (force a data provider), "locked" (True: a base layer the panel does not list, so the user cannot remove it) and, for vectors, "fill_color" / "stroke_color" (CSS colour strings, "#AARRGGBB" for transparency) and "stroke_width" (millimetres)
 
 #### `LayerInfo`
 
@@ -812,7 +924,39 @@ NDVI of two equally long sequences; returns a list of floats
 | `QGIS_IMPORT_ERROR` | why QGIS could not be imported ("" when it was); shown by the placeholder map | 13 |
 | `QT_MAJOR` | major Qt version actually loaded (6 expected) | 28 |
 
-## `fieldshift/ui/fields_box.py`
+## `fieldshift/ui/dialogs.py`
+
+### Functions
+
+#### `confirm`
+
+```python
+def confirm(parent, title, text, confirm_text, danger=False)
+```
+
+- **Arguments:** `(QWidget parent, str title, str text, str confirm_text, bool danger = False)`
+- **Line:** 19
+
+asks a yes/no question; returns True when the user clicks confirm_text
+
+#### `inform`
+
+```python
+def inform(parent, title, text)
+```
+
+- **Arguments:** `(QWidget parent, str title, str text)`
+- **Line:** 31
+
+shows a message with an OK button
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `DANGER_STYLE` | style of the button that deletes something | 12 |
+
+## `fieldshift/ui/fields_bar.py`
 
 ### Classes
 
@@ -826,15 +970,15 @@ class FieldNameDialog(QtWidgets.QDialog)
 
 dialog asking for the name of a new field: required, unique, pre-filled with the next free "Field N"
 
-#### `FieldsBox`
+#### `FieldsBar`
 
 ```python
-class FieldsBox(QtWidgets.QGroupBox)
+class FieldsBar(QtWidgets.QFrame)
 ```
 
-- **Line:** 73
+- **Line:** 72
 
-panel box with the "Draw field" and "Export fields…" buttons. Shows every saved field as a map layer and remembers which layers are fields
+bar placed under the map: draws new fields and exports all of them
 
 ### Functions
 
@@ -860,79 +1004,22 @@ def name(self)
 
 the name typed, without surrounding spaces
 
-#### `FieldsBox.__init__`
+#### `FieldsBar.__init__`
 
 ```python
-def __init__(self, view, store=None, parent=None)
+def __init__(self, view, fields, parent=None)
 ```
 
-- **Arguments:** `(MapView view, FieldStore store = None, QWidget parent = None)`
-- **Line:** 77
+- **Arguments:** `(MapView view, FieldsManager fields, QWidget parent = None)`
+- **Line:** 76
 
-builds the box and loads the fields saved in earlier sessions
-
-#### `FieldsBox.is_field`
-
-```python
-def is_field(self, layer_id)
-```
-
-- **Arguments:** `(str layer_id)`
-- **Line:** 108
-
-True when the layer is a saved field
-
-#### `FieldsBox.field`
-
-```python
-def field(self, layer_id)
-```
-
-- **Arguments:** `(str layer_id)`
-- **Line:** 113
-
-the Field shown by this layer, or None
-
-#### `FieldsBox.zoom_to_field`
-
-```python
-def zoom_to_field(self, layer_id)
-```
-
-- **Arguments:** `(str layer_id)`
-- **Line:** 118
-
-centres and zooms the map on a field, with some margin around it
-
-#### `FieldsBox.remove_field`
-
-```python
-def remove_field(self, layer_id, confirm=True)
-```
-
-- **Arguments:** `(str layer_id, bool confirm = True)`
-- **Line:** 132
-
-removes a field from the map, the layer list and disk, after asking when confirm is True; returns True when it was removed
-
-#### `FieldsBox.export_fields`
-
-```python
-def export_fields(self, path)
-```
-
-- **Arguments:** `(str path)`
-- **Line:** 146
-
-writes every saved field to one GeoJSON file; returns how many. raises OSError when the file cannot be written
+builds the bar and listens to the drawing events of the view
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
-| `FIELD_FILL` | look of saved fields on the map: semi-transparent fill (#AARRGGBB), solid outline | 16 |
-| `ZOOM_MARGIN` | extra space around a field when zooming to it (fraction of its size) | 21 |
-| `FieldsBox.fields_changed` | emitted with no arguments after a field is added or removed | 82 |
+| `BAR_STYLE` | look of the bar and of its main button | 14 |
 
 ## `fieldshift/ui/main_window.py`
 
@@ -944,9 +1031,9 @@ writes every saved field to one GeoJSON file; returns how many. raises OSError w
 class MainWindow(QtWidgets.QMainWindow)
 ```
 
-- **Line:** 13
+- **Line:** 16
 
-top-level window. Owns a MapView (left) and a SidePanel (right)
+top-level window. Owns a MapView with the FieldsBar under it (left) and a SidePanel (right); both share one FieldsManager
 
 ### Functions
 
@@ -957,7 +1044,7 @@ def __init__(self, view, parent=None)
 ```
 
 - **Arguments:** `(MapView view, QWidget parent = None)`
-- **Line:** 17
+- **Line:** 20
 
 builds the splitter layout around an already created map view
 
@@ -965,7 +1052,7 @@ builds the splitter layout around an already created map view
 
 | Name | Description | Line |
 |------|-------------|------|
-| `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 8 |
+| `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 10 |
 
 ## `fieldshift/ui/side_panel.py`
 
@@ -977,22 +1064,22 @@ builds the splitter layout around an already created map view
 class SidePanel(QtWidgets.QWidget)
 ```
 
-- **Line:** 21
+- **Line:** 16
 
-panel with the layer list, layer actions, cursor position and an empty "Tools" box where new features are meant to be added
+panel with the user's fields (and any other non-base layer), cursor position and an empty "Tools" box where new features are meant to be added. base layers (LayerInfo.locked) stay on the map but are not listed
 
 ### Functions
 
 #### `SidePanel.__init__`
 
 ```python
-def __init__(self, view, parent=None)
+def __init__(self, view, parent=None, fields=None)
 ```
 
-- **Arguments:** `(MapView view, QWidget parent = None)`
-- **Line:** 25
+- **Arguments:** `(MapView view, QWidget parent = None, FieldsManager fields = None)`
+- **Line:** 21
 
-builds the panel and subscribes to the view events
+builds the panel and subscribes to the view events; creates its own FieldsManager when none is shared
 
 #### `SidePanel.refresh_layers`
 
@@ -1001,15 +1088,13 @@ def refresh_layers(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 50
+- **Line:** 44
 
-rebuilds the layer list from view.layers()
+rebuilds the list from view.layers(), leaving out the base layers
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
-| `VECTOR_FILTER` | file dialog filters per layer kind | 12 |
-| `LAYER_ID_ROLE` | role used to store the layer id on each list item | 16 |
-| `SidePanel.fields_box` | fields drawn by the user: draw, save, export (see fields_box.py) | 34 |
-| `SidePanel.tools_box` | contributors: put new feature widgets inside this box | 38 |
+| `LAYER_ID_ROLE` | role used to store the layer id on each list item | 10 |
+| `SidePanel.tools_box` | contributors: put new feature widgets inside this box | 32 |
