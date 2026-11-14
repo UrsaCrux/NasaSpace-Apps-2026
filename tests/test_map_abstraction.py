@@ -227,8 +227,11 @@ class QgisViewTest(_ViewContract, unittest.TestCase):
         self.assertTrue(layer.labelsEnabled())
         settings = layer.labeling().settings()
         self.assertEqual(settings.fieldName, "name")
-        self.assertTrue(settings.format().buffer().enabled())          # halo
-        self.assertEqual(settings.format().color().name(), "#ffffff")
+        # keep the QgsTextFormat copy alive: buffer() returns a reference into
+        # it, and chaining on the temporary crashes under PyQt6 (QGIS 4)
+        text_format = settings.format()
+        self.assertTrue(text_format.buffer().enabled())                # halo
+        self.assertEqual(text_format.color().name(), "#ffffff")
 
     def add_square_layer(self, name, **options):
         import json
