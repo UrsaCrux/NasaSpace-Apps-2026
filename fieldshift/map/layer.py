@@ -12,8 +12,10 @@ class LayerKind(Enum):
 
 
 # what to load: the UI builds one of these and hands it to MapView.add_layer.
-# options may hold "provider" (force a data provider) and, for vectors,
-# "fill_color" / "stroke_color" (CSS colour strings)
+# options may hold "provider" (force a data provider), "locked" (True: a base
+# layer the UI must not remove) and, for vectors, "fill_color" /
+# "stroke_color" (CSS colour strings, "#AARRGGBB" for transparency) and
+# "stroke_width" (millimetres)
 @dataclass(frozen=True)
 class LayerSpec:
     name: str
@@ -21,11 +23,11 @@ class LayerSpec:
     kind: LayerKind
     options: dict = field(default_factory=dict)
 
-    # (str name, str url_template, int zmin = 0, int zmax = 19)
+    # (str name, str url_template, int zmin = 0, int zmax = 19, **options)
     # tile layer such as OpenStreetMap; url uses {x} {y} {z} placeholders
     @classmethod
-    def xyz(cls, name, url, zmin=0, zmax=19):
-        return cls(name, url, LayerKind.XYZ, {"zmin": zmin, "zmax": zmax})
+    def xyz(cls, name, url, zmin=0, zmax=19, **options):
+        return cls(name, url, LayerKind.XYZ, {"zmin": zmin, "zmax": zmax, **options})
 
     # (str name, str path, **options)
     # vector file readable by OGR: GeoJSON, Shapefile, GeoPackage, KML...
@@ -40,10 +42,12 @@ class LayerSpec:
         return cls(name, path, LayerKind.RASTER)
 
 
-# what MapView.layers returns: a loaded layer as seen by the UI
+# what MapView.layers returns: a loaded layer as seen by the UI.
+# locked is True for base layers added with the "locked" option
 @dataclass(frozen=True)
 class LayerInfo:
     id: str
     name: str
     kind: LayerKind
     visible: bool
+    locked: bool = False

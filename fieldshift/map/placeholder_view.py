@@ -1,6 +1,7 @@
 """MapView used when QGIS is not installed. Keeps layers in memory only."""
 
 import itertools
+from dataclasses import replace
 
 from fieldshift.map.layer import LayerInfo
 from fieldshift.map.view import MapView
@@ -20,6 +21,7 @@ class PlaceholderMapView(MapView):
         self._widget = None
         self._layers = {}          # id -> LayerInfo, insertion order = bottom first
         self._ids = itertools.count(1)
+        self._drawing = False
 
     def widget(self):
         if self._widget is None:
@@ -38,7 +40,8 @@ class PlaceholderMapView(MapView):
 
     def add_layer(self, spec):
         layer_id = f"layer{next(self._ids)}"
-        self._layers[layer_id] = LayerInfo(layer_id, spec.name, spec.kind, True)
+        self._layers[layer_id] = LayerInfo(layer_id, spec.name, spec.kind, True,
+                                           bool(spec.options.get("locked")))
         self.layers_changed.emit()
         return layer_id
 
@@ -52,7 +55,7 @@ class PlaceholderMapView(MapView):
     def set_layer_visible(self, layer_id, visible):
         info = self._layers.get(layer_id)
         if info is not None and info.visible != visible:
-            self._layers[layer_id] = LayerInfo(info.id, info.name, info.kind, visible)
+            self._layers[layer_id] = replace(info, visible=visible)
             self.layers_changed.emit()
 
     def set_center(self, lon, lat, scale=None):
@@ -66,3 +69,22 @@ class PlaceholderMapView(MapView):
 
     def refresh(self):
         pass
+
+    def start_polygon_drawing(self):
+        self._drawing = True
+
+    def cancel_drawing(self):
+        if self._drawing:
+            self._drawing = False
+            self.drawing_cancelled.emit()
+
+    def is_drawing(self):
+        return self._drawing
+
+    # (list vertices)
+    # ends the current drawing as if the user had closed this polygon of
+    # (lon, lat) vertices; there is no map to click on, so tests use this
+    def simulate_polygon(self, vertices):
+        if self._drawing:
+            self._drawing = False
+            self.polygon_drawn.emit([(float(x), float(y)) for x, y in vertices])
