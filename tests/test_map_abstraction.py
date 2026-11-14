@@ -9,19 +9,13 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ["FIELDSHIFT_FIELDS_DIR"] = tempfile.mkdtemp(prefix="fieldshift-test-")
 
 from fieldshift.map import Event, LayerKind, LayerSpec, create_map_view  # noqa: E402
-from fieldshift.qt import HAS_QGIS, QtWidgets  # noqa: E402
+from fieldshift.qt import HAS_QGIS  # noqa: E402
 
-_app = None
+from qt_app import get_app  # noqa: E402
 
 
 def setUpModule():
-    global _app
-    if HAS_QGIS:
-        from qgis.core import QgsApplication
-        _app = QgsApplication([], False)
-        _app.initQgis()
-    else:
-        _app = QtWidgets.QApplication([])
+    get_app()
 
 
 class EventTest(unittest.TestCase):

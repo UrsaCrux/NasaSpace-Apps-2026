@@ -13,15 +13,13 @@ from fieldshift import i18n  # noqa: E402
 from fieldshift.fields import FieldStore  # noqa: E402
 from fieldshift.map import LayerSpec, create_map_view  # noqa: E402
 from fieldshift.qt import QtWidgets  # noqa: E402
+from qt_app import get_app  # noqa: E402
 
 SQUARE = [(-70.70, -33.40), (-70.69, -33.40), (-70.69, -33.41), (-70.70, -33.41)]
 
-_app = None
-
 
 def setUpModule():
-    global _app
-    _app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    get_app()
 
 
 class FieldsPanelTest(unittest.TestCase):
