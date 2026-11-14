@@ -22,7 +22,7 @@ LayerSpec.raster("NDVI", "/path/ndvi.tif")
 | `name` | Display name |
 | `source` | URL template (XYZ), or any path / URI OGR or GDAL can open |
 | `kind` | `LayerKind.XYZ`, `VECTOR` or `RASTER` |
-| `options` | Backend hints: `zmin`/`zmax` (XYZ), `provider` (force a data provider, e.g. `"memory"`), `fill_color`/`stroke_color` (vectors) |
+| `options` | Backend hints: `zmin`/`zmax` (XYZ), `provider` (force a data provider, e.g. `"memory"`), `locked` (base layer the UI must not remove, reported as `LayerInfo.locked`), `fill_color`/`stroke_color` (vectors; `"#AARRGGBB"` for transparency), `stroke_width` (vectors, mm) |
 
 ## Using the map: `MapView`
 
@@ -37,12 +37,34 @@ LayerSpec.raster("NDVI", "/path/ndvi.tif")
 | `zoom_to_extent(xmin, ymin, xmax, ymax)` | Fit a lon/lat box |
 | `zoom_to_layer(id)` | Fit a layer |
 | `refresh()` | Redraw |
+| `start_polygon_drawing()` | Let the user draw a polygon (see below) |
+| `cancel_drawing()` | Stop the drawing in progress |
+| `is_drawing() -> bool` | A drawing is in progress |
 
 | Event | Arguments |
 |-------|-----------|
 | `cursor_moved` | `lon, lat` |
 | `clicked` | `lon, lat` (QGIS: after `set_click_mode(True)`) |
 | `layers_changed` | – |
+| `polygon_drawn` | `vertices`: list of `(lon, lat)`, first vertex not repeated |
+| `drawing_cancelled` | – |
+
+### Drawing a polygon
+
+`start_polygon_drawing()` switches the map to a drawing tool: each left click
+adds a vertex and a preview follows the cursor. A double click, a right click
+or a click on the first vertex closes the polygon (3 vertices minimum),
+Backspace removes the last vertex and Esc cancels. The drawing ends with
+`polygon_drawn` or `drawing_cancelled` and the map goes back to panning.
+
+```python
+view.polygon_drawn.connect(lambda vertices: print(len(vertices), "vertices"))
+view.start_polygon_drawing()
+```
+
+In QGIS the tool is `PolygonDrawTool` (`fieldshift/map/polygon_tool.py`).
+`PlaceholderMapView` has no map to click on: tests call
+`simulate_polygon(vertices)` instead.
 
 ```python
 view = create_map_view()

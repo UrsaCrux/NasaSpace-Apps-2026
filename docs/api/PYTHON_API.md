@@ -13,7 +13,7 @@ def main(argv=None)
 ```
 
 - **Arguments:** `(list argv)`
-- **Line:** 28
+- **Line:** 30
 
 creates the QApplication (QgsApplication when QGIS is present), shows the main window and runs the event loop; returns the exit code
 
@@ -22,8 +22,207 @@ creates the QApplication (QgsApplication when QGIS is present), shows the main w
 | Name | Description | Line |
 |------|-------------|------|
 | `DATA_DIR` | folder with the bundled datasets | 12 |
-| `COUNTRIES` | offline country outlines, drawn below the tiles (visible without internet) | 15 |
-| `DEFAULT_BASEMAP` | OpenStreetMap tile layer loaded at start-up | 19 |
+| `COUNTRIES` | offline country outlines, drawn below the tiles (visible without internet). base layers are "locked": the panel does not let the user remove them | 16 |
+| `DEFAULT_BASEMAP` | OpenStreetMap tile layer loaded at start-up | 20 |
+
+## `fieldshift/fields/store.py`
+
+### Classes
+
+#### `Field`
+
+```python
+class Field
+```
+
+- **Line:** 29
+
+a saved field. vertices are (lon, lat) tuples in EPSG:4326, counter- clockwise, first vertex not repeated at the end
+
+#### `FieldStore`
+
+```python
+class FieldStore
+```
+
+- **Line:** 39
+
+reads and writes the fields of one folder. every field is a GeoJSON file with one Feature whose properties hold name, area_ha and created
+
+### Functions
+
+#### `FieldStore.__init__`
+
+```python
+def __init__(self, folder=None)
+```
+
+- **Arguments:** `(Path folder = None)`
+- **Line:** 44
+
+uses folder for the files (default: $FIELDSHIFT_FIELDS_DIR, else DEFAULT_FIELDS_DIR); it is created on the first save
+
+#### `FieldStore.fields`
+
+```python
+def fields(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 50
+
+saved fields, oldest first; unreadable files are skipped with a warning
+
+#### `FieldStore.get`
+
+```python
+def get(self, name)
+```
+
+- **Arguments:** `(str name)`
+- **Line:** 61
+
+the field with this name (case-insensitive), or None
+
+#### `FieldStore.suggest_name`
+
+```python
+def suggest_name(self, base)
+```
+
+- **Arguments:** `(str base)`
+- **Line:** 67
+
+first free name of the form "<base> 1", "<base> 2"...
+
+#### `FieldStore.name_problem`
+
+```python
+def name_problem(self, name)
+```
+
+- **Arguments:** `(str name)`
+- **Line:** 76
+
+why name cannot be used: "empty", "duplicate", or None when it is fine
+
+#### `FieldStore.create`
+
+```python
+def create(self, name, vertices, created=None)
+```
+
+- **Arguments:** `(str name, list vertices, str created = None)`
+- **Line:** 86
+
+saves a new field from (lon, lat) vertices and returns it. raises ValueError for a bad name or fewer than MIN_VERTICES distinct vertices
+
+#### `FieldStore.delete`
+
+```python
+def delete(self, name)
+```
+
+- **Arguments:** `(str name)`
+- **Line:** 105
+
+deletes the field file; returns False when there is no such field
+
+#### `FieldStore.export`
+
+```python
+def export(self, path)
+```
+
+- **Arguments:** `(str path)`
+- **Line:** 115
+
+writes every field to one GeoJSON FeatureCollection (EPSG:4326); returns how many fields were written
+
+#### `to_feature`
+
+```python
+def to_feature(field)
+```
+
+- **Arguments:** `(Field field)`
+- **Line:** 137
+
+GeoJSON Feature (dict) of a field, with a closed polygon ring
+
+#### `polygon_area_ha`
+
+```python
+def polygon_area_ha(vertices)
+```
+
+- **Arguments:** `(list vertices)`
+- **Line:** 149
+
+area in hectares of a lon/lat polygon, on a sphere (error well under 1 %)
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `DEFAULT_FIELDS_DIR` | default folder for saved fields (data/local/ is ignored by git); the FIELDSHIFT_FIELDS_DIR environment variable overrides it (tests, demos) | 14 |
+| `MIN_VERTICES` | fewest vertices a field polygon can have | 17 |
+| `EARTH_RADIUS_M` | equatorial radius of the WGS84 ellipsoid, in metres | 20 |
+
+## `fieldshift/i18n/__init__.py`
+
+### Functions
+
+#### `available_languages`
+
+```python
+def available_languages()
+```
+
+- **Arguments:** `()`
+- **Line:** 33
+
+language codes that have a JSON file, sorted ("en", "es", ...)
+
+#### `language`
+
+```python
+def language()
+```
+
+- **Arguments:** `()`
+- **Line:** 39
+
+code of the language in use
+
+#### `set_language`
+
+```python
+def set_language(code)
+```
+
+- **Arguments:** `(str code)`
+- **Line:** 46
+
+switches the language of the texts asked for from now on; widgets already built keep their text. raises ValueError for a language without a file
+
+#### `tr`
+
+```python
+def tr(key, **values)
+```
+
+- **Arguments:** `(str key, **values)`
+- **Line:** 55
+
+text for key in the current language, with {placeholders} filled from values
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `LOCALES_DIR` | folder with one <language code>.json file per language | 22 |
+| `DEFAULT_LANGUAGE` | language used when no other is chosen, and as fallback for missing keys | 25 |
 
 ## `fieldshift/map/events.py`
 
@@ -120,9 +319,9 @@ kind of data a layer holds; each backend maps it to its own provider
 class LayerSpec
 ```
 
-- **Line:** 18
+- **Line:** 20
 
-what to load: the UI builds one of these and hands it to MapView.add_layer. options may hold "provider" (force a data provider) and, for vectors, "fill_color" / "stroke_color" (CSS colour strings)
+what to load: the UI builds one of these and hands it to MapView.add_layer. options may hold "provider" (force a data provider), "locked" (True: a base layer the UI must not remove) and, for vectors, "fill_color" / "stroke_color" (CSS colour strings, "#AARRGGBB" for transparency) and "stroke_width" (millimetres)
 
 #### `LayerInfo`
 
@@ -130,20 +329,20 @@ what to load: the UI builds one of these and hands it to MapView.add_layer. opti
 class LayerInfo
 ```
 
-- **Line:** 45
+- **Line:** 48
 
-what MapView.layers returns: a loaded layer as seen by the UI
+what MapView.layers returns: a loaded layer as seen by the UI. locked is True for base layers added with the "locked" option
 
 ### Functions
 
 #### `LayerSpec.xyz`
 
 ```python
-def xyz(cls, name, url, zmin=0, zmax=19)
+def xyz(cls, name, url, zmin=0, zmax=19, **options)
 ```
 
-- **Arguments:** `(str name, str url_template, int zmin = 0, int zmax = 19)`
-- **Line:** 27
+- **Arguments:** `(str name, str url_template, int zmin = 0, int zmax = 19, **options)`
+- **Line:** 29
 
 tile layer such as OpenStreetMap; url uses {x} {y} {z} placeholders
 
@@ -154,7 +353,7 @@ def vector(cls, name, path, **options)
 ```
 
 - **Arguments:** `(str name, str path, **options)`
-- **Line:** 33
+- **Line:** 35
 
 vector file readable by OGR: GeoJSON, Shapefile, GeoPackage, KML...
 
@@ -165,7 +364,7 @@ def raster(cls, name, path)
 ```
 
 - **Arguments:** `(str name, str path)`
-- **Line:** 39
+- **Line:** 41
 
 raster file readable by GDAL: GeoTIFF, NetCDF, HDF...
 
@@ -179,7 +378,7 @@ raster file readable by GDAL: GeoTIFF, NetCDF, HDF...
 class PlaceholderMapView(MapView)
 ```
 
-- **Line:** 14
+- **Line:** 15
 
 MapView without a map engine: lets the panel and window be developed and tested on machines without QGIS
 
@@ -192,9 +391,132 @@ def __init__(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 18
+- **Line:** 19
 
 creates an empty in-memory view
+
+#### `PlaceholderMapView.simulate_polygon`
+
+```python
+def simulate_polygon(self, vertices)
+```
+
+- **Arguments:** `(list vertices)`
+- **Line:** 87
+
+ends the current drawing as if the user had closed this polygon of (lon, lat) vertices; there is no map to click on, so tests use this
+
+## `fieldshift/map/polygon_tool.py`
+
+### Classes
+
+#### `PolygonDrawTool`
+
+```python
+class PolygonDrawTool(QgsMapTool)
+```
+
+- **Line:** 26
+
+map tool for drawing a polygon: left click adds a vertex, double click, right click or a click on the first vertex closes it, Backspace removes the last vertex, Esc cancels. a rubber band previews the polygon up to the cursor. points are in the canvas CRS
+
+### Functions
+
+#### `PolygonDrawTool.__init__`
+
+```python
+def __init__(self, canvas, on_finished, on_cancelled)
+```
+
+- **Arguments:** `(QgsMapCanvas canvas, callable on_finished, callable on_cancelled)`
+- **Line:** 30
+
+on_finished gets the list of QgsPointXY vertices; on_cancelled no arguments
+
+#### `PolygonDrawTool.start`
+
+```python
+def start(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 50
+
+begins a new, empty drawing
+
+#### `PolygonDrawTool.is_active`
+
+```python
+def is_active(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 56
+
+True between start() and the end of the drawing
+
+#### `PolygonDrawTool.points`
+
+```python
+def points(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 61
+
+vertices placed so far (QgsPointXY, canvas CRS)
+
+#### `PolygonDrawTool.add_vertex`
+
+```python
+def add_vertex(self, point)
+```
+
+- **Arguments:** `(QgsPointXY point)`
+- **Line:** 66
+
+adds a vertex unless it is on top of the previous one
+
+#### `PolygonDrawTool.undo_vertex`
+
+```python
+def undo_vertex(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 76
+
+removes the last vertex
+
+#### `PolygonDrawTool.finish`
+
+```python
+def finish(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 84
+
+closes the polygon and calls on_finished; returns False (and keeps drawing) when there are fewer than MIN_VERTICES vertices
+
+#### `PolygonDrawTool.cancel`
+
+```python
+def cancel(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 95
+
+abandons the drawing and calls on_cancelled; no-op when idle
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `CLOSE_TOLERANCE_PX` | a click closer than this (pixels) to the first vertex closes the polygon | 9 |
+| `DUPLICATE_TOLERANCE_PX` | a click closer than this (pixels) to the last vertex adds no new vertex | 11 |
+| `MIN_VERTICES` | fewest vertices of a polygon | 13 |
 
 ## `fieldshift/map/qgis_view.py`
 
@@ -206,7 +528,7 @@ creates an empty in-memory view
 class QgisMapView(MapView)
 ```
 
-- **Line:** 29
+- **Line:** 30
 
 MapView backed by QgsMapCanvas; layers are registered in QgsProject.instance()
 
@@ -219,7 +541,7 @@ def __init__(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 33
+- **Line:** 34
 
 creates the canvas in Web Mercator with pan as the default tool
 
@@ -230,7 +552,7 @@ def canvas(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 60
+- **Line:** 65
 
 the underlying QgsMapCanvas, for code that needs QGIS-specific features
 
@@ -241,7 +563,7 @@ def set_click_mode(self, enabled)
 ```
 
 - **Arguments:** `(bool enabled)`
-- **Line:** 65
+- **Line:** 70
 
 switches between the pan tool and the click tool (emits `clicked`)
 
@@ -249,9 +571,9 @@ switches between the pan tool and the click tool (emits `clicked`)
 
 | Name | Description | Line |
 |------|-------------|------|
-| `WGS84` | CRS the public API speaks (longitude / latitude) | 21 |
-| `WEB_MERCATOR` | CRS the canvas draws in (same as web tiles) | 23 |
-| `WORLD` | initial extent in lon/lat (Web Mercator is undefined at the poles) | 25 |
+| `WGS84` | CRS the public API speaks (longitude / latitude) | 22 |
+| `WEB_MERCATOR` | CRS the canvas draws in (same as web tiles) | 24 |
+| `WORLD` | initial extent in lon/lat (Web Mercator is undefined at the poles) | 26 |
 
 ## `fieldshift/map/view.py`
 
@@ -287,7 +609,7 @@ def widget(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 25
+- **Line:** 31
 
 the QWidget to put in a window; created once and reused
 
@@ -298,7 +620,7 @@ def add_layer(self, spec)
 ```
 
 - **Arguments:** `(LayerSpec spec)`
-- **Line:** 32
+- **Line:** 38
 
 loads the layer on top of the others; returns its id. raises ValueError when the source cannot be opened
 
@@ -309,7 +631,7 @@ def remove_layer(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 38
+- **Line:** 44
 
 removes a layer added with add_layer; unknown ids are ignored
 
@@ -320,7 +642,7 @@ def layers(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 44
+- **Line:** 50
 
 list of LayerInfo, top layer first
 
@@ -331,7 +653,7 @@ def set_layer_visible(self, layer_id, visible)
 ```
 
 - **Arguments:** `(str layer_id, bool visible)`
-- **Line:** 50
+- **Line:** 56
 
 shows or hides a layer without removing it
 
@@ -342,7 +664,7 @@ def set_center(self, lon, lat, scale=None)
 ```
 
 - **Arguments:** `(float lon, float lat, float scale = None)`
-- **Line:** 56
+- **Line:** 62
 
 centres the map on a point; keeps the current scale when none is given
 
@@ -353,7 +675,7 @@ def zoom_to_extent(self, xmin, ymin, xmax, ymax)
 ```
 
 - **Arguments:** `(float xmin, float ymin, float xmax, float ymax)`
-- **Line:** 62
+- **Line:** 68
 
 fits the view to a lon/lat bounding box
 
@@ -364,7 +686,7 @@ def zoom_to_layer(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 68
+- **Line:** 74
 
 fits the view to the extent of one layer
 
@@ -375,9 +697,42 @@ def refresh(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 74
+- **Line:** 80
 
 redraws the map
+
+#### `MapView.start_polygon_drawing`
+
+```python
+def start_polygon_drawing(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 89
+
+lets the user draw a polygon on the map (click adds a vertex; double click, right click or a click on the first vertex closes it; Backspace removes the last vertex; Esc cancels). ends with polygon_drawn or drawing_cancelled, then the map goes back to panning
+
+#### `MapView.cancel_drawing`
+
+```python
+def cancel_drawing(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 95
+
+stops the current drawing and emits drawing_cancelled; no-op when idle
+
+#### `MapView.is_drawing`
+
+```python
+def is_drawing(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 101
+
+True while a drawing started with start_polygon_drawing is in progress
 
 ### Variables
 
@@ -386,6 +741,8 @@ redraws the map
 | `MapView.cursor_moved` | emitted with (float lon, float lat) when the mouse moves over the map | 16 |
 | `MapView.clicked` | emitted with (float lon, float lat) when the map is clicked | 18 |
 | `MapView.layers_changed` | emitted with no arguments after a layer is added, removed or toggled | 20 |
+| `MapView.polygon_drawn` | emitted with (list vertices) when the user closes a polygon started with start_polygon_drawing; vertices are (lon, lat) tuples and the first one is not repeated at the end | 24 |
+| `MapView.drawing_cancelled` | emitted with no arguments when a drawing ends without a polygon | 26 |
 
 ## `fieldshift/native/__init__.py`
 
@@ -455,6 +812,128 @@ NDVI of two equally long sequences; returns a list of floats
 | `QGIS_IMPORT_ERROR` | why QGIS could not be imported ("" when it was); shown by the placeholder map | 13 |
 | `QT_MAJOR` | major Qt version actually loaded (6 expected) | 28 |
 
+## `fieldshift/ui/fields_box.py`
+
+### Classes
+
+#### `FieldNameDialog`
+
+```python
+class FieldNameDialog(QtWidgets.QDialog)
+```
+
+- **Line:** 26
+
+dialog asking for the name of a new field: required, unique, pre-filled with the next free "Field N"
+
+#### `FieldsBox`
+
+```python
+class FieldsBox(QtWidgets.QGroupBox)
+```
+
+- **Line:** 73
+
+panel box with the "Draw field" and "Export fields…" buttons. Shows every saved field as a map layer and remembers which layers are fields
+
+### Functions
+
+#### `FieldNameDialog.__init__`
+
+```python
+def __init__(self, store, parent=None)
+```
+
+- **Arguments:** `(FieldStore store, QWidget parent = None)`
+- **Line:** 30
+
+builds the dialog; Save stays disabled while the name is not valid
+
+#### `FieldNameDialog.name`
+
+```python
+def name(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 60
+
+the name typed, without surrounding spaces
+
+#### `FieldsBox.__init__`
+
+```python
+def __init__(self, view, store=None, parent=None)
+```
+
+- **Arguments:** `(MapView view, FieldStore store = None, QWidget parent = None)`
+- **Line:** 77
+
+builds the box and loads the fields saved in earlier sessions
+
+#### `FieldsBox.is_field`
+
+```python
+def is_field(self, layer_id)
+```
+
+- **Arguments:** `(str layer_id)`
+- **Line:** 108
+
+True when the layer is a saved field
+
+#### `FieldsBox.field`
+
+```python
+def field(self, layer_id)
+```
+
+- **Arguments:** `(str layer_id)`
+- **Line:** 113
+
+the Field shown by this layer, or None
+
+#### `FieldsBox.zoom_to_field`
+
+```python
+def zoom_to_field(self, layer_id)
+```
+
+- **Arguments:** `(str layer_id)`
+- **Line:** 118
+
+centres and zooms the map on a field, with some margin around it
+
+#### `FieldsBox.remove_field`
+
+```python
+def remove_field(self, layer_id, confirm=True)
+```
+
+- **Arguments:** `(str layer_id, bool confirm = True)`
+- **Line:** 132
+
+removes a field from the map, the layer list and disk, after asking when confirm is True; returns True when it was removed
+
+#### `FieldsBox.export_fields`
+
+```python
+def export_fields(self, path)
+```
+
+- **Arguments:** `(str path)`
+- **Line:** 146
+
+writes every saved field to one GeoJSON file; returns how many. raises OSError when the file cannot be written
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `FIELD_FILL` | look of saved fields on the map: semi-transparent fill (#AARRGGBB), solid outline | 16 |
+| `ZOOM_MARGIN` | extra space around a field when zooming to it (fraction of its size) | 21 |
+| `FieldsBox.fields_changed` | emitted with no arguments after a field is added or removed | 82 |
+
 ## `fieldshift/ui/main_window.py`
 
 ### Classes
@@ -498,7 +977,7 @@ builds the splitter layout around an already created map view
 class SidePanel(QtWidgets.QWidget)
 ```
 
-- **Line:** 19
+- **Line:** 21
 
 panel with the layer list, layer actions, cursor position and an empty "Tools" box where new features are meant to be added
 
@@ -511,7 +990,7 @@ def __init__(self, view, parent=None)
 ```
 
 - **Arguments:** `(MapView view, QWidget parent = None)`
-- **Line:** 23
+- **Line:** 25
 
 builds the panel and subscribes to the view events
 
@@ -522,7 +1001,7 @@ def refresh_layers(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 44
+- **Line:** 50
 
 rebuilds the layer list from view.layers()
 
@@ -530,6 +1009,7 @@ rebuilds the layer list from view.layers()
 
 | Name | Description | Line |
 |------|-------------|------|
-| `VECTOR_FILTER` | file dialog filters per layer kind | 10 |
-| `LAYER_ID_ROLE` | role used to store the layer id on each list item | 14 |
-| `SidePanel.tools_box` | contributors: put new feature widgets inside this box | 33 |
+| `VECTOR_FILTER` | file dialog filters per layer kind | 12 |
+| `LAYER_ID_ROLE` | role used to store the layer id on each list item | 16 |
+| `SidePanel.fields_box` | fields drawn by the user: draw, save, export (see fields_box.py) | 34 |
+| `SidePanel.tools_box` | contributors: put new feature widgets inside this box | 38 |

@@ -28,7 +28,9 @@ fieldshift/            Python application
 │   ├── view.py        abstract MapView: the only map API the UI uses
 │   ├── qgis_view.py   QGIS implementation (QgsMapCanvas)
 │   └── placeholder_view.py   used when QGIS is not installed
-├── ui/                main window (map left, panel right) and side panel
+├── ui/                main window (map left, panel right), side panel, fields box
+├── fields/            saved fields (farm plots) as GeoJSON, no Qt/QGIS needed
+├── i18n/              user-visible texts per language (en.json, es.json)
 └── native/            ctypes bindings for the C++ library
 cpp/                   C++ functions callable from Python (CMake)
 data/                  bundled datasets (offline country outlines)
