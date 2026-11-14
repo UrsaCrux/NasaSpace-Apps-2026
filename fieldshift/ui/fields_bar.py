@@ -7,6 +7,7 @@ Every text comes from fieldshift/i18n/<language>.json.
 from pathlib import Path
 
 from fieldshift.i18n import tr
+from fieldshift.map import Event
 from fieldshift.qt import QtWidgets
 from fieldshift.ui import dialogs
 from fieldshift.ui.field_dialog import FieldDialog
@@ -18,6 +19,10 @@ QPushButton#drawField { background: #2e7d32; color: white; border: none;
                         border-radius: 4px; padding: 6px 16px; font-weight: bold; }
 QPushButton#drawField:hover { background: #276b2b; }
 QPushButton#drawField:checked { background: #f9a825; color: #222; }
+QPushButton#analyzeFields { background: #1565c0; color: white; border: none;
+                            border-radius: 4px; padding: 6px 16px; font-weight: bold; }
+QPushButton#analyzeFields:hover { background: #0d47a1; }
+QPushButton#analyzeFields:disabled { background: #b0bec5; color: #eceff1; }
 QLabel#drawHint { color: #444; }
 """
 
@@ -42,12 +47,18 @@ class FieldsBar(QtWidgets.QFrame):
         self.hint_label = QtWidgets.QLabel(tr("fields.hint"))
         self.hint_label.setObjectName("drawHint")
         self.hint_label.setWordWrap(True)
+        # emitted with no arguments when the user clicks "Analyze…"
+        self.analyze_requested = Event()
+        self.analyze_button = QtWidgets.QPushButton(tr("analysis.button"))
+        self.analyze_button.setObjectName("analyzeFields")
+        self.analyze_button.clicked.connect(lambda: self.analyze_requested.emit())
         self.export_button = QtWidgets.QPushButton(tr("fields.export_all"))
         self.export_button.clicked.connect(lambda: self._on_export_clicked())
 
         row = QtWidgets.QHBoxLayout(self)
         row.setContentsMargins(10, 6, 10, 6)
         row.addWidget(self.draw_button)
+        row.addWidget(self.analyze_button)
         row.addWidget(self.hint_label, 1)
         row.addStretch(0)
         row.addWidget(self.export_button)
@@ -105,6 +116,9 @@ class FieldsBar(QtWidgets.QFrame):
         self.export_button.setText(tr("fields.export_selected", count=chosen) if chosen
                                    else tr("fields.export_all"))
         self.export_button.setEnabled(self.fields.count() > 0)
+        can_analyze = self.fields.count() > 0 and not drawing
+        self.analyze_button.setEnabled(can_analyze)
+        self.analyze_button.setToolTip("" if self.fields.count() else tr("analysis.button_tooltip"))
 
     # (list vertices)
     # asks for the details of the field just drawn: (name, color, data), or

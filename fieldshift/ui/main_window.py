@@ -1,9 +1,13 @@
 """Main window: map on the left, side panel on the right."""
 
 from fieldshift import __version__
+from fieldshift.analysis import get_analysis
 from fieldshift.i18n import tr
 from fieldshift.fields.manager import FieldsManager
 from fieldshift.qt import QtCore, QtWidgets
+from fieldshift.ui.analysis_tab import AnalysisTab
+from fieldshift.ui.analyze_dialog import AnalysisProgress, AnalyzeDialog
+from fieldshift.ui.field_list import LAYER_ID_ROLE
 from fieldshift.ui.fields_bar import FieldsBar
 from fieldshift.ui.scale_bar import ScaleBar
 from fieldshift.ui.side_panel import SidePanel
@@ -13,8 +17,10 @@ MAP_STRETCH = 3
 PANEL_STRETCH = 1
 
 
-# top-level window. Owns a MapView with the FieldsBar under it (left) and a
-# SidePanel (right); both share one FieldsManager
+# top-level window, made of tabs. The first tab ("Map", always there) holds
+# the MapView with the FieldsBar under it (left) and the SidePanel (right),
+# which share one FieldsManager. "Analyze…" adds one closable tab per
+# analysis result
 class MainWindow(QtWidgets.QMainWindow):
 
     # (MapView view, QWidget parent = None)
@@ -43,7 +49,18 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter.setCollapsible(0, False)
         splitter.setSizes([900, 300])
 
-        self.setCentralWidget(splitter)
+        # the map tab; analysis results open as more tabs next to it
+        self.map_splitter = splitter
+        self.tabs = QtWidgets.QTabWidget()
+        self.tabs.setDocumentMode(True)
+        self.tabs.setTabsClosable(True)
+        self.tabs.addTab(splitter, tr("tabs.map"))
+        for side in (QtWidgets.QTabBar.ButtonPosition.LeftSide,
+                     QtWidgets.QTabBar.ButtonPosition.RightSide):
+            self.tabs.tabBar().setTabButton(0, side, None)       # the map cannot be closed
+        self.tabs.tabCloseRequested.connect(self._close_tab)
+        self.setCentralWidget(self.tabs)
+        self.fields_bar.analyze_requested.connect(self.analyze)
         self.setWindowTitle(f"Field Shift {__version__}")
         self.resize(1280, 800)
         self.statusBar().showMessage(tr("status.ready"))
@@ -54,6 +71,50 @@ class MainWindow(QtWidgets.QMainWindow):
         view.layers_changed.connect(self._show_attribution)
         self._show_attribution()
         view.cursor_moved.connect(self._show_cursor)
+
+    # ()
+    # asks for a field and analyses, runs them with a progress window and
+    # opens one tab per result. returns the new tabs (empty if cancelled)
+    def analyze(self):
+        if self.fields.count() == 0 or self.view.is_drawing():
+            return []
+        dialog = AnalyzeDialog(self.fields, self._field_to_preselect(), parent=self)
+        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return []
+        field = self.fields.field(dialog.layer_id())
+        progress = AnalysisProgress(field, [get_analysis(i) for i in dialog.analysis_ids()],
+                                    parent=self)
+        if progress.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return []
+        return self.open_results(field, progress.results())
+
+    # (Field field, list results)
+    # adds a tab for each AnalysisResult and shows the first one; returns the tabs
+    def open_results(self, field, results):
+        tabs = []
+        for result in results:
+            tab = AnalysisTab(result, field)
+            index = self.tabs.addTab(tab, tab.tab_title())
+            self.tabs.setTabToolTip(index, tr(tab.analysis.title_key))
+            tabs.append(tab)
+        if tabs:
+            self.tabs.setCurrentWidget(tabs[0])
+        return tabs
+
+    # the field the Analyze dialog starts with: the first checked one, else
+    # the highlighted row, else none (the dialog picks the first)
+    def _field_to_preselect(self):
+        checked = self.fields.selected()
+        if checked:
+            return checked[0]
+        item = self.panel.layer_list.currentItem()
+        return item.data(LAYER_ID_ROLE) if item is not None else None
+
+    def _close_tab(self, index):
+        if index > 0:                            # never the map
+            widget = self.tabs.widget(index)
+            self.tabs.removeTab(index)
+            widget.deleteLater()
 
     # shows the "attribution" of every visible layer, once each
     def _show_attribution(self):

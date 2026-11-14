@@ -411,7 +411,8 @@ class MainWindowTest(unittest.TestCase):
         from fieldshift.ui import MainWindow, SidePanel
         view = create_map_view("placeholder")
         window = MainWindow(view)
-        splitter = window.centralWidget()
+        splitter = window.map_splitter
+        self.assertIs(window.tabs.widget(0), splitter)          # the map is the first tab
         self.assertTrue(splitter.widget(0).isAncestorOf(view.widget()))
         self.assertTrue(splitter.widget(0).isAncestorOf(window.fields_bar))
         self.assertIsInstance(splitter.widget(1), SidePanel)
