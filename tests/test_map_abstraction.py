@@ -187,6 +187,35 @@ class QgisViewTest(_ViewContract, unittest.TestCase):
                                 QtCore.Qt.KeyboardModifier.NoModifier)
         self.view.canvas().mapTool().keyPressEvent(event)
 
+    def _move(self, pos):
+        from fieldshift.qt import QtCore
+        self.view.canvas().mapTool().canvasMoveEvent(
+            self._mouse(QtCore.QEvent.Type.MouseMove, pos, QtCore.Qt.MouseButton.NoButton))
+
+    def test_first_vertex_grows_when_a_click_would_close(self):
+        from fieldshift.qt import QtCore
+        pixels = self._pixels(SQUARE)
+        self.view.start_polygon_drawing()
+        tool = self.view.canvas().mapTool()
+        near_first = pixels[0] + QtCore.QPointF(4, 3)
+        self._click(pixels[0])
+        self._click(pixels[1])
+        self._move(near_first)                      # only 2 vertices: no signal
+        self.assertFalse(tool.closing())
+        self.assertEqual(tool._close_marker.numberOfVertices(), 0)
+        self._click(pixels[2])
+        self._move(pixels[3])                       # far from the first vertex
+        self.assertFalse(tool.closing())
+        self._move(near_first)                      # inside CLOSE_TOLERANCE_PX
+        self.assertTrue(tool.closing())
+        self.assertEqual(tool._close_marker.numberOfVertices(), 1)
+        self.assertGreater(tool._close_marker.iconSize(), tool._markers.iconSize())
+        self._move(pixels[3])                       # leaves the zone: back to normal
+        self.assertEqual(tool._close_marker.numberOfVertices(), 0)
+        self._move(near_first)
+        self._key(QtCore.Qt.Key.Key_Escape)         # ending the drawing clears it
+        self.assertEqual(tool._close_marker.numberOfVertices(), 0)
+
     def test_clicks_close_on_first_vertex_and_go_back_to_pan(self):
         from qgis.gui import QgsMapToolPan
         drawn = []

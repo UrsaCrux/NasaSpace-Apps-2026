@@ -16,6 +16,12 @@ MIN_VERTICES = 3
 _FILL = QtGui.QColor(46, 125, 50, 70)
 _STROKE = QtGui.QColor(27, 94, 32)
 
+# size (pixels) of a vertex marker, and of the first one when a click would
+# close the polygon; the closing marker is amber so it stands out
+VERTEX_SIZE_PX = 8
+CLOSE_VERTEX_SIZE_PX = 18
+_CLOSE_COLOR = QtGui.QColor(255, 193, 7)
+
 _Qt = QtCore.Qt
 
 
@@ -41,9 +47,16 @@ class PolygonDrawTool(QgsMapTool):
         self._band.setWidth(2)
         self._markers = QgsRubberBand(canvas, Qgis.GeometryType.Point)
         self._markers.setIcon(QgsRubberBand.IconType.ICON_CIRCLE)
-        self._markers.setIconSize(8)
+        self._markers.setIconSize(VERTEX_SIZE_PX)
         self._markers.setColor(_STROKE)
-        self.setCursor(QtGui.QCursor(_Qt.CursorShape.CrossCursor))
+        # enlarged copy of the first vertex, shown while a click would close
+        self._close_marker = QgsRubberBand(canvas, Qgis.GeometryType.Point)
+        self._close_marker.setIcon(QgsRubberBand.IconType.ICON_CIRCLE)
+        self._close_marker.setIconSize(CLOSE_VERTEX_SIZE_PX)
+        self._close_marker.setColor(_CLOSE_COLOR)
+        self._close_marker.setSecondaryStrokeColor(_STROKE)
+        self._close_marker.setWidth(3)
+        self._set_cursor(_Qt.CursorShape.CrossCursor)
 
     # ()
     # begins a new, empty drawing
@@ -55,6 +68,14 @@ class PolygonDrawTool(QgsMapTool):
     # True between start() and the end of the drawing
     def is_active(self):
         return self._active
+
+    # ()
+    # True when a click at the cursor would close the polygon: at least
+    # MIN_VERTICES vertices and the cursor within CLOSE_TOLERANCE_PX of the first
+    def closing(self):
+        return (self._active and self._cursor is not None
+                and len(self._points) >= MIN_VERTICES
+                and self._pixel_distance(self._cursor, self._points[0]) <= CLOSE_TOLERANCE_PX)
 
     # ()
     # vertices placed so far (QgsPointXY, canvas CRS)
@@ -152,9 +173,22 @@ class PolygonDrawTool(QgsMapTool):
         self._markers.reset(Qgis.GeometryType.Point)
         for i, point in enumerate(self._points):
             self._markers.addPoint(point, i == len(self._points) - 1)
+        self._close_marker.reset(Qgis.GeometryType.Point)
+        closing = self.closing()
+        if closing:
+            self._close_marker.addPoint(self._points[0])
+        self._set_cursor(_Qt.CursorShape.PointingHandCursor if closing
+                         else _Qt.CursorShape.CrossCursor)
+
+    def _set_cursor(self, shape):
+        cursor = QtGui.QCursor(shape)
+        self.setCursor(cursor)
+        self.canvas().setCursor(cursor)       # the tool is already active
 
     def _clear(self):
         self._points = []
         self._cursor = None
         self._band.reset(Qgis.GeometryType.Polygon)
         self._markers.reset(Qgis.GeometryType.Point)
+        self._close_marker.reset(Qgis.GeometryType.Point)
+        self._set_cursor(_Qt.CursorShape.CrossCursor)
