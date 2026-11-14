@@ -7,6 +7,10 @@ from fieldshift.api.geo import Area, Period
 from fieldshift.api.models import SiteData, SourceStatus
 from fieldshift.api.providers import PLANNED, PROVIDERS, NoData, ProviderUnavailable
 
+# weather sources from best to worst resolution; the first one that has a
+# value fills SiteData.weather (each source's values stay in weather_by_source)
+WEATHER_PRIORITY = ["era5_land", "nasa_power"]
+
 
 # (float lon, float lat, float radius_m = 1000, date|str start = None,
 #  date|str end = None, list providers = None, bool include_planned = True)
@@ -23,6 +27,7 @@ def get_site_data(lon, lat, radius_m=1000.0, start=None, end=None, providers=Non
     selected = [cls() for cls in PROVIDERS if providers is None or cls.name in providers]
     with ThreadPoolExecutor(max_workers=max(len(selected), 1)) as pool:
         site.sources = list(pool.map(lambda p: _run(p, area, period, site), selected))
+    site.merge_weather(WEATHER_PRIORITY)
 
     if include_planned and providers is None:
         site.sources += [SourceStatus(name, "planned", f"{what} ({url})")

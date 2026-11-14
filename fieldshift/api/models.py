@@ -18,7 +18,8 @@ class Measurement:
         return f"{v} {self.unit}".strip() + f"  [{self.source}]{note}"
 
 
-# air: temperature, humidity, rain, sunlight (ERA5-Land)
+# air during the period: temperature, humidity, rain, sunlight, extremes.
+# Filled from ERA5-Land and NASA POWER (see SiteData.weather_by_source)
 @dataclass
 class Weather:
     air_temperature: Measurement = None       # period mean, 2 m
@@ -27,7 +28,29 @@ class Weather:
     dewpoint: Measurement = None
     relative_humidity: Measurement = None
     precipitation: Measurement = None         # total over the period
+    max_daily_precipitation: Measurement = None   # wettest day
     solar_radiation: Measurement = None       # mean daily surface irradiation
+    wind_speed: Measurement = None            # mean, 2 m
+    frost_days: Measurement = None            # days with minimum <= 0 °C
+    heat_days: Measurement = None             # days with maximum >= HEAT_DAY_C
+
+
+# temperature from which a day counts as a heat-stress day, °C
+HEAT_DAY_C = 35.0
+
+
+# long-term monthly normals (NASA POWER climatology). Each field is a dict
+# keyed "JAN".."DEC" plus "ANN" (annual) -> Measurement
+@dataclass
+class Climate:
+    years: str = ""                           # e.g. "2001-2025"
+    temperature: dict = field(default_factory=dict)
+    temperature_extreme_max: dict = field(default_factory=dict)
+    temperature_extreme_min: dict = field(default_factory=dict)
+    precipitation: dict = field(default_factory=dict)        # mm/day
+    solar_radiation: dict = field(default_factory=dict)
+    relative_humidity: dict = field(default_factory=dict)
+    frost_days: dict = field(default_factory=dict)
 
 
 # soil type, texture, chemistry, water retention, moisture and temperature.
@@ -59,6 +82,10 @@ class Water:
     evaporation: Measurement = None           # WaPOR E
     precipitation_wapor: Measurement = None   # WaPOR PCP, mean mm/day
     precipitation_satellite: Measurement = None   # GPM IMERG, total mm
+    actual_et_ecostress: Measurement = None   # ECOSTRESS JET, 70 m, mm/day
+    actual_et_gldas: Measurement = None       # GLDAS Noah land model, mm/day
+    storage_anomaly: Measurement = None       # GRACE/GRACE-FO, latest month, cm water
+    storage_trend: Measurement = None         # GRACE/GRACE-FO linear trend, cm/year
 
 
 # relief from the Copernicus DEM GLO-30
@@ -70,9 +97,10 @@ class Terrain:
     slope: Measurement = None                 # mean slope
 
 
-# vegetation productivity
+# vegetation vigour and productivity
 @dataclass
 class Vegetation:
+    ndvi: Measurement = None                  # MODIS 16-day NDVI, -1..1
     npp: Measurement = None                   # WaPOR net primary production
 
 
@@ -104,8 +132,24 @@ class SiteData:
     terrain: Terrain = field(default_factory=Terrain)
     vegetation: Vegetation = field(default_factory=Vegetation)
     fires: Fires = field(default_factory=Fires)
+    climate: Climate = field(default_factory=Climate)
+    # every weather source's own values; `weather` merges them by priority
+    weather_by_source: dict = field(default_factory=dict)
     sources: list = field(default_factory=list)
     fetched_at: datetime = field(default_factory=datetime.now)
+
+    # (list priority)
+    # fills `weather` field by field from weather_by_source, first source in
+    # priority order that has the value wins
+    def merge_weather(self, priority):
+        order = [n for n in priority if n in self.weather_by_source]
+        order += [n for n in self.weather_by_source if n not in order]
+        for f in fields(Weather):
+            for name in order:
+                value = getattr(self.weather_by_source[name], f.name)
+                if value is not None:
+                    setattr(self.weather, f.name, value)
+                    break
 
     # ()
     # plain dict (dates as ISO strings), ready for json.dumps
@@ -131,6 +175,18 @@ class SiteData:
                     rows.append(f"  {f.name}: " + ", ".join(f"{n} {pr}%" for n, pr in v))
             if rows:
                 lines += [section.capitalize() + ":"] + rows
+        c = self.climate
+        if c.temperature:
+            months = [m for m in c.temperature if m != "ANN"]
+            lines += [f"Climate normals {c.years} (" + " ".join(m.title() for m in months)
+                      + " | year):"]
+            for f in fields(Climate):
+                d = getattr(c, f.name)
+                if isinstance(d, dict) and d:
+                    unit = next(iter(d.values())).unit
+                    vals = " ".join(f"{d[m].value:.1f}" for m in months if m in d)
+                    ann = f" | {d['ANN'].value:.1f}" if "ANN" in d else ""
+                    lines.append(f"  {f.name} [{unit}]: {vals}{ann}")
         if self.fires.count is not None:
             near = f", nearest {self.fires.nearest_km:.1f} km" if self.fires.count else ""
             lines += ["Fires:", f"  detections: {self.fires.count}{near}"]

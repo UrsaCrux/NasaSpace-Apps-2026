@@ -2,8 +2,11 @@
 
 One call returns everything the data sources of the project report
 (*Informe de Mejores Candidatos de Datos Agrícolas y Satelitales para Chile*)
-know about a place: weather, soil type and properties, soil moisture and
-temperature, water balance, relief, vegetation productivity and fires.
+and the resources of the NASA Space Apps challenge *Field Shift: Adapting
+Farms with NASA Data* know about a place: weather and its extremes (frost,
+heat, wettest day), long-term monthly climate normals, soil type and
+properties, soil moisture and temperature, water balance and long-term water
+storage, relief, vegetation vigour (NDVI) and productivity, and fires.
 
 ```python
 from fieldshift.api import get_site_data
@@ -15,7 +18,10 @@ print(site.summary())                       # readable report
 site.soil.type.value                        # 'Leptosols'
 site.soil.clay["0-5cm"]                     # Measurement(value=21.1, unit='%', source='soilgrids')
 site.water.actual_et.value                  # 3.09 (mm/day)
-site.weather.air_temperature                # None until ERA5-Land is configured
+site.weather.air_temperature                # NASA POWER, or ERA5-Land when configured
+site.weather.frost_days                     # days with minimum <= 0 °C in the period
+site.climate.frost_days["JUL"]              # long-term mean frost days in July
+site.vegetation.ndvi                        # MODIS 16-day NDVI
 site.to_dict()                              # JSON-ready dict
 [(s.name, s.status, s.message) for s in site.sources]
 ```
@@ -39,13 +45,18 @@ python -m fieldshift.api --list
 ```
 get_site_data(lon, lat, radius_m, start, end)
    │  Area (circle) + Period (dates, default: the 7 days ending a week ago)
-   ├─ SoilGridsProvider ─┐
+   ├─ NasaPowerProvider ──┐
+   ├─ SoilGridsProvider     │
    ├─ CopernicusDemProvider │   run in parallel; each one writes its part
-   ├─ WaporProvider       ├─► of SiteData and reports a SourceStatus
-   ├─ Era5LandProvider    │
-   ├─ SmapProvider        │
-   ├─ GpmImergProvider    │
-   └─ FirmsProvider ─────┘
+   ├─ WaporProvider         │   of SiteData and reports a SourceStatus
+   ├─ ModisNdviProvider     ├─►
+   ├─ Era5LandProvider      │   weather: each source fills
+   ├─ SmapProvider          │   weather_by_source[name]; then `weather`
+   ├─ GpmImergProvider      │   takes each field from ERA5-Land, else
+   ├─ EcostressProvider     │   NASA POWER (WEATHER_PRIORITY in client.py)
+   ├─ GldasProvider         │
+   ├─ GraceProvider         │
+   └─ FirmsProvider ───────┘
 ```
 
 - Values are averaged over the circle; when the circle is smaller than one
@@ -69,17 +80,44 @@ get_site_data(lon, lat, radius_m, start, end)
 
 | Provider | Data added | Resolution | Access |
 |----------|-----------|------------|--------|
+| `nasa_power` — NASA POWER | weather (temperature mean/min/max, dewpoint, humidity, rain, wettest day, radiation, wind, frost and heat days), soil wetness, skin temperature; monthly climate normals 2001–2025 | ~0.5°, daily | public REST, no key |
+| `modis_ndvi` — MODIS MOD13Q1 via ORNL DAAC | NDVI | 250 m, 16-day | public REST, no key (slow: ~30 s) |
 | `soilgrids` — ISRIC SoilGrids 2.0 | soil type (WRB), clay/sand/silt, organic carbon, pH, bulk density, CEC, nitrogen, field capacity, wilting point; 6 depths | 250 m | public REST, no key |
 | `copernicus_dem` — Copernicus DEM GLO-30 | elevation mean/min/max, slope | 30 m | public AWS bucket, no key |
 | `wapor` — FAO WaPOR v3 L1 | actual ET, reference ET, transpiration, evaporation, precipitation, net primary production | 300 m, 10-day | public REST, no key |
 | `era5_land` — ECMWF ERA5-Land | air temperature (mean/min/max), dewpoint, relative humidity, precipitation, solar radiation, soil moisture and soil temperature at 4 depths | 9 km, hourly | CDS API key |
 | `smap_l4` — NASA SMAP SPL4SMGP v8 | surface and root-zone soil moisture, soil and surface temperature | 9 km, 3-hourly | NASA Earthdata login |
 | `gpm_imerg` — NASA GPM IMERG V07 daily | satellite precipitation | 0.1°, daily | NASA Earthdata login |
+| `ecostress` — NASA ECOSTRESS v003 | actual ET (JET), land surface temperature (LSTE, cloud-masked) | 70 m, irregular overpasses | NASA Earthdata login |
+| `gldas` — NASA GLDAS-2.1 Noah monthly | soil moisture and temperature at 4 depths, ET | 0.25°, monthly (~1–4 months delay) | NASA Earthdata login |
+| `grace` — GRACE/GRACE-FO JPL mascons | water storage anomaly (latest month) and 10-year trend | ~3° mascons, monthly | NASA Earthdata login |
 | `firms` — NASA FIRMS (VIIRS) | active fire detections, nearest fire | 375 m | FIRMS MAP_KEY |
 
-Planned (listed in `site.sources` as `planned`): Sentinel-2, HLS, ECOSTRESS,
-Landsat, GRACE, CR2MET, INIA, DMC, DGA/SNIA, CIREN, ODEPA, CONAF — see
-`fieldshift/api/providers/catalog.py`.
+Planned (listed in `site.sources` as `planned`): Sentinel-2, HLS, Landsat,
+VIIRS NDVI, GEDI, FAO GAEZ, CR2MET, INIA, DMC, DGA/SNIA, CIREN, ODEPA,
+CONAF — see `fieldshift/api/providers/catalog.py`.
+
+Heat days use `HEAT_DAY_C` (35 °C, in `fieldshift/api/models.py`). The
+climate normals' `temperature_extreme_max/min` are the monthly extremes of the
+period, not the mean daily maximum/minimum.
+
+## Challenge resources (Space Apps "Field Shift")
+
+| Resource | Status here |
+|----------|-------------|
+| SMAP | `smap_l4` |
+| GPM / IMERG | `gpm_imerg` |
+| Landsat, MODIS/VIIRS NDVI | `modis_ndvi`; Landsat and VIIRS planned |
+| NASA POWER | `nasa_power` |
+| SRTM / NASA elevation | `copernicus_dem` (GLO-30, the report's replacement for SRTM: same 30 m, newer) |
+| ECOSTRESS | `ecostress` |
+| GRACE / GRACE-FO | `grace` |
+| NLDAS / GLDAS | `gldas` (NLDAS covers North America only) |
+| GEDI | planned |
+| FAO GAEZ | planned |
+| ERA5 (ECMWF) | `era5_land` (ERA5-Land, the 9 km land version) |
+| Copernicus Sentinel-2 | planned |
+| PRISM, SSURGO/STATSGO2, Web Soil Survey, CropScape CDL, NAIP, NLCD, NWIS, OpenET, LANDFIRE, NASS QuickStats, AMS Market News, CoCoRaHS, Ag Data Commons | United States only, no data for Chile. Substitutes: ERA5-Land / POWER / CR2MET (PRISM), SoilGrids / CIREN (soil surveys), CIREN-ODEPA cadastre (CDL), Sentinel-2 (NAIP), GLDAS (NLDAS), DGA SNIA (NWIS), ECOSTRESS / WaPOR (OpenET), ODEPA (market prices), INE census (NASS), INIA / DMC stations (CoCoRaHS) |
 
 Data latency: ERA5-Land ~5 days, SMAP L4 ~3 days, IMERG late run ~1–2 days,
 WaPOR ~1 dekad. When WaPOR has not published the period yet, the latest
@@ -101,7 +139,7 @@ key: <your-api-key>
 CDS requests are queued and can take minutes; results are cached in
 `~/.cache/fieldshift/era5_land` (change with `FIELDSHIFT_CACHE`).
 
-**NASA Earthdata (SMAP, GPM IMERG).** Create an account at
+**NASA Earthdata (SMAP, GPM IMERG, ECOSTRESS, GLDAS, GRACE).** Create an account at
 <https://urs.earthdata.nasa.gov>, then either export
 `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD`, or add to `~/.netrc`
 (permissions `600`):
@@ -134,6 +172,9 @@ machine urs.earthdata.nasa.gov login <user> password <password>
    response in the source's format, so it runs offline.
 5. `make test`, `make test-live`, `make docs`.
 
-Tested live: `soilgrids`, `copernicus_dem`, `wapor`. The providers that need
-credentials are tested with synthetic files in each product's format; run
-them once with your keys before relying on them.
+Tested live: `nasa_power`, `modis_ndvi`, `soilgrids`, `copernicus_dem`,
+`wapor`. The providers that need credentials (`era5_land`, `smap_l4`,
+`gpm_imerg`, `ecostress`, `gldas`, `grace`, `firms`) are tested with
+synthetic files in each product's format, with product names and file
+layouts checked against NASA's CMR catalogue; run them once with your keys
+before relying on them.

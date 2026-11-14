@@ -15,10 +15,11 @@ fail are reported in ``site.sources`` and never stop the others.
 from fieldshift.api.client import get_site_data, list_providers
 from fieldshift.api.geo import Area, Period
 from fieldshift.api.models import (
-    Fires, Measurement, SiteData, Soil, SourceStatus, Terrain, Vegetation, Water, Weather,
+    Climate, Fires, Measurement, SiteData, Soil, SourceStatus, Terrain, Vegetation, Water,
+    Weather,
 )
 
 __all__ = [
-    "Area", "Fires", "Measurement", "Period", "SiteData", "Soil", "SourceStatus",
+    "Area", "Climate", "Fires", "Measurement", "Period", "SiteData", "Soil", "SourceStatus",
     "Terrain", "Vegetation", "Water", "Weather", "get_site_data", "list_providers",
 ]

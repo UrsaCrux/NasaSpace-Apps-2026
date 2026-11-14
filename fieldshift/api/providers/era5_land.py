@@ -12,7 +12,7 @@ import math
 import os
 from pathlib import Path
 
-from fieldshift.api.models import Measurement
+from fieldshift.api.models import HEAT_DAY_C, Measurement, Weather
 from fieldshift.api.providers.base import (
     NoData, Provider, ProviderUnavailable, cache_dir, circle_mask,
 )
@@ -77,14 +77,20 @@ class Era5LandProvider(Provider):
 
         if "t2m" not in ds:
             raise NoData("ERA5-Land returned no data")
-        w, src = site.weather, self.name
-        t2m, _ = series("t2m")
+        w, src = Weather(), self.name
+        site.weather_by_source[self.name] = w
+        t2m, t_times = series("t2m")
         if t2m.size == 0 or np.isnan(t2m).all():
             raise NoData("no ERA5-Land land cells here (sea?)")
         t_c = t2m - 273.15
         w.air_temperature = Measurement(float(t_c.mean()), "°C", src)
         w.air_temperature_min = Measurement(float(t_c.min()), "°C", src)
         w.air_temperature_max = Measurement(float(t_c.max()), "°C", src)
+        day_of = xr.DataArray(t_times.astype("datetime64[D]"), dims=time_dim, name="day")
+        w.frost_days = Measurement(int((t_c.groupby(day_of).min() <= 0).sum()), "days", src,
+                                   "daily minimum <= 0 °C")
+        w.heat_days = Measurement(int((t_c.groupby(day_of).max() >= HEAT_DAY_C).sum()), "days",
+                                  src, f"daily maximum >= {HEAT_DAY_C:g} °C")
         d2m, _ = series("d2m")
         td_c = float((d2m - 273.15).mean())
         w.dewpoint = Measurement(td_c, "°C", src)
@@ -98,6 +104,7 @@ class Era5LandProvider(Provider):
             if attr == "precipitation":
                 setattr(w, attr, Measurement(float(daily.sum()) * factor, unit, src,
                                              "total over the period"))
+                w.max_daily_precipitation = Measurement(float(daily.max()) * factor, unit, src)
             else:
                 setattr(w, attr, Measurement(float(daily.mean()) * factor, unit, src,
                                              "mean daily irradiation"))
