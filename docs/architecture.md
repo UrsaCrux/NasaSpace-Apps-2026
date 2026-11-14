@@ -23,7 +23,8 @@
 
 1. **UI** (`fieldshift/ui/`): Qt widgets. `MainWindow` puts the map widget on
    the left and the `SidePanel` on the right of a `QSplitter` (3:1 stretch,
-   the user can drag the divider). Under the map sits the `FieldsBar`. Both
+   the user can drag the divider). Under the map sits the `FieldsBar`; a
+   `ScaleBar` (`ui/scale_bar.py`) is drawn over its bottom-left corner. Both
    share one `FieldsManager` (`fieldshift/fields/manager.py`), which saves
    the user's fields as GeoJSON and shows them as map layers, and remembers
    which fields the user checked in the panel list: the "Field data" box

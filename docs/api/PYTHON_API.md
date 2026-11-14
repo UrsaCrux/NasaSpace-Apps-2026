@@ -1300,7 +1300,7 @@ def simulate_double_click(self, layer_id, lon=0.0, lat=0.0)
 ```
 
 - **Arguments:** `(str layer_id, float lon = 0, float lat = 0)`
-- **Line:** 89
+- **Line:** 93
 
 reports a double click on a feature of this layer, as the real map would; nothing happens for unknown, locked or hidden layers, or while drawing
 
@@ -1311,7 +1311,7 @@ def simulate_polygon(self, vertices)
 ```
 
 - **Arguments:** `(list vertices)`
-- **Line:** 97
+- **Line:** 101
 
 ends the current drawing as if the user had closed this polygon of (lon, lat) vertices; there is no map to click on, so tests use this
 
@@ -1449,7 +1449,7 @@ abandons the drawing and calls on_cancelled; no-op when idle
 class QgisMapView(MapView)
 ```
 
-- **Line:** 44
+- **Line:** 47
 
 MapView backed by QgsMapCanvas; layers are registered in QgsProject.instance()
 
@@ -1462,7 +1462,7 @@ def __init__(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 48
+- **Line:** 51
 
 creates the canvas in Web Mercator with pan as the default tool
 
@@ -1473,7 +1473,7 @@ def canvas(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 88
+- **Line:** 92
 
 the underlying QgsMapCanvas, for code that needs QGIS-specific features
 
@@ -1484,7 +1484,7 @@ def set_click_mode(self, enabled)
 ```
 
 - **Arguments:** `(bool enabled)`
-- **Line:** 93
+- **Line:** 97
 
 switches between the pan tool and the click tool (emits `clicked`)
 
@@ -1492,11 +1492,12 @@ switches between the pan tool and the click tool (emits `clicked`)
 
 | Name | Description | Line |
 |------|-------------|------|
-| `WGS84` | CRS the public API speaks (longitude / latitude) | 30 |
-| `WEB_MERCATOR` | CRS the canvas draws in (same as web tiles) | 32 |
-| `PICK_TOLERANCE_PX` | a double click counts as "on a feature" within this many pixels of it | 34 |
-| `MAP_UPDATE_INTERVAL_MS` | how often (ms) the canvas may show a half-finished picture while it redraws. a very long time means: keep showing the previous picture until the new one is complete, so the satellite tiles never vanish while new ones download | 38 |
-| `WORLD` | initial extent in lon/lat (Web Mercator is undefined at the poles) | 40 |
+| `WGS84` | CRS the public API speaks (longitude / latitude) | 31 |
+| `WEB_MERCATOR` | CRS the canvas draws in (same as web tiles) | 33 |
+| `PICK_TOLERANCE_PX` | a double click counts as "on a feature" within this many pixels of it | 35 |
+| `MAP_UPDATE_INTERVAL_MS` | how often (ms) the canvas may show a half-finished picture while it redraws. a very long time means: keep showing the previous picture until the new one is complete, so the satellite tiles never vanish while new ones download | 39 |
+| `EARTH_RADIUS_M` | mean Earth radius (metres) used to measure the scale | 41 |
+| `WORLD` | initial extent in lon/lat (Web Mercator is undefined at the poles) | 43 |
 
 ## `fieldshift/map/view.py`
 
@@ -1532,7 +1533,7 @@ def widget(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 36
+- **Line:** 39
 
 the QWidget to put in a window; created once and reused
 
@@ -1543,7 +1544,7 @@ def add_layer(self, spec)
 ```
 
 - **Arguments:** `(LayerSpec spec)`
-- **Line:** 43
+- **Line:** 46
 
 loads the layer on top of the others; returns its id. raises ValueError when the source cannot be opened
 
@@ -1554,7 +1555,7 @@ def remove_layer(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 49
+- **Line:** 52
 
 removes a layer added with add_layer; unknown ids are ignored
 
@@ -1565,7 +1566,7 @@ def layers(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 55
+- **Line:** 58
 
 list of LayerInfo, top layer first
 
@@ -1576,7 +1577,7 @@ def set_layer_visible(self, layer_id, visible)
 ```
 
 - **Arguments:** `(str layer_id, bool visible)`
-- **Line:** 61
+- **Line:** 64
 
 shows or hides a layer without removing it
 
@@ -1587,7 +1588,7 @@ def set_center(self, lon, lat, scale=None)
 ```
 
 - **Arguments:** `(float lon, float lat, float scale = None)`
-- **Line:** 67
+- **Line:** 70
 
 centres the map on a point; keeps the current scale when none is given
 
@@ -1598,7 +1599,7 @@ def zoom_to_extent(self, xmin, ymin, xmax, ymax)
 ```
 
 - **Arguments:** `(float xmin, float ymin, float xmax, float ymax)`
-- **Line:** 73
+- **Line:** 76
 
 fits the view to a lon/lat bounding box
 
@@ -1609,7 +1610,7 @@ def zoom_to_layer(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 79
+- **Line:** 82
 
 fits the view to the extent of one layer
 
@@ -1620,7 +1621,7 @@ def refresh(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 85
+- **Line:** 88
 
 redraws the map
 
@@ -1631,7 +1632,7 @@ def start_polygon_drawing(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 94
+- **Line:** 97
 
 lets the user draw a polygon on the map (click adds a vertex; double click, right click or a click on the first vertex closes it; Backspace removes the last vertex; Esc cancels). ends with polygon_drawn or drawing_cancelled, then the map goes back to panning
 
@@ -1642,7 +1643,7 @@ def cancel_drawing(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 100
+- **Line:** 103
 
 stops the current drawing and emits drawing_cancelled; no-op when idle
 
@@ -1653,9 +1654,20 @@ def is_drawing(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 106
+- **Line:** 109
 
 True while a drawing started with start_polygon_drawing is in progress
+
+#### `MapView.meters_per_pixel`
+
+```python
+def meters_per_pixel(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 117
+
+ground distance in metres covered by one screen pixel, measured across the centre of the view (it changes with latitude in Web Mercator), or None when the backend cannot tell
 
 ### Variables
 
@@ -1667,6 +1679,7 @@ True while a drawing started with start_polygon_drawing is in progress
 | `MapView.polygon_drawn` | emitted with (list vertices) when the user closes a polygon started with start_polygon_drawing; vertices are (lon, lat) tuples and the first one is not repeated at the end | 24 |
 | `MapView.drawing_cancelled` | emitted with no arguments when a drawing ends without a polygon | 26 |
 | `MapView.layer_double_clicked` | emitted with (str layer_id, float lon, float lat) when the user double-clicks a feature of a layer that is not locked (topmost layer first). never while drawing a polygon. a double click on a feature does not zoom the map in | 31 |
+| `MapView.view_changed` | emitted with no arguments after the visible area changes (pan, zoom, resize); read meters_per_pixel() to draw a scale bar | 34 |
 
 ## `fieldshift/native/__init__.py`
 
@@ -2067,7 +2080,7 @@ rebuilds the tree from the fields checked right now
 class MainWindow(QtWidgets.QMainWindow)
 ```
 
-- **Line:** 17
+- **Line:** 18
 
 top-level window. Owns a MapView with the FieldsBar under it (left) and a SidePanel (right); both share one FieldsManager
 
@@ -2080,7 +2093,7 @@ def __init__(self, view, parent=None)
 ```
 
 - **Arguments:** `(MapView view, QWidget parent = None)`
-- **Line:** 21
+- **Line:** 22
 
 builds the splitter layout around an already created map view
 
@@ -2088,8 +2101,109 @@ builds the splitter layout around an already created map view
 
 | Name | Description | Line |
 |------|-------------|------|
-| `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 11 |
-| `MainWindow.attribution_label` | credit of the visible layers (basemap licences require it) | 48 |
+| `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 12 |
+| `MainWindow.scale_bar` | scale bar over the bottom-left corner of the map | 36 |
+| `MainWindow.attribution_label` | credit of the visible layers (basemap licences require it) | 51 |
+
+## `fieldshift/ui/scale_bar.py`
+
+### Classes
+
+#### `ScaleBar`
+
+```python
+class ScaleBar(QtWidgets.QWidget)
+```
+
+- **Line:** 50
+
+black and white bar with its length ("0 ... 200 m") over the map, in the bottom-left corner. mouse clicks go through it to the map
+
+### Functions
+
+#### `nice_length`
+
+```python
+def nice_length(meters)
+```
+
+- **Arguments:** `(float meters)`
+- **Line:** 28
+
+largest round length (1, 2 or 5 x 10^n metres) that is not longer than meters
+
+#### `format_length`
+
+```python
+def format_length(meters)
+```
+
+- **Arguments:** `(float meters)`
+- **Line:** 40
+
+length as people write it: "500 m", "2 km", "50 cm"
+
+#### `ScaleBar.__init__`
+
+```python
+def __init__(self, view)
+```
+
+- **Arguments:** `(MapView view)`
+- **Line:** 54
+
+puts the bar on top of view.widget() and follows the view
+
+#### `ScaleBar.length_m`
+
+```python
+def length_m(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 71
+
+the length shown, in metres (0 when hidden)
+
+#### `ScaleBar.label`
+
+```python
+def label(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 76
+
+the text shown at the end of the bar ("200 m")
+
+#### `ScaleBar.bar_width`
+
+```python
+def bar_width(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 81
+
+how wide the bar is drawn, in pixels
+
+#### `ScaleBar.refresh`
+
+```python
+def refresh(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 86
+
+recomputes the bar from the current scale of the map
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `TARGET_WIDTH_PX` | the bar is never wider than this (pixels); it is at least half of it | 13 |
+| `MARGIN_PX` | distance (pixels) from the bottom-left corner of the map | 15 |
 
 ## `fieldshift/ui/side_panel.py`
 

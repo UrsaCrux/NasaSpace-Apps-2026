@@ -40,6 +40,7 @@ LayerSpec.raster("NDVI", "/path/ndvi.tif")
 | `start_polygon_drawing()` | Let the user draw a polygon (see below) |
 | `cancel_drawing()` | Stop the drawing in progress |
 | `is_drawing() -> bool` | A drawing is in progress |
+| `meters_per_pixel() -> float` | Ground metres covered by one screen pixel at the centre of the view (`None` without a real map); used by the scale bar |
 
 | Event | Arguments |
 |-------|-----------|
@@ -48,6 +49,7 @@ LayerSpec.raster("NDVI", "/path/ndvi.tif")
 | `layers_changed` | – |
 | `polygon_drawn` | `vertices`: list of `(lon, lat)`, first vertex not repeated |
 | `drawing_cancelled` | – |
+| `view_changed` | – (after a pan, zoom or resize) |
 | `layer_double_clicked` | `layer_id, lon, lat`: double click on a feature of a visible, unlocked layer (topmost first), never while drawing. The map does not zoom in on that click |
 
 The default tool (`PickPanTool`, `fieldshift/map/pick_tool.py`) pans by

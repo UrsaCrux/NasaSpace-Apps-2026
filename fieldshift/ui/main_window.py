@@ -5,6 +5,7 @@ from fieldshift.i18n import tr
 from fieldshift.fields.manager import FieldsManager
 from fieldshift.qt import QtCore, QtWidgets
 from fieldshift.ui.fields_bar import FieldsBar
+from fieldshift.ui.scale_bar import ScaleBar
 from fieldshift.ui.side_panel import SidePanel
 
 # relative widths of the map and the panel inside the splitter
@@ -31,6 +32,8 @@ class MainWindow(QtWidgets.QMainWindow):
         column.setSpacing(0)
         column.addWidget(view.widget(), 1)
         column.addWidget(self.fields_bar)
+        # scale bar over the bottom-left corner of the map
+        self.scale_bar = ScaleBar(view)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         splitter.addWidget(map_area)
