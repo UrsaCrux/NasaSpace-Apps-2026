@@ -60,5 +60,6 @@
   "data_fields.soil_type.silt": "Silt",
   "data_fields.ph": "pH",
   "data_fields.annual_rain_mm": "Annual rainfall",
-  "data_fields.irrigated": "Irrigated"
+  "data_fields.irrigated": "Irrigated",
+  "common.edit": "Edit"
 }

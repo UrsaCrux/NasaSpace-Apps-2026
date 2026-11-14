@@ -5,10 +5,9 @@ from fieldshift.fields.manager import FieldsManager
 from fieldshift.i18n import tr
 from fieldshift.qt import QtCore, QtWidgets
 from fieldshift.ui import dialogs
+from fieldshift.ui.field_dialog import FieldDialog
+from fieldshift.ui.field_list import EDITABLE_ROLE, LAYER_ID_ROLE, FieldList
 from fieldshift.ui.fields_data import FieldsDataBox
-
-# role used to store the layer id on each list item
-LAYER_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole
 
 
 # panel with the user's fields (and any other non-base layer), the data of
@@ -58,6 +57,7 @@ class SidePanel(QtWidgets.QWidget):
             text = info.name if self.fields.is_field(info.id) else f"{info.name}  [{info.kind.value}]"
             item = QtWidgets.QListWidgetItem(text)
             item.setData(LAYER_ID_ROLE, info.id)
+            item.setData(EDITABLE_ROLE, self.fields.is_field(info.id))   # Edit button
             item.setFlags(item.flags() | QtCore.Qt.ItemFlag.ItemIsUserCheckable)
             checked = (self.fields.is_selected(info.id) if self.fields.is_field(info.id)
                        else info.visible)
@@ -83,7 +83,8 @@ class SidePanel(QtWidgets.QWidget):
         self.empty_label.setStyleSheet("color: #666;")
         v.addWidget(self.empty_label)
 
-        self.layer_list = QtWidgets.QListWidget()
+        self.layer_list = FieldList()
+        self.layer_list.edit_requested.connect(self._on_edit_requested)
         self.layer_list.setToolTip(tr("fields.list_tooltip"))
         self.layer_list.itemChanged.connect(self._on_item_changed)
         self.layer_list.itemDoubleClicked.connect(self._on_item_double_clicked)
@@ -187,6 +188,37 @@ class SidePanel(QtWidgets.QWidget):
         if self.fields.is_field(layer_id):
             self.fields.zoom_to(layer_id)
 
+    # the Edit button of a field row was clicked. the dialog opens once Qt has
+    # finished handling the click: saving rebuilds the list
+    def _on_edit_requested(self, layer_id):
+        QtCore.QTimer.singleShot(0, lambda: self._edit_field(layer_id))
+
+    # (str layer_id)
+    # asks for the new details of a field and applies them
+    def _edit_field(self, layer_id):
+        field = self.fields.field(layer_id)
+        if field is None or self.view.is_drawing():
+            return
+        dialog = FieldDialog(self.fields.store, field=field, parent=self.window())
+        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return
+        try:
+            new_id = self.fields.update(layer_id, dialog.name(), dialog.color(), dialog.data())
+        except (ValueError, OSError) as exc:
+            dialogs.inform(self, tr("fields.title"), tr("fields.save_failed", error=exc))
+            return
+        self._highlight(new_id)
+
+    # (str layer_id)
+    # makes the row of this layer the current one
+    def _highlight(self, layer_id):
+        for row in range(self.layer_list.count()):
+            item = self.layer_list.item(row)
+            if item.data(LAYER_ID_ROLE) == layer_id:
+                self.layer_list.setCurrentItem(item)
+                self.layer_list.scrollToItem(item)
+                return
+
     # double click on a field in the map: tick its checkbox (or untick it if
     # it was ticked) and highlight its row. other layers and clicks made
     # while drawing are ignored
@@ -194,12 +226,7 @@ class SidePanel(QtWidgets.QWidget):
         if self.view.is_drawing() or not self.fields.is_field(layer_id):
             return
         self.fields.set_selected(layer_id, not self.fields.is_selected(layer_id))
-        for row in range(self.layer_list.count()):
-            item = self.layer_list.item(row)
-            if item.data(LAYER_ID_ROLE) == layer_id:
-                self.layer_list.setCurrentItem(item)
-                self.layer_list.scrollToItem(item)
-                break
+        self._highlight(layer_id)
 
     def _on_cursor(self, lon, lat):
         self.cursor_label.setText(f"{lon:.5f}, {lat:.5f}")

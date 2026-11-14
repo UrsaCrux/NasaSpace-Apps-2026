@@ -160,6 +160,54 @@ class ColorAndDataTest(unittest.TestCase):
         self.assertEqual(self.store.name_problem("Field 2", ignore="Field 1"), "duplicate")
 
 
+class UpdateTest(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.folder = Path(self._tmp.name) / "fields"
+        self.store = FieldStore(self.folder)
+        self.field = self.store.create("North", SQUARE, created="2026-01-01T00:00:00+00:00",
+                                       color="#112233")
+
+    def files(self):
+        return sorted(p.name for p in self.folder.iterdir())
+
+    def test_update_changes_the_file_and_keeps_shape_area_and_date(self):
+        data = {"ph": {"value": 5.5, "source": "user"}}
+        new = self.store.update("North", "North", color="#ff0000", data=data)
+        self.assertEqual(new.path, self.field.path)                 # same name: same file
+        again = self.store.get("North")
+        self.assertEqual((again.color, again.data["ph"]), ("#ff0000", data["ph"]))
+        self.assertEqual((again.vertices, again.area_ha, again.created),
+                         (self.field.vertices, self.field.area_ha, self.field.created))
+        self.assertEqual(self.files(), ["North.geojson"])           # no .tmp left behind
+
+    def test_rename_renames_the_file(self):
+        new = self.store.update("North", "  South ")
+        self.assertEqual(new.name, "South")
+        self.assertEqual(self.files(), ["South.geojson"])
+        self.assertIsNone(self.store.get("North"))
+        self.assertEqual(self.store.get("south").color, "#112233")  # None keeps the colour
+
+    def test_own_name_is_not_a_duplicate_but_another_field_is(self):
+        self.store.create("South", SQUARE)
+        self.store.update("North", "north")                          # own name, other case
+        self.assertEqual(self.store.get("North").name, "north")
+        with self.assertRaises(ValueError):
+            self.store.update("north", "SOUTH")
+        with self.assertRaises(ValueError):
+            self.store.update("north", "   ")
+        with self.assertRaises(ValueError):
+            self.store.update("missing", "x")
+        self.assertEqual(sorted(f.name for f in self.store.fields()), ["South", "north"])
+
+    def test_rename_does_not_overwrite_a_file_with_the_same_stem(self):
+        self.store.create("A/B", SQUARE)                             # file A_B.geojson
+        self.store.update("North", "A_B")                            # same stem, other name
+        self.assertEqual(len(self.store.fields()), 2)
+        self.assertEqual(len(self.files()), 2)
+
+
 class FolderTest(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()

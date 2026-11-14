@@ -105,6 +105,30 @@ class FieldsManager:
         self.fields_changed.emit()
         return layer_id
 
+    # (str layer_id, str name, str color = None, dict data = None)
+    # changes name, colour and data of a field: the file, the map layer and
+    # the lists follow, and the field stays checked if it was. the layer gets a
+    # new id, which is returned. raises ValueError (not a field, bad name,
+    # layer cannot load) or OSError; then nothing has changed
+    def update(self, layer_id, name, color=None, data=None):
+        old = self._fields.get(layer_id)
+        if old is None:
+            raise ValueError(f"layer {layer_id!r} is not a field")
+        new = self.store.update(old.name, name, color, data)
+        try:
+            new_id = self._show(new)
+        except ValueError:
+            self.store.update(new.name, old.name, old.color, old.data)     # undo
+            raise
+        was_selected = layer_id in self._selected
+        del self._fields[layer_id]
+        self._selected.discard(layer_id)
+        if was_selected:
+            self._selected.add(new_id)
+        self.view.remove_layer(layer_id)
+        self.fields_changed.emit()
+        return new_id
+
     # (str layer_id)
     # removes a field from the map and deletes its file; returns False when
     # the layer is not a field

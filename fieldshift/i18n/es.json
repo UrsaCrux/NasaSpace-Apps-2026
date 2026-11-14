@@ -60,5 +60,6 @@
   "data_fields.soil_type.silt": "Limoso",
   "data_fields.ph": "pH",
   "data_fields.annual_rain_mm": "Lluvia anual",
-  "data_fields.irrigated": "Riego"
+  "data_fields.irrigated": "Riego",
+  "common.edit": "Editar"
 }

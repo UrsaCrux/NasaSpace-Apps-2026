@@ -6,7 +6,7 @@ import os
 import re
 import shutil
 import sys
-from dataclasses import dataclass, field as dataclass_field
+from dataclasses import dataclass, field as dataclass_field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -125,6 +125,33 @@ class FieldStore:
                               encoding="utf-8")
         return field
 
+    # (str name, str new_name, str color = None, dict data = None)
+    # changes name, colour and data of the saved field called name; None keeps
+    # the current colour or data. the file is renamed when the name changes;
+    # shape, area and creation date stay. returns the updated Field. raises
+    # ValueError when the field does not exist or new_name is empty or taken
+    # by another field (the field's own name is fine)
+    def update(self, name, new_name, color=None, data=None):
+        field = self.get(name)
+        if field is None:
+            raise ValueError(f"there is no field called {name!r}")
+        new_name = new_name.strip()
+        problem = self.name_problem(new_name, ignore=field.name)
+        if problem:
+            raise ValueError(f"invalid field name {new_name!r}: {problem}")
+        path = field.path if new_name == field.name else self._free_path(new_name, ignore=field.path)
+        updated = replace(
+            field, name=new_name, path=path,
+            color=field.color if color is None else normalize_color(color),
+            data=field.data if data is None else normalize_data(data, field.vertices))
+        collection = {"type": "FeatureCollection", "features": [to_feature(updated)]}
+        temp = path.with_name(path.name + ".tmp")          # never a half-written file
+        temp.write_text(json.dumps(collection, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(temp, path)
+        if path != field.path and not (field.path.exists() and path.samefile(field.path)):
+            field.path.unlink(missing_ok=True)             # renamed: drop the old file
+        return updated
+
     # (str name)
     # deletes the field file; returns False when there is no such field
     def delete(self, name):
@@ -148,13 +175,14 @@ class FieldStore:
                               encoding="utf-8")
         return len(fields)
 
-    # (str name)
-    # unused file path for a field name, made safe for every file system
-    def _free_path(self, name):
+    # (str name, Path ignore = None)
+    # unused file path for a field name, made safe for every file system. the
+    # file ignore (the field's own, when renaming) counts as free
+    def _free_path(self, name, ignore=None):
         stem = _UNSAFE_FILE_CHARS.sub("_", name).strip(" .") or "field"
         path = self.folder / f"{stem}.geojson"
         n = 2
-        while path.exists():
+        while path.exists() and not (ignore is not None and path.samefile(ignore)):
             path = self.folder / f"{stem}-{n}.geojson"
             n += 1
         return path
