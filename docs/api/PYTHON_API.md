@@ -1449,7 +1449,7 @@ abandons the drawing and calls on_cancelled; no-op when idle
 class QgisMapView(MapView)
 ```
 
-- **Line:** 40
+- **Line:** 44
 
 MapView backed by QgsMapCanvas; layers are registered in QgsProject.instance()
 
@@ -1462,7 +1462,7 @@ def __init__(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 44
+- **Line:** 48
 
 creates the canvas in Web Mercator with pan as the default tool
 
@@ -1473,7 +1473,7 @@ def canvas(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 76
+- **Line:** 88
 
 the underlying QgsMapCanvas, for code that needs QGIS-specific features
 
@@ -1484,7 +1484,7 @@ def set_click_mode(self, enabled)
 ```
 
 - **Arguments:** `(bool enabled)`
-- **Line:** 81
+- **Line:** 93
 
 switches between the pan tool and the click tool (emits `clicked`)
 
@@ -1495,7 +1495,8 @@ switches between the pan tool and the click tool (emits `clicked`)
 | `WGS84` | CRS the public API speaks (longitude / latitude) | 30 |
 | `WEB_MERCATOR` | CRS the canvas draws in (same as web tiles) | 32 |
 | `PICK_TOLERANCE_PX` | a double click counts as "on a feature" within this many pixels of it | 34 |
-| `WORLD` | initial extent in lon/lat (Web Mercator is undefined at the poles) | 36 |
+| `MAP_UPDATE_INTERVAL_MS` | how often (ms) the canvas may show a half-finished picture while it redraws. a very long time means: keep showing the previous picture until the new one is complete, so the satellite tiles never vanish while new ones download | 38 |
+| `WORLD` | initial extent in lon/lat (Web Mercator is undefined at the poles) | 40 |
 
 ## `fieldshift/map/view.py`
 
@@ -1835,7 +1836,7 @@ def name(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 102
+- **Line:** 107
 
 the name typed, without surrounding spaces
 
@@ -1846,7 +1847,7 @@ def color(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 107
+- **Line:** 112
 
 the chosen colour as "#rrggbb" (grey when none was chosen)
 
@@ -1857,7 +1858,7 @@ def data(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 112
+- **Line:** 117
 
 the data as schema.DATA_FIELDS describes it: {key: {"value", "source"}}
 
@@ -1868,7 +1869,7 @@ def is_modified(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 119
+- **Line:** 124
 
 True when the user changed this datum (it is not the prefilled one)
 
@@ -1879,7 +1880,7 @@ def set_value(self, key, value)
 ```
 
 - **Arguments:** `(str key, any value)`
-- **Line:** 124
+- **Line:** 129
 
 sets a datum as if the user had typed it (marks it edited)
 
@@ -1890,7 +1891,7 @@ def reset_value(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 131
+- **Line:** 136
 
 puts the prefilled value back and marks the datum as not edited
 
@@ -1904,7 +1905,7 @@ puts the prefilled value back and marks the datum as not edited
 class FieldList(QtWidgets.QListWidget)
 ```
 
-- **Line:** 48
+- **Line:** 65
 
 QListWidget whose field rows have an Edit button. clicking the button emits edit_requested(layer_id) and does nothing else (no zoom, no check)
 
@@ -1917,9 +1918,9 @@ def edit_button_rect(row_rect, metrics)
 ```
 
 - **Arguments:** `(QRect row_rect, QFontMetrics metrics)`
-- **Line:** 17
+- **Line:** 26
 
-where the Edit button of a row is: right-aligned, slightly smaller than the row
+where the Edit button of a row is: right-aligned and vertically centred
 
 #### `FieldList.__init__`
 
@@ -1928,7 +1929,7 @@ def __init__(self, parent=None)
 ```
 
 - **Arguments:** `(QWidget parent = None)`
-- **Line:** 55
+- **Line:** 72
 
 creates the list with the Edit-button delegate
 
@@ -1939,7 +1940,7 @@ def edit_button_at(self, pos)
 ```
 
 - **Arguments:** `(QPoint pos)`
-- **Line:** 62
+- **Line:** 81
 
 the layer id whose Edit button is at viewport position pos, or None
 
@@ -1948,7 +1949,9 @@ the layer id whose Edit button is at viewport position pos, or None
 | Name | Description | Line |
 |------|-------------|------|
 | `LAYER_ID_ROLE` | role: the layer id of a row; and True on rows that get an Edit button | 8 |
-| `FieldList.edit_requested` | emitted with the layer id (str) when an Edit button is clicked | 51 |
+| `ROW_HEIGHT` | minimum height (pixels) of a row, so the Edit button fits comfortably | 14 |
+| `FieldList.edit_requested` | emitted with the layer id (str) when an Edit button is clicked | 68 |
+| `FieldList.hovered_edit` | layer id of the Edit button under the mouse (drawn highlighted) | 77 |
 
 ## `fieldshift/ui/fields_bar.py`
 
@@ -2039,7 +2042,7 @@ def field_count(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 75
+- **Line:** 78
 
 number of fields shown
 
@@ -2050,7 +2053,7 @@ def refresh(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 80
+- **Line:** 83
 
 rebuilds the tree from the fields checked right now
 
