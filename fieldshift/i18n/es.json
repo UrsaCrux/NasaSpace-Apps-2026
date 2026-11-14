@@ -31,5 +31,15 @@
   "data.col_name": "Nombre",
   "data.col_area": "Área (ha)",
   "data.col_created": "Creado",
-  "data.total": "{count} terreno(s) · {area} ha en total"
+  "data.total": "{count} terreno(s) · {area} ha en total",
+  "header.title": "farmer-shit",
+  "header.subtitle": "Programa para adaptar agricultores con datos de la NASA",
+  "position.title": "Posición",
+  "position.cursor": "Cursor:",
+  "position.last_click": "Último clic:",
+  "tools.title": "Herramientas",
+  "tools.native_loaded": "Núcleo C++ {version} cargado",
+  "tools.native_missing": "Núcleo C++ sin compilar (ver cpp/README.md)",
+  "status.ready": "Listo",
+  "status.cursor": "lon {lon}   lat {lat}"
 }

@@ -69,8 +69,7 @@ class SidePanel(QtWidgets.QWidget):
     # -- building blocks ---------------------------------------------------
 
     def _build_header(self):
-        title = QtWidgets.QLabel("<h2>farmer-shit</h2>"
-                                 "<p>Program to adapt farmers with NASA data</p>")
+        title = QtWidgets.QLabel(f"<h2>{tr('header.title')}</h2><p>{tr('header.subtitle')}</p>")
         title.setWordWrap(True)
         return title
 
@@ -100,19 +99,19 @@ class SidePanel(QtWidgets.QWidget):
         return box
 
     def _build_position_box(self):
-        box = QtWidgets.QGroupBox("Position")
+        box = QtWidgets.QGroupBox(tr("position.title"))
         form = QtWidgets.QFormLayout(box)
         self.cursor_label = QtWidgets.QLabel("–")
         self.click_label = QtWidgets.QLabel("–")
-        form.addRow("Cursor:", self.cursor_label)
-        form.addRow("Last click:", self.click_label)
+        form.addRow(tr("position.cursor"), self.cursor_label)
+        form.addRow(tr("position.last_click"), self.click_label)
         return box
 
     def _build_tools_box(self):
-        box = QtWidgets.QGroupBox("Tools")
+        box = QtWidgets.QGroupBox(tr("tools.title"))
         v = QtWidgets.QVBoxLayout(box)
-        status = (f"C++ core {native.version()} loaded" if native.is_available()
-                  else "C++ core not built (see cpp/README.md)")
+        status = (tr("tools.native_loaded", version=native.version()) if native.is_available()
+                  else tr("tools.native_missing"))
         v.addWidget(QtWidgets.QLabel(status))
         return box
 

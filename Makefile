@@ -24,11 +24,16 @@ BUILD_DIR   := cpp/build
 MINIDOC_DIR := .tools/minidoc
 MINIDOC_URL := https://gitlab.com/matsuori/minidoc.git
 
+# language of the texts: make run LANG_UI=es  (see docs/i18n.md). Not LANG,
+# which the operating system already uses.
+LANG_UI     ?=
+
 .PHONY: help run env which cpp test docs docs-cpp docs-python clean
 
 help:
 	@echo "make env          create the micromamba environment with QGIS 4"
 	@echo "make run          start the application (uses the env if present)"
+	@echo "make run LANG_UI=es   same, with the texts in Spanish (en, es)"
 	@echo "make which        show which Python make run will use"
 	@echo "make cpp          build the C++ library in cpp/build"
 	@echo "make test         run the tests"
@@ -36,7 +41,7 @@ help:
 	@echo "make clean        remove build outputs"
 
 run:
-	$(RUN) -m fieldshift
+	$(RUN) -m fieldshift $(if $(LANG_UI),--lang $(LANG_UI))
 
 which:
 	@echo "make run uses: $(RUN)"

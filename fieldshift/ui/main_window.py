@@ -1,6 +1,7 @@
 """Main window: map on the left, side panel on the right."""
 
 from fieldshift import __version__
+from fieldshift.i18n import tr
 from fieldshift.fields.manager import FieldsManager
 from fieldshift.qt import QtCore, QtWidgets
 from fieldshift.ui.fields_bar import FieldsBar
@@ -42,8 +43,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(splitter)
         self.setWindowTitle(f"Field Shift {__version__}")
         self.resize(1280, 800)
-        self.statusBar().showMessage("Ready")
+        self.statusBar().showMessage(tr("status.ready"))
         view.cursor_moved.connect(self._show_cursor)
 
     def _show_cursor(self, lon, lat):
-        self.statusBar().showMessage(f"lon {lon:.5f}   lat {lat:.5f}")
+        self.statusBar().showMessage(tr("status.cursor", lon=f"{lon:.5f}", lat=f"{lat:.5f}"))
