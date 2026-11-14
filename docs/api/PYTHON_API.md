@@ -179,7 +179,7 @@ raster file readable by GDAL: GeoTIFF, NetCDF, HDF...
 class PlaceholderMapView(MapView)
 ```
 
-- **Line:** 12
+- **Line:** 14
 
 MapView without a map engine: lets the panel and window be developed and tested on machines without QGIS
 
@@ -192,7 +192,7 @@ def __init__(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 16
+- **Line:** 18
 
 creates an empty in-memory view
 
@@ -452,7 +452,8 @@ NDVI of two equally long sequences; returns a list of floats
 
 | Name | Description | Line |
 |------|-------------|------|
-| `QT_MAJOR` | major Qt version actually loaded (6 expected) | 18 |
+| `QGIS_IMPORT_ERROR` | why QGIS could not be imported ("" when it was); shown by the placeholder map | 13 |
+| `QT_MAJOR` | major Qt version actually loaded (6 expected) | 28 |
 
 ## `fieldshift/ui/main_window.py`
 

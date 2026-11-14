@@ -65,6 +65,58 @@ It should print `4.x` and `Qt 6.x`.
 Without QGIS, the window still opens (with `pip install PyQt6`) and shows a
 placeholder instead of the map, which is enough to work on the panel.
 
+## QGIS is not found
+
+If the map area says QGIS could not be imported, the Python running the app
+cannot `import qgis`. The panel and the terminal show which interpreter was
+used and the exact error. Check with the same interpreter:
+
+```bash
+python3 -c "import sys; print(sys.executable, sys.version); import qgis.core; print(qgis.core.Qgis.version())"
+```
+
+Typical causes:
+
+- **QGIS was built without Python bindings.**
+- **The bindings exist for a different Python version** than the `python3`
+  you run (e.g. QGIS built for 3.12, `python3` is 3.13). Run the app with
+  the matching one: `make run PYTHON=python3.12`.
+- **A virtualenv** hides system packages. Create it with
+  `--system-site-packages`, or run outside it.
+- **Error inside the bindings** (e.g. `No module named 'PyQt6.sip'`): PyQt6
+  is missing or built for another Python version.
+
+### Gentoo
+
+QGIS is `sci-geosciences/qgis`; the Python bindings need `USE=python`, and
+they are built only for its `PYTHON_SINGLE_TARGET`.
+
+```bash
+emerge -pv sci-geosciences/qgis
+```
+
+The output must show `python` enabled and which `python_single_target_python3_X`
+is set. To see where the bindings went:
+
+```bash
+qlist sci-geosciences/qgis | grep -m1 "site-packages/qgis/"
+```
+
+Run the app with that Python version, e.g. `make run PYTHON=python3.12`
+(Gentoo's `python3` follows `eselect python`, which may be another version).
+If `python` was off, enable it and rebuild:
+
+```bash
+echo "sci-geosciences/qgis python" | sudo tee -a /etc/portage/package.use/qgis
+```
+
+```bash
+sudo emerge -av --oneshot sci-geosciences/qgis
+```
+
+PyQt6 must be built for the same Python (`dev-python/pyqt6`, pulled in by
+`USE=python`).
+
 ## Other requirements
 
 - CMake ≥ 3.14 and a C++17 compiler, for `make cpp` (optional).

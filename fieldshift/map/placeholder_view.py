@@ -4,7 +4,9 @@ import itertools
 
 from fieldshift.map.layer import LayerInfo
 from fieldshift.map.view import MapView
-from fieldshift.qt import QtCore, QtWidgets
+import sys
+
+from fieldshift.qt import QGIS_IMPORT_ERROR, QtCore, QtWidgets
 
 
 # MapView without a map engine: lets the panel and window be developed and
@@ -22,9 +24,13 @@ class PlaceholderMapView(MapView):
     def widget(self):
         if self._widget is None:
             label = QtWidgets.QLabel(
-                "QGIS is not installed.\n"
-                "Install QGIS (see docs/README.md) to see the map."
+                "QGIS could not be imported by this Python:\n"
+                f"{sys.executable} (Python {sys.version.split()[0]})\n\n"
+                f"{QGIS_IMPORT_ERROR or 'backend forced to placeholder'}\n\n"
+                "See docs/README.md, section 'QGIS is not found'."
             )
+            label.setWordWrap(True)
+            label.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
             label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
             label.setStyleSheet("background:#dde6ea; color:#333; font-size:14px;")
             self._widget = label
