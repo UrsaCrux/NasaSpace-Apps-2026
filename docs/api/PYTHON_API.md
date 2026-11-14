@@ -893,11 +893,22 @@ SMAP provider: adds SMAP entries to site.soil.moisture / temperature
 class SoilGridsProvider(Provider)
 ```
 
-- **Line:** 29
+- **Line:** 31
 
 SoilGrids provider: fills site.soil (type and all depth-dependent properties)
 
 ### Functions
+
+#### `SoilGridsProvider.__init__`
+
+```python
+def __init__(self, depths=DEPTHS, properties=tuple(PROPERTIES))
+```
+
+- **Arguments:** `(tuple depths = DEPTHS, tuple properties = all of PROPERTIES)`
+- **Line:** 39
+
+fewer depths / properties make the answer smaller and faster
 
 #### `parse_properties`
 
@@ -906,7 +917,7 @@ def parse_properties(response, soil, source)
 ```
 
 - **Arguments:** `(dict response, Soil soil, str source)`
-- **Line:** 53
+- **Line:** 65
 
 copies a /properties/query response into soil; returns the number of values
 
@@ -914,8 +925,8 @@ copies a /properties/query response into soil; returns the number of values
 
 | Name | Description | Line |
 |------|-------------|------|
-| `DEPTHS` | standard SoilGrids depth intervals | 12 |
-| `PROPERTIES` | SoilGrids property -> (Soil field, unit after dividing by d_factor) | 14 |
+| `DEPTHS` | standard SoilGrids depth intervals | 14 |
+| `PROPERTIES` | SoilGrids property -> (Soil field, unit after dividing by d_factor) | 16 |
 
 ## `fieldshift/api/providers/wapor.py`
 
@@ -927,7 +938,7 @@ copies a /properties/query response into soil; returns the number of values
 class WaporProvider(Provider)
 ```
 
-- **Line:** 36
+- **Line:** 38
 
 WaPOR provider: fills site.water (ET, precipitation) and site.vegetation.npp
 
@@ -940,15 +951,26 @@ def dekad_codes(period)
 ```
 
 - **Arguments:** `(Period period)`
-- **Line:** 26
+- **Line:** 28
 
 WaPOR dekad codes overlapping the period, e.g. ["2026-10-D3", "2026-11-D1"]
+
+#### `WaporProvider.__init__`
+
+```python
+def __init__(self, mapsets=tuple(MAPSETS))
+```
+
+- **Arguments:** `(tuple mapsets = all of MAPSETS)`
+- **Line:** 46
+
+asking for fewer mapsets is faster
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
-| `MAPSETS` | WaPOR mapset -> (section, field) | 14 |
+| `MAPSETS` | WaPOR mapset -> (section, field) | 16 |
 
 ## `fieldshift/app.py`
 
@@ -983,6 +1005,95 @@ creates the QApplication (QgsApplication when QGIS is present), shows the main w
 | `DATA_DIR` | folder with the bundled datasets | 14 |
 | `COUNTRIES` | offline country outlines, drawn below the tiles (visible without internet). base layers are "locked": the panel does not list them, so they cannot be removed | 18 |
 | `DEFAULT_BASEMAP` | Sentinel-2 cloudless 2024 (EOX): 10 m satellite mosaic, no API key. free for non-commercial use under CC BY-NC-SA 4.0 as long as the credit below stays visible (https://cloudless.eox.at/documentation/license); a commercial product needs an agreement with EOX. tiles exist up to zoom 18. to change the basemap, change only this constant | 26 |
+
+## `fieldshift/crops/__init__.py`
+
+### Classes
+
+#### `Variety`
+
+```python
+class Variety
+```
+
+- **Line:** 29
+
+one variety of a crop, as returned by search()
+
+### Functions
+
+#### `fold`
+
+```python
+def fold(text)
+```
+
+- **Arguments:** `(str text)`
+- **Line:** 37
+
+lower case, without accents and surrounding spaces ("Melocotón " -> "melocoton")
+
+#### `crop_name`
+
+```python
+def crop_name(crop_id)
+```
+
+- **Arguments:** `(str crop_id)`
+- **Line:** 55
+
+crop name in the current language (English when missing)
+
+#### `label`
+
+```python
+def label(variety_id)
+```
+
+- **Arguments:** `(str variety_id)`
+- **Line:** 64
+
+"Peach – variety 1" in the current language; the id itself when unknown
+
+#### `variety_by_id`
+
+```python
+def variety_by_id(variety_id)
+```
+
+- **Arguments:** `(str variety_id)`
+- **Line:** 73
+
+the Variety with this id, or None
+
+#### `is_variety`
+
+```python
+def is_variety(variety_id)
+```
+
+- **Arguments:** `(any variety_id)`
+- **Line:** 86
+
+True for an id of the catalogue
+
+#### `search`
+
+```python
+def search(text, limit=MAX_RESULTS)
+```
+
+- **Arguments:** `(str text, int limit = MAX_RESULTS)`
+- **Line:** 96
+
+varieties of the crops whose name (any language) or alias matches text, ignoring case and accents. crops whose name starts with the text come first, then names containing it; a trailing number ("peach 2") narrows to that variety, and extra trailing words ("peach – variety 2") are dropped until something matches. empty text gives nothing
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `CATALOG_PATH` | the catalogue file | 20 |
+| `MAX_RESULTS` | results shown in the search dropdown | 22 |
 
 ## `fieldshift/fields/manager.py`
 
@@ -1174,9 +1285,9 @@ writes these fields (all when None) to one GeoJSON file; returns how many. raise
 class DataField
 ```
 
-- **Line:** 37
+- **Line:** 47
 
-definition of one datum. key names it in the GeoJSON "data" property and in the i18n files. options is for KIND_CHOICE; unit, minimum, maximum and decimals are for KIND_NUMBER
+definition of one datum. key names it in the GeoJSON "data" property and in the i18n files. options is for KIND_CHOICE; unit, minimum, maximum and decimals are for KIND_NUMBER. group names the section of the dialog
 
 ### Functions
 
@@ -1187,7 +1298,7 @@ def normalize_color(text)
 ```
 
 - **Arguments:** `(str text)`
-- **Line:** 59
+- **Line:** 99
 
 "#rrggbb" in lower case; DEFAULT_COLOR when text is not a colour like that
 
@@ -1198,40 +1309,44 @@ def coerce_value(spec, raw)
 ```
 
 - **Arguments:** `(DataField spec, any raw)`
-- **Line:** 67
+- **Line:** 107
 
 raw as a valid value of this datum, or None when it is not one
 
-#### `prefill_data`
+#### `empty_data`
 
 ```python
-def prefill_data(vertices)
+def empty_data()
 ```
 
-- **Arguments:** `(list vertices)`
-- **Line:** 81
+- **Arguments:** `()`
+- **Line:** 121
 
-the prefilled data of a field: {key: {"value": ..., "source": "prefilled"}} for every entry of DATA_FIELDS, looked up at the centre of the polygon
+data with every datum missing (and no crop): what a new field starts with before the data sources answer
 
 #### `normalize_data`
 
 ```python
-def normalize_data(raw, vertices)
+def normalize_data(raw, vertices=None)
 ```
 
-- **Arguments:** `(any raw, list vertices)`
-- **Line:** 92
+- **Arguments:** `(any raw, list vertices = None)`
+- **Line:** 131
 
-raw (data read from a file or from the dialog) as a complete, valid data dict: unknown keys are dropped, and a missing or invalid datum gets its prefilled value. so files without data still open
+raw (data read from a file or from the dialog) as a complete, valid data dict: unknown keys are dropped and a missing or invalid datum becomes "missing", so files without data (or from older versions) still open
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
-| `KIND_CHOICE` | kinds of datum, and what editor the dialog shows for each | 19 |
-| `SOURCE_PREFILLED` | where a value came from | 24 |
-| `DEFAULT_COLOR` | colour of a field when the user does not choose one (grey) | 28 |
-| `DATA_FIELDS` | PLACEHOLDER LIST: these four data are only examples. The final list has not been decided; edit it here (and in the i18n files) when it is | 49 |
+| `KIND_CHOICE` | kinds of datum, and what editor the dialog shows for each | 24 |
+| `SOURCE_PREFILLED` | where a value came from | 29 |
+| `DEFAULT_COLOR` | colour of a field when the user does not choose one (grey) | 34 |
+| `CROP_KEY` | key of the crop in the data dict (not part of DATA_FIELDS: it is required and the dialog shows it on its own, with a search box) | 38 |
+| `TEXTURES` | USDA soil texture classes (from the clay / sand / silt fractions) | 59 |
+| `WRB_GROUPS` | WRB reference soil groups (SoilGrids uses WRB 2006: Albeluvisols instead of Retisols) | 65 |
+| `DATA_FIELDS` | the zone data, in the order the dialog shows it: soil (SoilGrids, top 30 cm), relief (Copernicus DEM), vegetation (MODIS, WaPOR) and what only the farmer knows. No weather here: that belongs to the analyses | 75 |
+| `GROUPS` | group order and the i18n key of each group title | 94 |
 
 ## `fieldshift/fields/store.py`
 
@@ -1400,6 +1515,87 @@ area in hectares of a lon/lat polygon, on a sphere (error well under 1 %)
 | `LEGACY_FIELDS_DIR` | folder used by earlier versions; its files are moved to DEFAULT_FIELDS_DIR | 24 |
 | `MIN_VERTICES` | fewest vertices a field polygon can have | 27 |
 | `EARTH_RADIUS_M` | equatorial radius of the WGS84 ellipsoid, in metres | 30 |
+
+## `fieldshift/fields/zone_data.py`
+
+### Classes
+
+#### `SourceGroup`
+
+```python
+class SourceGroup
+```
+
+- **Line:** 104
+
+one data source for the dialog: the provider to run, how to read the DATA_FIELDS keys it fills from the SiteData, and how long the dialog waits for it before showing its rows as "not available"
+
+### Functions
+
+#### `area_of`
+
+```python
+def area_of(vertices)
+```
+
+- **Arguments:** `(list vertices)`
+- **Line:** 30
+
+fieldshift.api.Area of a polygon: its centroid, and the radius of a circle with the same area
+
+#### `usda_texture`
+
+```python
+def usda_texture(sand, silt, clay)
+```
+
+- **Arguments:** `(float sand, float silt, float clay)`
+- **Line:** 41
+
+USDA texture class key (schema.TEXTURES) from percentages
+
+#### `topsoil_mean`
+
+```python
+def topsoil_mean(by_depth)
+```
+
+- **Arguments:** `(dict by_depth)`
+- **Line:** 73
+
+depth-weighted mean over TOPSOIL of {depth: Measurement}, or None
+
+#### `fetch_group`
+
+```python
+def fetch_group(group, area, period=None)
+```
+
+- **Arguments:** `(SourceGroup group, Area area, Period period = None)`
+- **Line:** 161
+
+runs one source for the area and returns {key: valid value or None} for the group's keys; raises when the source fails. cached per place
+
+#### `clear_cache`
+
+```python
+def clear_cache()
+```
+
+- **Arguments:** `()`
+- **Line:** 183
+
+forgets the cached results (tests, or to force a new download)
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `TOPSOIL` | SoilGrids depths used for the soil data (topsoil, where roots and tillage are) | 16 |
+| `TOPSOIL_CM` | thickness of each of those depths, cm (for depth-weighted means) | 18 |
+| `DEADLINE_S` | longest the dialog waits for any source, seconds (each group also has its own, shorter, timeout_s) | 21 |
+| `SOURCE_GROUPS` | the groups, fastest first | 135 |
+| `FETCHED_KEYS` | DATA_FIELDS keys that some group fills (the rest are typed by the farmer) | 153 |
 
 ## `fieldshift/i18n/__init__.py`
 
@@ -2464,15 +2660,35 @@ shows a message with an OK button
 
 ### Classes
 
+#### `ZoneDataLoader`
+
+```python
+class ZoneDataLoader(QtCore.QObject)
+```
+
+- **Line:** 76
+
+runs zone_data groups in background threads and reports each result on the GUI thread through group_done(name, values or None, error text)
+
+#### `CropSearch`
+
+```python
+class CropSearch(QtWidgets.QLineEdit)
+```
+
+- **Line:** 114
+
+line edit with a dropdown of crop varieties that match what is typed (in any language, ignoring accents). a value only counts once a variety is picked from the list; selection_changed fires when that changes
+
 #### `FieldDialog`
 
 ```python
 class FieldDialog(CenteredDialog)
 ```
 
-- **Line:** 42
+- **Line:** 184
 
-dialog with the details of a field. needs a name (required, unique); the colour (grey if never chosen) and the zone data of schema.DATA_FIELDS are optional. each datum starts prefilled; changing it marks it "edited" and a button brings the prefilled value back. with field= it edits that saved field (its own name is not a duplicate), otherwise it asks for a new one drawn with vertices=
+dialog with the details of a field. needs a name (required, unique) and a crop (required, from the catalogue); colour and zone data are optional. with field= it edits that saved field (its own name is not a duplicate), otherwise it asks for a new one drawn with vertices=. zone data that has no value yet is loaded from the data sources (fetch= replaces zone_data.fetch_group, e.g. in tests)
 
 ### Functions
 
@@ -2482,10 +2698,10 @@ dialog with the details of a field. needs a name (required, unique); the colour 
 def format_value(spec, value)
 ```
 
-- **Arguments:** `(str key, any value)`
-- **Line:** 21
+- **Arguments:** `(DataField spec, any value)`
+- **Line:** 57
 
-text of a datum's value in the current language ("Clay", "6.5 ", "Yes"...)
+text of a datum's value in the current language ("Clay", "6.5", "Yes"); "—" when there is no value
 
 #### `data_label`
 
@@ -2494,20 +2710,92 @@ def data_label(key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 32
+- **Line:** 70
 
-translated name of a datum ("Soil type")
+translated name of a datum ("Soil texture")
+
+#### `ZoneDataLoader.__init__`
+
+```python
+def __init__(self, area, fetch=None, parent=None)
+```
+
+- **Arguments:** `(Area area, callable fetch = zone_data.fetch_group, QObject parent = None)`
+- **Line:** 80
+
+#### `ZoneDataLoader.start`
+
+```python
+def start(self, groups)
+```
+
+- **Arguments:** `(list groups)`
+- **Line:** 88
+
+starts one daemon thread per group
+
+#### `ZoneDataLoader.cancel`
+
+```python
+def cancel(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 95
+
+results arriving after this are dropped (the dialog was closed)
+
+#### `CropSearch.__init__`
+
+```python
+def __init__(self, variety_id=None, parent=None)
+```
+
+- **Arguments:** `(str variety_id = None, QWidget parent = None)`
+- **Line:** 118
+
+#### `CropSearch.selected`
+
+```python
+def selected(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 138
+
+id of the chosen variety ("peach.v1"), or None
+
+#### `CropSearch.suggestions`
+
+```python
+def suggestions(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 143
+
+labels currently offered in the dropdown
+
+#### `CropSearch.choose`
+
+```python
+def choose(self, variety_id)
+```
+
+- **Arguments:** `(str variety_id)`
+- **Line:** 148
+
+picks a variety as if chosen from the list
 
 #### `FieldDialog.__init__`
 
 ```python
-def __init__(self, store, vertices=None, field=None, parent=None)
+def __init__(self, store, vertices=None, field=None, parent=None, fetch=None)
 ```
 
-- **Arguments:** `(FieldStore store, list vertices = None, Field field = None, QWidget parent = None)`
-- **Line:** 46
+- **Line:** 189
 
-builds the dialog; Save stays disabled while the name is not valid
+(FieldStore store, list vertices = None, Field field = None, QWidget parent = None, callable fetch = None) builds the dialog and starts loading the zone data
 
 #### `FieldDialog.name`
 
@@ -2516,7 +2804,7 @@ def name(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 107
+- **Line:** 277
 
 the name typed, without surrounding spaces
 
@@ -2527,9 +2815,31 @@ def color(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 112
+- **Line:** 282
 
 the chosen colour as "#rrggbb" (grey when none was chosen)
+
+#### `FieldDialog.crop`
+
+```python
+def crop(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 287
+
+id of the chosen crop variety, or None
+
+#### `FieldDialog.is_loading`
+
+```python
+def is_loading(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 292
+
+True while some data source has not answered yet
 
 #### `FieldDialog.data`
 
@@ -2538,9 +2848,9 @@ def data(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 117
+- **Line:** 298
 
-the data as schema.DATA_FIELDS describes it: {key: {"value", "source"}}
+the data: {key: {"value", "source"[, "prefilled"]}} for DATA_FIELDS, plus CROP_KEY
 
 #### `FieldDialog.is_modified`
 
@@ -2549,9 +2859,20 @@ def is_modified(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 124
+- **Line:** 318
 
-True when the user changed this datum (it is not the prefilled one)
+True when the user changed this datum (it is not the loaded one)
+
+#### `FieldDialog.row_state`
+
+```python
+def row_state(self, key)
+```
+
+- **Arguments:** `(str key)`
+- **Line:** 323
+
+state of a row: loading, prefilled, edited, missing or farmer
 
 #### `FieldDialog.set_value`
 
@@ -2560,7 +2881,7 @@ def set_value(self, key, value)
 ```
 
 - **Arguments:** `(str key, any value)`
-- **Line:** 129
+- **Line:** 328
 
 sets a datum as if the user had typed it (marks it edited)
 
@@ -2571,9 +2892,37 @@ def reset_value(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 136
+- **Line:** 335
 
-puts the prefilled value back and marks the datum as not edited
+puts the loaded value back and marks the datum as not edited
+
+#### `FieldDialog.accept`
+
+```python
+def accept(self)
+```
+
+- **Line:** 341
+
+refuses to close with Save while something is invalid or loading
+
+#### `FieldDialog.done`
+
+```python
+def done(self, result)
+```
+
+- **Line:** 347
+
+stops the threads' results from reaching a closed dialog
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `SPINNER_FRAMES` | frames of the loading animation, and ms between frames | 38 |
+| `STYLE_LOADING` | looks of a row in each state | 41 |
+| `OFFLINE_ENV` | set to "1" to never contact the data sources (tests, no internet) | 51 |
 
 ## `fieldshift/ui/field_list.py`
 
@@ -2677,7 +3026,7 @@ builds the bar and listens to the drawing events of the view
 class FieldsDataBox(QtWidgets.QGroupBox)
 ```
 
-- **Line:** 34
+- **Line:** 35
 
 box listing the checked fields as a tree, with the total area
 
@@ -2690,7 +3039,7 @@ def format_created(iso_text)
 ```
 
 - **Arguments:** `(str iso_text)`
-- **Line:** 18
+- **Line:** 19
 
 creation date in local time ("2026-11-14"); the raw text if unreadable
 
@@ -2701,7 +3050,7 @@ def color_icon(color)
 ```
 
 - **Arguments:** `(str color)`
-- **Line:** 27
+- **Line:** 28
 
 small square icon filled with a "#rrggbb" colour
 
@@ -2712,7 +3061,7 @@ def __init__(self, fields, parent=None)
 ```
 
 - **Arguments:** `(FieldsManager fields, QWidget parent = None)`
-- **Line:** 38
+- **Line:** 39
 
 builds the box and follows the checked fields
 
@@ -2723,7 +3072,7 @@ def field_count(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 78
+- **Line:** 79
 
 number of fields shown
 
@@ -2734,7 +3083,7 @@ def refresh(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 83
+- **Line:** 84
 
 rebuilds the tree from the fields checked right now
 

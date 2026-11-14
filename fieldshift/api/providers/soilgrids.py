@@ -4,6 +4,8 @@ REST API v2.0, public, no key (fair use: about 5 requests per minute).
 250 m resolution; queried at the centre of the area.
 """
 
+from concurrent.futures import ThreadPoolExecutor
+
 from fieldshift.api.models import Measurement
 from fieldshift.api.providers.base import NoData, Provider, get_json
 
@@ -32,14 +34,24 @@ class SoilGridsProvider(Provider):
     url = "https://rest.isric.org"
     packages = ("requests",)
 
+    # (tuple depths = DEPTHS, tuple properties = all of PROPERTIES)
+    # fewer depths / properties make the answer smaller and faster
+    def __init__(self, depths=DEPTHS, properties=tuple(PROPERTIES)):
+        self.depths = tuple(depths)
+        self.properties = tuple(properties)
+
     def fetch(self, area, period, site):
-        props = get_json(f"{BASE_URL}/properties/query", params={
-            "lon": area.lon, "lat": area.lat, "property": list(PROPERTIES),
-            "depth": list(DEPTHS), "value": "mean"})
+        # the two requests are independent: run them at the same time
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            props_job = pool.submit(get_json, f"{BASE_URL}/properties/query", params={
+                "lon": area.lon, "lat": area.lat, "property": list(self.properties),
+                "depth": list(self.depths), "value": "mean"})
+            cls_job = pool.submit(get_json, f"{BASE_URL}/classification/query",
+                                  params={"lon": area.lon, "lat": area.lat,
+                                          "number_classes": 3})
+            props, cls = props_job.result(), cls_job.result()
         found = parse_properties(props, site.soil, self.name)
 
-        cls = get_json(f"{BASE_URL}/classification/query",
-                       params={"lon": area.lon, "lat": area.lat, "number_classes": 3})
         if cls.get("wrb_class_name"):
             site.soil.type = Measurement(cls["wrb_class_name"], "WRB", self.name)
             site.soil.type_candidates = [tuple(c) for c in cls.get("wrb_class_probability", [])]

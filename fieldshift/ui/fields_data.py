@@ -7,7 +7,8 @@ sheet with tabs (climate, risk, rotation).
 
 from datetime import datetime
 
-from fieldshift.fields.schema import DATA_FIELDS, SOURCE_USER
+from fieldshift import crops
+from fieldshift.fields.schema import CROP_KEY, DATA_FIELDS, SOURCE_MISSING, SOURCE_USER
 from fieldshift.i18n import tr
 from fieldshift.qt import QtCore, QtGui, QtWidgets
 from fieldshift.ui.field_dialog import data_label, format_value
@@ -97,15 +98,24 @@ class FieldsDataBox(QtWidgets.QGroupBox):
                 [tr("data.col_created"), format_created(field.created)])
             created.setTextAlignment(1, right)
             node.addChild(created)
+            crop_id = field.data.get(CROP_KEY, {}).get("value")
+            crop = QtWidgets.QTreeWidgetItem(
+                [tr("data.crop"), crops.label(crop_id) if crop_id else tr("data.no_crop")])
+            crop.setTextAlignment(1, right)
+            crop.setFont(1, bold)
+            node.addChild(crop)
             for spec in DATA_FIELDS:
                 item = field.data[spec.key]
                 edited = item["source"] == SOURCE_USER
+                missing = item["source"] == SOURCE_MISSING
                 row = QtWidgets.QTreeWidgetItem([data_label(spec.key), format_value(spec, item["value"])])
-                # edited by the agronomist: bold green; preloaded: grey
-                source = tr("fields.data_edited") if edited else tr("fields.data_prefilled")
+                # edited by the agronomist: bold green; preloaded: grey; missing: orange
+                source = (tr("fields.data_missing") if missing else
+                          tr("fields.data_edited") if edited else tr("fields.data_prefilled"))
                 row.setToolTip(1, source)
                 row.setToolTip(0, source)
-                row.setForeground(1, QtGui.QBrush(QtGui.QColor("#1b5e20" if edited else "#666666")))
+                color = "#c06000" if missing else "#1b5e20" if edited else "#666666"
+                row.setForeground(1, QtGui.QBrush(QtGui.QColor(color)))
                 if edited:
                     row.setFont(1, bold)
                 row.setTextAlignment(1, right)

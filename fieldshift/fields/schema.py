@@ -1,38 +1,48 @@
-"""What is known about a field besides its shape: colour and zone data.
+"""What is known about a field besides its shape: colour, crop and zone data.
 
-The zone data (soil, rain...) is described by ONE list, DATA_FIELDS. To add,
-remove or change a datum edit that list and add its texts to the i18n files
-(keys ``data_fields.<key>``; for a choice also ``data_fields.<key>.<option>``).
-Nothing else needs to change: the dialog, the data box, the GeoJSON files and
-the export all follow the list.
+The zone data (soil, relief, vegetation) is described by ONE list,
+DATA_FIELDS. To add, remove or change a datum edit that list, add its texts to
+the i18n files (keys ``data_fields.<key>``; for a choice also
+``data_fields.<key>.<option>``) and, if it comes from a data source, say how in
+fieldshift/fields/zone_data.py. The dialog, the data box, the GeoJSON files
+and the export all follow the list.
 
-Every datum is stored as ``{"value": ..., "source": "prefilled" | "user"}``:
-"prefilled" came from satellite or public data, "user" was typed by the
-agronomist, who may always go back to the prefilled value.
+Every datum is stored as ``{"value": ..., "source": ...}`` where source is
+"prefilled" (came from satellite or public data), "user" (typed by the
+agronomist) or "missing" (no value: the source failed or has no data; value
+is None). A datum may also keep ``"prefilled": <value>``, the value the data
+source gave, so an edited value can be restored later.
+
+The crop to plant is stored under CROP_KEY as ``{"value": "<variety id>",
+"source": "user"}`` (ids from fieldshift/crops/crops.json).
 """
 
-import hashlib
 import re
 from dataclasses import dataclass
 
 # kinds of datum, and what editor the dialog shows for each
 KIND_CHOICE = "choice"     # one of `options`            -> combo box
-KIND_NUMBER = "number"     # float in [minimum, maximum] -> spin box
+KIND_NUMBER = "number"     # float in [minimum, maximum] -> text box with a unit
 KIND_BOOL = "bool"         # yes / no                    -> combo box
 
 # where a value came from
 SOURCE_PREFILLED = "prefilled"
 SOURCE_USER = "user"
+SOURCE_MISSING = "missing"
 
 # colour of a field when the user does not choose one (grey)
 DEFAULT_COLOR = "#9e9e9e"
+
+# key of the crop in the data dict (not part of DATA_FIELDS: it is required
+# and the dialog shows it on its own, with a search box)
+CROP_KEY = "crop"
 
 _COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
 # definition of one datum. key names it in the GeoJSON "data" property and in
 # the i18n files. options is for KIND_CHOICE; unit, minimum, maximum and
-# decimals are for KIND_NUMBER
+# decimals are for KIND_NUMBER. group names the section of the dialog
 @dataclass(frozen=True)
 class DataField:
     key: str
@@ -42,16 +52,46 @@ class DataField:
     minimum: float = 0.0
     maximum: float = 0.0
     decimals: int = 0
+    group: str = "soil"
 
 
-# PLACEHOLDER LIST: these four data are only examples. The final list has not
-# been decided; edit it here (and in the i18n files) when it is
+# USDA soil texture classes (from the clay / sand / silt fractions)
+TEXTURES = ("sand", "loamy_sand", "sandy_loam", "loam", "silt_loam", "silt",
+            "sandy_clay_loam", "clay_loam", "silty_clay_loam", "sandy_clay",
+            "silty_clay", "clay")
+
+# WRB reference soil groups (SoilGrids uses WRB 2006: Albeluvisols instead of
+# Retisols)
+WRB_GROUPS = ("acrisols", "albeluvisols", "alisols", "andosols", "anthrosols", "arenosols",
+              "calcisols", "cambisols", "chernozems", "cryosols", "durisols", "ferralsols",
+              "fluvisols", "gleysols", "gypsisols", "histosols", "kastanozems", "leptosols",
+              "lixisols", "luvisols", "nitisols", "phaeozems", "planosols", "plinthosols",
+              "podzols", "regosols", "retisols", "solonchaks", "solonetz", "stagnosols",
+              "technosols", "umbrisols", "vertisols")
+
+# the zone data, in the order the dialog shows it: soil (SoilGrids, top
+# 30 cm), relief (Copernicus DEM), vegetation (MODIS, WaPOR) and what only the
+# farmer knows. No weather here: that belongs to the analyses
 DATA_FIELDS = (
-    DataField("soil_type", KIND_CHOICE, options=("clay", "loam", "sand", "silt")),
+    DataField("soil_texture", KIND_CHOICE, options=TEXTURES),
+    DataField("soil_group", KIND_CHOICE, options=WRB_GROUPS),
     DataField("ph", KIND_NUMBER, minimum=3.0, maximum=10.0, decimals=1),
-    DataField("annual_rain_mm", KIND_NUMBER, unit="mm", minimum=0, maximum=8000, decimals=0),
-    DataField("irrigated", KIND_BOOL),
+    DataField("organic_carbon", KIND_NUMBER, unit="g/kg", maximum=600, decimals=1),
+    DataField("nitrogen", KIND_NUMBER, unit="g/kg", maximum=50, decimals=2),
+    DataField("cec", KIND_NUMBER, unit="cmol/kg", maximum=200, decimals=1),
+    DataField("available_water", KIND_NUMBER, unit="% vol", maximum=60, decimals=1),
+    DataField("elevation", KIND_NUMBER, unit="m", minimum=-500, maximum=9000, decimals=0,
+              group="relief"),
+    DataField("slope", KIND_NUMBER, unit="°", maximum=90, decimals=1, group="relief"),
+    DataField("ndvi", KIND_NUMBER, minimum=-1.0, maximum=1.0, decimals=2, group="vegetation"),
+    DataField("npp", KIND_NUMBER, unit="gC/m²/day", maximum=30, decimals=2, group="vegetation"),
+    DataField("actual_et", KIND_NUMBER, unit="mm/day", maximum=20, decimals=1,
+              group="vegetation"),
+    DataField("irrigated", KIND_BOOL, group="farm"),
 )
+
+# group order and the i18n key of each group title
+GROUPS = ("soil", "relief", "vegetation", "farm")
 
 
 # (str text)
@@ -75,51 +115,36 @@ def coerce_value(spec, raw):
     return None
 
 
-# (list vertices)
-# the prefilled data of a field: {key: {"value": ..., "source": "prefilled"}}
-# for every entry of DATA_FIELDS, looked up at the centre of the polygon
-def prefill_data(vertices):
-    lon = sum(v[0] for v in vertices) / len(vertices)
-    lat = sum(v[1] for v in vertices) / len(vertices)
-    return {spec.key: {"value": _lookup_zone_value(spec, lon, lat), "source": SOURCE_PREFILLED}
-            for spec in DATA_FIELDS}
+# ()
+# data with every datum missing (and no crop): what a new field starts with
+# before the data sources answer
+def empty_data():
+    data = {spec.key: {"value": None, "source": SOURCE_MISSING} for spec in DATA_FIELDS}
+    data[CROP_KEY] = {"value": None, "source": SOURCE_MISSING}
+    return data
 
 
-# (any raw, list vertices)
+# (any raw, list vertices = None)
 # raw (data read from a file or from the dialog) as a complete, valid data
-# dict: unknown keys are dropped, and a missing or invalid datum gets its
-# prefilled value. so files without data still open
-def normalize_data(raw, vertices):
-    data = prefill_data(vertices)
+# dict: unknown keys are dropped and a missing or invalid datum becomes
+# "missing", so files without data (or from older versions) still open
+def normalize_data(raw, vertices=None):
+    from fieldshift.crops import is_variety
+    data = empty_data()
     if not isinstance(raw, dict):
         return data
     for spec in DATA_FIELDS:
         item = raw.get(spec.key)
         value = coerce_value(spec, item.get("value")) if isinstance(item, dict) else None
+        original = coerce_value(spec, item.get("prefilled")) if isinstance(item, dict) else None
         if value is not None:
             source = SOURCE_USER if item.get("source") == SOURCE_USER else SOURCE_PREFILLED
             data[spec.key] = {"value": value, "source": source}
+        if original is not None:
+            data[spec.key]["prefilled"] = original
+        elif value is not None and data[spec.key]["source"] == SOURCE_PREFILLED:
+            data[spec.key]["prefilled"] = value
+    crop = raw.get(CROP_KEY)
+    if isinstance(crop, dict) and is_variety(crop.get("value")):
+        data[CROP_KEY] = {"value": crop["value"], "source": SOURCE_USER}
     return data
-
-
-# ---------------------------------------------------------------------------
-# PLACEHOLDER: fake values. The real version will ask satellite / public data
-# (SoilGrids for soil, NASA POWER for rain...) for the point (lon, lat) and
-# return the real value; replace the body of _lookup_zone_value and delete
-# everything below it. Fake values come from a hash of the rounded
-# coordinates, so a place always gets the same ones.
-
-_PLACEHOLDER_RANGE = {"ph": (5.5, 8.0), "annual_rain_mm": (150, 1600)}
-
-
-# (DataField spec, float lon, float lat)
-# PLACEHOLDER: a made-up value for this datum at this point
-def _lookup_zone_value(spec, lon, lat):
-    seed = f"{spec.key}:{lon:.2f}:{lat:.2f}".encode()
-    n = int.from_bytes(hashlib.sha256(seed).digest()[:4], "big")
-    if spec.kind == KIND_CHOICE:
-        return spec.options[n % len(spec.options)]
-    if spec.kind == KIND_BOOL:
-        return n % 2 == 0
-    low, high = _PLACEHOLDER_RANGE.get(spec.key, (spec.minimum, spec.maximum))
-    return round(low + (n % 1001) / 1000 * (high - low), spec.decimals)

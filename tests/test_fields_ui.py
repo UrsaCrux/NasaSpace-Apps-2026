@@ -314,11 +314,12 @@ class FieldsWindowTest(_WindowCase):
         area = self.window.fields.field(a).area_ha
         self.assertEqual(data.tree.topLevelItem(0).text(1), f"{area:.2f} ha")
         self.assertIn(f"{2 * area:.2f} ha", data.total_label.text())
-        # below each field: creation date, then every datum of DATA_FIELDS
+        # below each field: creation date, crop, then every datum of DATA_FIELDS
         from fieldshift.fields.schema import DATA_FIELDS
-        self.assertEqual(node.childCount(), 1 + len(DATA_FIELDS))
-        self.assertEqual(node.child(1).text(0), "Soil type")
-        self.assertEqual(node.child(1).toolTip(1), "preloaded")
+        self.assertEqual(node.childCount(), 2 + len(DATA_FIELDS))
+        self.assertEqual((node.child(1).text(0), node.child(1).text(1)), ("Crop", "no crop chosen"))
+        self.assertEqual(node.child(2).text(0), "Soil texture")
+        self.assertEqual((node.child(2).text(1), node.child(2).toolTip(1)), ("—", "not available"))
         self.check(a, False)
         self.assertEqual(data.field_count(), 1)
 
@@ -326,13 +327,18 @@ class FieldsWindowTest(_WindowCase):
         specs = []
         original = self.view.add_layer
         self.view.add_layer = lambda spec: (specs.append(spec), original(spec))[1]
-        data = {"soil_type": {"value": "sand", "source": "user"}}
+        data = {"soil_texture": {"value": "sand", "source": "user", "prefilled": "loam"},
+                "ph": {"value": 6.4, "source": "prefilled"},
+                "crop": {"value": "peach.v1", "source": "user"}}
         layer_id = self.draw("Red", color="#ff0000", data=data)
         self.assertEqual(specs[-1].options["fill_color"], "#55ff0000")
         self.assertEqual(specs[-1].options["stroke_color"], "#990000")
         self.window.fields.set_selected(layer_id, True)
-        soil = self.panel.data_box.tree.topLevelItem(0).child(1)
+        node = self.panel.data_box.tree.topLevelItem(0)
+        self.assertEqual(node.child(1).text(1), "Peach – variety 1")
+        soil, _, ph = node.child(2), node.child(3), node.child(4)
         self.assertEqual((soil.text(1), soil.toolTip(1)), ("Sand", "edited"))
+        self.assertEqual((ph.text(1), ph.toolTip(1)), ("6.4", "preloaded"))
         gray = self.draw("Plain")
         self.assertEqual(self.window.fields.field(gray).color, "#9e9e9e")
         self.assertEqual(specs[-1].options["fill_color"], "#559e9e9e")
@@ -405,7 +411,8 @@ class EditFieldTest(_WindowCase):
 
     def test_edit_button_opens_the_dialog_with_the_current_data(self):
         layer_id = self.draw("A", color="#112233",
-                             data={"ph": {"value": 5.5, "source": "user"}})
+                             data={"ph": {"value": 5.5, "source": "user"},
+                                   "crop": {"value": "apple.v1", "source": "user"}})
         lst, pos = self.edit_button_pos(layer_id)
         with self.fill_dialog():
             self.click(lst, pos)
@@ -413,8 +420,9 @@ class EditFieldTest(_WindowCase):
         self.assertEqual((dialog.name(), dialog.color()), ("A", "#112233"))
         self.assertEqual(dialog.windowTitle(), "Edit field")
         self.assertEqual(dialog.data()["ph"], {"value": 5.5, "source": "user"})
+        self.assertEqual(dialog.crop(), "apple.v1")
         self.assertTrue(dialog.is_modified("ph"))
-        self.assertFalse(dialog.is_modified("soil_type"))
+        self.assertFalse(dialog.is_modified("soil_texture"))
         self.assertTrue(dialog.save_button.isEnabled())             # own name is allowed
         self.assertIs(dialog.parentWidget(), self.window)
 
@@ -495,6 +503,33 @@ class EditFieldTest(_WindowCase):
         self.window.hide()
 
 
+# values a data source would give, per zone_data group
+FAKE_VALUES = {"copernicus_dem": {"elevation": 512.0, "slope": 3.5},
+               "wapor": {"npp": 4.2, "actual_et": 3.1},
+               "soilgrids": {"soil_texture": "loam", "soil_group": "luvisols", "ph": 6.4,
+                             "organic_carbon": 18.5, "nitrogen": 1.6, "cec": 17.0,
+                             "available_water": 14.2},
+               "modis_ndvi": {"ndvi": 0.71}}
+
+
+# (SourceGroup group, Area area)
+# instant fetch for FieldDialog(fetch=...)
+def fake_fetch(group, area):
+    return dict(FAKE_VALUES[group.name])
+
+
+# (callable condition, float timeout = 5)
+# processes Qt events until condition() is true; fails the test on timeout
+def wait_until(condition, timeout=5.0):
+    import time
+    end = time.monotonic() + timeout
+    while not condition():
+        if time.monotonic() > end:
+            raise AssertionError("condition not met in time")
+        get_app().processEvents()
+        time.sleep(0.01)
+
+
 class FieldDialogTest(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -512,6 +547,8 @@ class FieldDialogTest(unittest.TestCase):
         self.store.create("Terreno 1", SQUARE)
         dialog = self.dialog(vertices=SQUARE)
         self.assertEqual(dialog.name(), "Terreno 2")
+        self.assertFalse(dialog.save_button.isEnabled())         # the crop is required
+        dialog.crop_search.choose("peach.v1")
         self.assertTrue(dialog.save_button.isEnabled())
         dialog.name_edit.setText("terreno 1")
         self.assertFalse(dialog.save_button.isEnabled())
@@ -534,33 +571,41 @@ class FieldDialogTest(unittest.TestCase):
             dialog.color_button.click()
         self.assertEqual(dialog.color(), "#2e7d32")
 
-    def test_data_starts_prefilled_and_can_be_edited_and_restored(self):
-        from fieldshift.fields.schema import DATA_FIELDS, prefill_data
-        dialog = self.dialog(vertices=SQUARE)
-        prefilled = prefill_data(SQUARE)
-        self.assertEqual(set(dialog.data()), {s.key for s in DATA_FIELDS})
-        self.assertEqual(dialog.data(), prefilled)
+    def test_data_starts_loaded_and_can_be_edited_and_restored(self):
+        from fieldshift.fields.schema import CROP_KEY, DATA_FIELDS
+        dialog = self.dialog(vertices=SQUARE, fetch=fake_fetch)
+        wait_until(lambda: not dialog.is_loading())
+        data = dialog.data()
+        self.assertEqual(set(data), {s.key for s in DATA_FIELDS} | {CROP_KEY})
+        self.assertEqual(data["ph"], {"value": 6.4, "source": "prefilled", "prefilled": 6.4})
         for spec in DATA_FIELDS:
             self.assertFalse(dialog.is_modified(spec.key))
         dialog.set_value("ph", 4.5)
-        dialog.set_value("soil_type", "sand")
+        dialog.set_value("soil_texture", "sand")
         dialog.set_value("irrigated", True)
         data = dialog.data()
         self.assertEqual((data["ph"]["value"], data["ph"]["source"]), (4.5, "user"))
-        self.assertEqual(data["soil_type"], {"value": "sand", "source": "user"})
-        self.assertEqual(data["annual_rain_mm"], prefilled["annual_rain_mm"])   # untouched
+        self.assertEqual(data["soil_texture"],
+                         {"value": "sand", "source": "user", "prefilled": "loam"})
+        self.assertEqual(data["irrigated"], {"value": True, "source": "user"})
+        self.assertEqual(data["slope"]["value"], 3.5)                       # untouched
         dialog.reset_value("ph")
-        self.assertEqual(dialog.data()["ph"], prefilled["ph"])
+        self.assertEqual(dialog.data()["ph"], {"value": 6.4, "source": "prefilled",
+                                               "prefilled": 6.4})
         self.assertFalse(dialog.is_modified("ph"))
 
     def test_typing_in_the_editor_marks_the_datum_as_edited(self):
-        dialog = self.dialog(vertices=SQUARE)
-        spin = dialog._rows["ph"]["editor"]
-        spin.setValue(7.7 if spin.value() != 7.7 else 7.6)
+        dialog = self.dialog(vertices=SQUARE, fetch=fake_fetch)
+        wait_until(lambda: not dialog.is_loading())
+        edit = dialog._rows["ph"]["editor"]
+        edit.setText("7.7")
+        edit.textEdited.emit("7.7")                     # what typing emits
         self.assertTrue(dialog.is_modified("ph"))
-        self.assertFalse(dialog._rows["ph"]["reset"].isHidden())       # restore button shown
-        self.assertTrue(dialog._rows["soil_type"]["reset"].isHidden())  # untouched: hidden
+        self.assertEqual(dialog.data()["ph"]["value"], 7.7)
+        self.assertFalse(dialog._rows["ph"]["reset"].isHidden())        # restore button shown
+        self.assertTrue(dialog._rows["soil_texture"]["reset"].isHidden())  # untouched: hidden
         combo = dialog._rows["irrigated"]["editor"]
+        combo.setCurrentIndex(1)
         combo.activated.emit(1)                         # what a user click emits
         self.assertTrue(dialog.is_modified("irrigated"))
 

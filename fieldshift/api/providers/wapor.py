@@ -6,6 +6,8 @@ overlap the period; when the period is not published yet the latest dekad is
 used and noted.
 """
 
+from concurrent.futures import ThreadPoolExecutor
+
 from fieldshift.api.models import Measurement
 from fieldshift.api.providers.base import NoData, Provider, circle_mask, get_json
 
@@ -39,31 +41,47 @@ class WaporProvider(Provider):
     url = "https://data.apps.fao.org/wapor"
     packages = ("requests", "rasterio", "numpy")
 
+    # (tuple mapsets = all of MAPSETS)
+    # asking for fewer mapsets is faster
+    def __init__(self, mapsets=tuple(MAPSETS)):
+        self.mapsets = tuple(mapsets)
+
     def fetch(self, area, period, site):
+        # every mapset (and every raster of a mapset) is downloaded in parallel
+        with ThreadPoolExecutor(max_workers=max(len(self.mapsets), 1)) as pool:
+            results = list(pool.map(lambda m: (m, self._mapset(m, area, period)), self.mapsets))
         found = 0
-        for mapset, (section, attr) in MAPSETS.items():
-            items, note = self._rasters(mapset, period)
-            if not items:
-                continue
-            values = [v for v in (self._read(item, area) for item in items) if v is not None]
-            if values:
-                unit = items[0]["measureUnit"]
-                setattr(getattr(site, section), attr,
-                        Measurement(sum(values) / len(values), unit, self.name, note))
+        for mapset, result in results:
+            if result is not None:
+                section, attr = MAPSETS[mapset]
+                setattr(getattr(site, section), attr, result)
                 found += 1
         if not found:
             raise NoData("no WaPOR pixels for this area/period")
 
+    # (str mapset, Area area, Period period)
+    # Measurement of one mapset over the area, or None
+    def _mapset(self, mapset, area, period):
+        items, note = self._rasters(mapset, period)
+        if not items:
+            return None
+        with ThreadPoolExecutor(max_workers=len(items)) as pool:
+            values = [v for v in pool.map(lambda i: self._read(i, area), items) if v is not None]
+        if not values:
+            return None
+        return Measurement(sum(values) / len(values), items[0]["measureUnit"], self.name, note)
+
     # (str mapset, Period period)
     # raster metadata for the period, or the latest raster; returns (items, note)
     def _rasters(self, mapset, period):
-        items = []
-        for code in dekad_codes(period):
+        def lookup(code):
             try:
-                items.append(get_json(f"{CATALOG}/{mapset}/rasters/WAPOR-3.{mapset}.{code}")
-                             ["response"])
+                return get_json(f"{CATALOG}/{mapset}/rasters/WAPOR-3.{mapset}.{code}")["response"]
             except Exception:
-                pass                    # not published (yet)
+                return None             # not published (yet)
+        codes = dekad_codes(period)
+        with ThreadPoolExecutor(max_workers=len(codes)) as pool:
+            items = [i for i in pool.map(lookup, codes) if i is not None]
         if items:
             return items, ", ".join(i["code"].rsplit(".", 1)[-1] for i in items)
         latest = get_json(f"{CATALOG}/{mapset}/rasters", params={"sort": "code:desc"})
