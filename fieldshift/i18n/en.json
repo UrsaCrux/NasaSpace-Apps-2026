@@ -61,5 +61,6 @@
   "data_fields.ph": "pH",
   "data_fields.annual_rain_mm": "Annual rainfall",
   "data_fields.irrigated": "Irrigated",
-  "common.edit": "Edit"
+  "common.edit": "Edit",
+  "data.legend": "Grey values are preloaded; green bold ones were edited by you."
 }

@@ -9,14 +9,23 @@ LAYER_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole
 EDITABLE_ROLE = QtCore.Qt.ItemDataRole(int(QtCore.Qt.ItemDataRole.UserRole) + 1)
 
 # space (pixels) between the Edit button and the row edge / the row text
-_MARGIN = 4
+_MARGIN = 6
+# minimum height (pixels) of a row, so the Edit button fits comfortably
+ROW_HEIGHT = 30
+
+# look of the Edit button (drawn by hand: the native macOS button has a fixed
+# height and comes out cut in a list row)
+_BUTTON_FILL = QtGui.QColor("#ffffff")
+_BUTTON_HOVER = QtGui.QColor("#e8f1e8")
+_BUTTON_BORDER = QtGui.QColor("#b0b7b0")
+_BUTTON_TEXT = QtGui.QColor("#1f2a1f")
 
 
 # (QRect row_rect, QFontMetrics metrics)
-# where the Edit button of a row is: right-aligned, slightly smaller than the row
+# where the Edit button of a row is: right-aligned and vertically centred
 def edit_button_rect(row_rect, metrics):
-    width = metrics.horizontalAdvance(tr("common.edit")) + 24
-    height = min(row_rect.height() - 2 * 2, metrics.height() + 10)
+    width = metrics.horizontalAdvance(tr("common.edit")) + 22
+    height = min(row_rect.height() - 6, metrics.height() + 8)
     top = row_rect.top() + (row_rect.height() - height) // 2
     return QtCore.QRect(row_rect.right() - _MARGIN - width, top, width, height)
 
@@ -24,6 +33,10 @@ def edit_button_rect(row_rect, metrics):
 # paints the usual row (checkbox and name), then an Edit button on the rows
 # marked EDITABLE_ROLE; the name is cut short so it never runs under the button
 class _RowDelegate(QtWidgets.QStyledItemDelegate):
+
+    def sizeHint(self, option, index):
+        size = super().sizeHint(option, index)
+        return QtCore.QSize(size.width(), max(size.height(), ROW_HEIGHT))
 
     def paint(self, painter, option, index):
         if not index.data(EDITABLE_ROLE):
@@ -34,13 +47,17 @@ class _RowDelegate(QtWidgets.QStyledItemDelegate):
         shortened.rect.setRight(button_rect.left() - _MARGIN)
         super().paint(painter, shortened, index)
 
-        button = QtWidgets.QStyleOptionButton()
-        button.rect = button_rect
-        button.text = tr("common.edit")
-        button.state = QtWidgets.QStyle.StateFlag.State_Enabled | QtWidgets.QStyle.StateFlag.State_Raised
         widget = option.widget
-        style = widget.style() if widget is not None else QtWidgets.QApplication.style()
-        style.drawControl(QtWidgets.QStyle.ControlElement.CE_PushButton, button, painter, widget)
+        hovered = widget is not None and widget.hovered_edit == index.data(LAYER_ID_ROLE)
+        painter.save()
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        painter.setPen(QtGui.QPen(_BUTTON_BORDER, 1))
+        painter.setBrush(_BUTTON_HOVER if hovered else _BUTTON_FILL)
+        painter.drawRoundedRect(QtCore.QRectF(button_rect).adjusted(0.5, 0.5, -0.5, -0.5), 5, 5)
+        painter.setPen(_BUTTON_TEXT)
+        painter.setFont(option.font)
+        painter.drawText(button_rect, QtCore.Qt.AlignmentFlag.AlignCenter, tr("common.edit"))
+        painter.restore()
 
 
 # QListWidget whose field rows have an Edit button. clicking the button
@@ -56,6 +73,8 @@ class FieldList(QtWidgets.QListWidget):
         super().__init__(parent)
         self.setItemDelegate(_RowDelegate(self))
         self.setMouseTracking(True)
+        # layer id of the Edit button under the mouse (drawn highlighted)
+        self.hovered_edit = None
 
     # (QPoint pos)
     # the layer id whose Edit button is at viewport position pos, or None
@@ -76,8 +95,17 @@ class FieldList(QtWidgets.QListWidget):
         super().mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event):
-        over_button = self.edit_button_at(event.position().toPoint()) is not None
+        hovered = self.edit_button_at(event.position().toPoint())
+        if hovered != self.hovered_edit:
+            self.hovered_edit = hovered
+            self.viewport().update()
         self.viewport().setCursor(QtGui.QCursor(
-            QtCore.Qt.CursorShape.PointingHandCursor if over_button
+            QtCore.Qt.CursorShape.PointingHandCursor if hovered is not None
             else QtCore.Qt.CursorShape.ArrowCursor))
         super().mouseMoveEvent(event)
+
+    def leaveEvent(self, event):
+        if self.hovered_edit is not None:
+            self.hovered_edit = None
+            self.viewport().update()
+        super().leaveEvent(event)

@@ -63,10 +63,15 @@ class FieldDialog(CenteredDialog):
         self.error_label.setWordWrap(True)
 
         self.color_button = QtWidgets.QPushButton(tr("fields.color_choose"))
+        self.color_button.setSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed,
+                                        QtWidgets.QSizePolicy.Policy.Fixed)
+        self.color_button.setMinimumWidth(140)
         self.color_button.clicked.connect(self._choose_color)
         self._show_color()
 
         top = QtWidgets.QFormLayout()
+        # macOS keeps form fields at their natural (short) width by default
+        top.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         top.addRow(tr("fields.name_label"), self.name_edit)
         top.addRow(self.error_label)
         top.addRow(tr("fields.color_label"), self.color_button)
@@ -173,6 +178,13 @@ class FieldDialog(CenteredDialog):
         grid.setColumnStretch(1, 1)
 
     def _make_editor(self, spec):
+        editor = self._new_editor(spec)
+        editor.setMinimumWidth(170)        # every datum gets the same width
+        editor.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding,
+                             QtWidgets.QSizePolicy.Policy.Fixed)
+        return editor
+
+    def _new_editor(self, spec):
         if spec.kind == KIND_CHOICE:
             box = QtWidgets.QComboBox()
             for option in spec.options:
@@ -225,4 +237,5 @@ class FieldDialog(CenteredDialog):
         messages = {"empty": tr("fields.error_empty"),
                     "duplicate": tr("fields.error_duplicate", name=self.name())}
         self.error_label.setText(messages.get(problem, ""))
+        self.error_label.setVisible(problem is not None)     # no empty gap
         self.save_button.setEnabled(problem is None)

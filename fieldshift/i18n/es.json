@@ -61,5 +61,6 @@
   "data_fields.ph": "pH",
   "data_fields.annual_rain_mm": "Lluvia anual",
   "data_fields.irrigated": "Riego",
-  "common.edit": "Editar"
+  "common.edit": "Editar",
+  "data.legend": "Los valores grises son precargados; los verdes en negrita los editaste tú."
 }

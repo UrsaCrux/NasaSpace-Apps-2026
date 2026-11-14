@@ -318,7 +318,7 @@ class FieldsWindowTest(_WindowCase):
         from fieldshift.fields.schema import DATA_FIELDS
         self.assertEqual(node.childCount(), 1 + len(DATA_FIELDS))
         self.assertEqual(node.child(1).text(0), "Soil type")
-        self.assertEqual(node.child(1).text(2), "preloaded")
+        self.assertEqual(node.child(1).toolTip(1), "preloaded")
         self.check(a, False)
         self.assertEqual(data.field_count(), 1)
 
@@ -332,7 +332,7 @@ class FieldsWindowTest(_WindowCase):
         self.assertEqual(specs[-1].options["stroke_color"], "#990000")
         self.window.fields.set_selected(layer_id, True)
         soil = self.panel.data_box.tree.topLevelItem(0).child(1)
-        self.assertEqual((soil.text(1), soil.text(2)), ("Sand", "edited"))
+        self.assertEqual((soil.text(1), soil.toolTip(1)), ("Sand", "edited"))
         gray = self.draw("Plain")
         self.assertEqual(self.window.fields.field(gray).color, "#9e9e9e")
         self.assertEqual(specs[-1].options["fill_color"], "#559e9e9e")
@@ -433,7 +433,7 @@ class EditFieldTest(_WindowCase):
         node = self.panel.data_box.tree.topLevelItem(0)
         self.assertEqual(node.text(0), "Renamed")
         ph = next(node.child(i) for i in range(node.childCount()) if node.child(i).text(0) == "pH")
-        self.assertEqual((ph.text(1), ph.text(2)), ("4.2", "edited"))
+        self.assertEqual((ph.text(1), ph.toolTip(1)), ("4.2", "edited"))
         self.assertEqual(sorted(p.name for p in self.folder.iterdir()), ["Renamed.geojson"])
 
     def test_cancel_changes_nothing(self):
@@ -452,6 +452,19 @@ class EditFieldTest(_WindowCase):
             self.click(lst, pos)
         zoom.assert_not_called()
         self.assertEqual(self.window.fields.selected(), [])
+
+    def test_rows_are_tall_enough_for_the_edit_button(self):
+        from fieldshift.ui.field_list import ROW_HEIGHT, edit_button_rect
+        layer_id = self.draw("A")
+        self.window.resize(1200, 800)
+        self.window.show()
+        lst = self.panel.layer_list
+        row = lst.visualItemRect(self.select(layer_id))
+        button = edit_button_rect(row, lst.fontMetrics())
+        self.assertGreaterEqual(row.height(), ROW_HEIGHT)
+        self.assertGreaterEqual(button.height(), lst.fontMetrics().height() + 4)   # text fits
+        self.assertTrue(row.contains(button))
+        self.window.hide()
 
     def test_other_layers_have_no_edit_button(self):
         from fieldshift.ui.field_list import EDITABLE_ROLE, edit_button_rect
@@ -505,6 +518,8 @@ class FieldDialogTest(unittest.TestCase):
         self.assertIn("Ya existe", dialog.error_label.text())
         dialog.name_edit.setText("   ")
         self.assertFalse(dialog.save_button.isEnabled())
+        dialog.name_edit.setText("Terreno 9")
+        self.assertTrue(dialog.error_label.isHidden())          # no empty gap when valid
 
     def test_color_is_grey_unless_chosen(self):
         from fieldshift.qt import QtGui, QtWidgets

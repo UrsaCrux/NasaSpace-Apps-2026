@@ -44,7 +44,7 @@ class FieldsDataBox(QtWidgets.QGroupBox):
         self.empty_label.setStyleSheet("color: #666;")
 
         self.tree = QtWidgets.QTreeWidget()
-        self.tree.setColumnCount(3)
+        self.tree.setColumnCount(2)
         self.tree.setHeaderHidden(True)
         self.tree.setRootIsDecorated(True)
         self.tree.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -53,18 +53,21 @@ class FieldsDataBox(QtWidgets.QGroupBox):
         self.tree.setMaximumHeight(300)
         header = self.tree.header()
         header.setStretchLastSection(False)
-        # names and labels are never cut off; the value column takes the rest
+        # label column fits its text; the value column takes the rest
         header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
 
         self.total_label = QtWidgets.QLabel()
         self.total_label.setStyleSheet("font-weight: bold;")
+        self.legend_label = QtWidgets.QLabel(tr("data.legend"))
+        self.legend_label.setWordWrap(True)
+        self.legend_label.setStyleSheet("color: #666; font-size: 11px;")
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.empty_label)
         layout.addWidget(self.tree)
         layout.addWidget(self.total_label)
+        layout.addWidget(self.legend_label)
 
         fields.selection_changed.connect(self.refresh)
         fields.fields_changed.connect(self.refresh)
@@ -85,21 +88,26 @@ class FieldsDataBox(QtWidgets.QGroupBox):
         right = QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
         for field in chosen:
             node = QtWidgets.QTreeWidgetItem(
-                [field.name, tr("data.area", area=f"{field.area_ha:.2f}"), ""])
+                [field.name, tr("data.area", area=f"{field.area_ha:.2f}")])
             node.setIcon(0, color_icon(field.color))
             node.setFont(0, bold)
             node.setTextAlignment(1, right)
             self.tree.addTopLevelItem(node)
-            node.addChild(QtWidgets.QTreeWidgetItem(
-                [tr("data.col_created"), format_created(field.created), ""]))
+            created = QtWidgets.QTreeWidgetItem(
+                [tr("data.col_created"), format_created(field.created)])
+            created.setTextAlignment(1, right)
+            node.addChild(created)
             for spec in DATA_FIELDS:
                 item = field.data[spec.key]
                 edited = item["source"] == SOURCE_USER
-                row = QtWidgets.QTreeWidgetItem(
-                    [data_label(spec.key), format_value(spec, item["value"]),
-                     tr("fields.data_edited") if edited else tr("fields.data_prefilled")])
-                if not edited:
-                    row.setForeground(2, QtGui.QBrush(QtGui.QColor("#888888")))
+                row = QtWidgets.QTreeWidgetItem([data_label(spec.key), format_value(spec, item["value"])])
+                # edited by the agronomist: bold green; preloaded: grey
+                source = tr("fields.data_edited") if edited else tr("fields.data_prefilled")
+                row.setToolTip(1, source)
+                row.setToolTip(0, source)
+                row.setForeground(1, QtGui.QBrush(QtGui.QColor("#1b5e20" if edited else "#666666")))
+                if edited:
+                    row.setFont(1, bold)
                 row.setTextAlignment(1, right)
                 node.addChild(row)
             node.setExpanded(True)
@@ -108,3 +116,4 @@ class FieldsDataBox(QtWidgets.QGroupBox):
         self.empty_label.setVisible(not chosen)
         self.tree.setVisible(bool(chosen))
         self.total_label.setVisible(bool(chosen))
+        self.legend_label.setVisible(bool(chosen))

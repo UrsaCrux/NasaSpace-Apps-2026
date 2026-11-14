@@ -177,6 +177,14 @@ class QgisViewTest(_ViewContract, unittest.TestCase):
         return LayerSpec(name, "Point?crs=EPSG:4326", LayerKind.VECTOR,
                          {"provider": "memory"})
 
+    def test_canvas_keeps_the_old_picture_while_redrawing(self):
+        # regression: the satellite tiles vanished every time the map moved
+        canvas = self.view.canvas()
+        self.assertTrue(canvas.isParallelRenderingEnabled())
+        self.assertTrue(canvas.isCachingEnabled())
+        self.assertTrue(canvas.previewJobsEnabled())
+        self.assertGreaterEqual(canvas.mapUpdateInterval(), 10_000)
+
     def test_invalid_source_raises(self):
         with self.assertRaises(ValueError):
             self.view.add_layer(LayerSpec.vector("bad", "/does/not/exist.geojson"))
