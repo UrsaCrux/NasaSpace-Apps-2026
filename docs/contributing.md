@@ -39,6 +39,10 @@ class DistanceTool(QtWidgets.QWidget):
 
 and in `SidePanel.__init__`: `self.tools_box.layout().addWidget(DistanceTool(view))`.
 
+Texts the user reads go in `fieldshift/i18n/*.json` and are read with
+`tr("key")` ([i18n.md](i18n.md)); the example above writes them inline only
+to stay short.
+
 Talk to the map only through `MapView`. If you need something it does not
 offer, extend the abstraction first ([map-abstraction.md](map-abstraction.md)).
 

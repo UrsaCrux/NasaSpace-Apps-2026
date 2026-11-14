@@ -14,6 +14,7 @@ from qgis.core import (
 from qgis.gui import QgsMapCanvas, QgsMapToolEmitPoint, QgsMapToolPan
 
 from fieldshift.map.layer import LayerInfo, LayerKind
+from fieldshift.map.polygon_tool import PolygonDrawTool
 from fieldshift.map.view import MapView
 from fieldshift.qt import QtGui
 
@@ -35,6 +36,7 @@ class QgisMapView(MapView):
         self._project = QgsProject.instance()
         self._order = []           # layer ids, top layer first
         self._hidden = set()
+        self._locked = set()       # ids of layers added with the "locked" option
 
         canvas = QgsMapCanvas()
         canvas.setCanvasColor(QtGui.QColor("#dde6ea"))
@@ -48,7 +50,10 @@ class QgisMapView(MapView):
         self._pan_tool = QgsMapToolPan(canvas)
         self._click_tool = QgsMapToolEmitPoint(canvas)
         self._click_tool.canvasClicked.connect(self._on_click)
+        self._draw_tool = PolygonDrawTool(canvas, self._on_polygon_done,
+                                          self._on_drawing_cancelled)
         canvas.setMapTool(self._pan_tool)
+        canvas.mapToolSet.connect(self._on_map_tool_set)
         canvas.xyCoordinates.connect(self._on_move)
 
         # a new canvas has a null extent, and centring / zooming on a null
@@ -75,6 +80,8 @@ class QgisMapView(MapView):
         _apply_style(layer, spec.options)
         self._project.addMapLayer(layer, False)
         self._order.insert(0, layer.id())
+        if spec.options.get("locked"):
+            self._locked.add(layer.id())
         self._sync_canvas()
         self.layers_changed.emit()
         return layer.id()
@@ -84,6 +91,7 @@ class QgisMapView(MapView):
             return
         self._order.remove(layer_id)
         self._hidden.discard(layer_id)
+        self._locked.discard(layer_id)
         self._sync_canvas()
         self._project.removeMapLayer(layer_id)
         self.layers_changed.emit()
@@ -94,7 +102,8 @@ class QgisMapView(MapView):
             layer = self._project.mapLayer(layer_id)
             if layer is not None:
                 result.append(LayerInfo(layer_id, layer.name(), _kind_of(layer),
-                                        layer_id not in self._hidden))
+                                        layer_id not in self._hidden,
+                                        layer_id in self._locked))
         return result
 
     def set_layer_visible(self, layer_id, visible):
@@ -129,6 +138,42 @@ class QgisMapView(MapView):
     def refresh(self):
         self._canvas.refresh()
 
+    def start_polygon_drawing(self):
+        if self._draw_tool.is_active():
+            return
+        self._draw_tool.start()
+        self._canvas.setMapTool(self._draw_tool)
+        self._canvas.setFocus()       # so Esc and Backspace reach the tool
+
+    def cancel_drawing(self):
+        self._draw_tool.cancel()
+
+    def is_drawing(self):
+        return self._draw_tool.is_active()
+
+    # (list points)
+    # the draw tool closed a polygon: back to panning, emit lon/lat vertices
+    def _on_polygon_done(self, points):
+        self._restore_pan()
+        vertices = []
+        for point in points:
+            p = self._to_wgs.transform(point)
+            vertices.append((p.x(), p.y()))
+        self.polygon_drawn.emit(vertices)
+
+    def _on_drawing_cancelled(self):
+        self._restore_pan()
+        self.drawing_cancelled.emit()
+
+    def _restore_pan(self):
+        if self._canvas.mapTool() is self._draw_tool:
+            self._canvas.setMapTool(self._pan_tool)
+
+    # another tool replaced the draw tool (e.g. set_click_mode): drop the drawing
+    def _on_map_tool_set(self, new_tool, old_tool):
+        if old_tool is self._draw_tool and new_tool is not self._draw_tool:
+            self._draw_tool.cancel()
+
     # ()
     # pushes the visible layers, in order, to the canvas
     def _sync_canvas(self):
@@ -161,12 +206,14 @@ def _build_qgs_layer(spec):
 
 
 # (QgsMapLayer layer, dict options)
-# applies "fill_color" / "stroke_color" options to a polygon or point layer
+# applies "fill_color" / "stroke_color" / "stroke_width" options to a polygon
+# or point layer
 def _apply_style(layer, options):
     if not isinstance(layer, QgsVectorLayer):
         return
     fill, stroke = options.get("fill_color"), options.get("stroke_color")
-    if not (fill or stroke):
+    width = options.get("stroke_width")
+    if not (fill or stroke or width):
         return
     symbol = layer.renderer().symbol() if hasattr(layer.renderer(), "symbol") else None
     if symbol is None:
@@ -177,6 +224,10 @@ def _apply_style(layer, options):
         symbol_layer = symbol.symbolLayer(0)
         if hasattr(symbol_layer, "setStrokeColor"):
             symbol_layer.setStrokeColor(QtGui.QColor(stroke))
+    if width and symbol.symbolLayerCount():
+        symbol_layer = symbol.symbolLayer(0)
+        if hasattr(symbol_layer, "setStrokeWidth"):
+            symbol_layer.setStrokeWidth(float(width))
     layer.triggerRepaint()
 
 

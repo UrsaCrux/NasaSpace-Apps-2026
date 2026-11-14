@@ -7,6 +7,7 @@
 | [cpp.md](cpp.md) | Writing C++ functions and calling them from Python |
 | [minidoc.md](minidoc.md) | How code is documented and how `docs/api/` is generated |
 | [contributing.md](contributing.md) | Workflow, adding a panel feature, tests |
+| [i18n.md](i18n.md) | User-visible texts per language (`en.json`, `es.json`) |
 | [api/PYTHON_API.md](api/PYTHON_API.md) | Generated reference of the Python code |
 | [api/CPP_API.md](api/CPP_API.md) | Generated reference of the C++ code |
 

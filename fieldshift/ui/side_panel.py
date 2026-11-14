@@ -1,33 +1,38 @@
 """Right-hand panel. Uses the map only through the MapView abstraction."""
 
-import os
-
 from fieldshift import native
-from fieldshift.map import LayerKind, LayerSpec
+from fieldshift.fields.manager import FieldsManager
+from fieldshift.i18n import tr
 from fieldshift.qt import QtCore, QtWidgets
-
-# file dialog filters per layer kind
-VECTOR_FILTER = "Vector files (*.geojson *.json *.shp *.gpkg *.kml);;All files (*)"
-RASTER_FILTER = "Raster files (*.tif *.tiff *.nc *.hdf *.img);;All files (*)"
+from fieldshift.ui import dialogs
+from fieldshift.ui.fields_data import FieldsDataBox
 
 # role used to store the layer id on each list item
 LAYER_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole
 
 
-# panel with the layer list, layer actions, cursor position and an empty
-# "Tools" box where new features are meant to be added
+# panel with the user's fields (and any other non-base layer), the data of
+# the checked fields, cursor position and an empty "Tools" box where new
+# features are meant to be added. a field's checkbox chooses it (for data,
+# export, delete); for other layers it shows / hides them. base layers
+# (LayerInfo.locked) stay on the map but are not listed
 class SidePanel(QtWidgets.QWidget):
 
-    # (MapView view, QWidget parent = None)
-    # builds the panel and subscribes to the view events
-    def __init__(self, view, parent=None):
+    # (MapView view, QWidget parent = None, FieldsManager fields = None)
+    # builds the panel and subscribes to the view events; creates its own
+    # FieldsManager when none is shared
+    def __init__(self, view, parent=None, fields=None):
         super().__init__(parent)
         self.view = view
+        self.fields = fields if fields is not None else FieldsManager(view)
         self.setMinimumWidth(280)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self._build_header())
         layout.addWidget(self._build_layers_box())
+        # data of the checked fields (see fields_data.py)
+        self.data_box = FieldsDataBox(self.fields)
+        layout.addWidget(self.data_box)
         layout.addWidget(self._build_position_box())
         # contributors: put new feature widgets inside this box
         self.tools_box = self._build_tools_box()
@@ -35,22 +40,31 @@ class SidePanel(QtWidgets.QWidget):
         layout.addStretch(1)
 
         view.layers_changed.connect(self.refresh_layers)
+        self.fields.fields_changed.connect(self.refresh_layers)
+        self.fields.selection_changed.connect(self._sync_checks)
         view.cursor_moved.connect(self._on_cursor)
         view.clicked.connect(self._on_click)
         self.refresh_layers()
 
     # ()
-    # rebuilds the layer list from view.layers()
+    # rebuilds the list from view.layers(), leaving out the base layers
     def refresh_layers(self):
         self.layer_list.blockSignals(True)
         self.layer_list.clear()
         for info in self.view.layers():
-            item = QtWidgets.QListWidgetItem(f"{info.name}  [{info.kind.value}]")
+            if info.locked:
+                continue
+            text = info.name if self.fields.is_field(info.id) else f"{info.name}  [{info.kind.value}]"
+            item = QtWidgets.QListWidgetItem(text)
             item.setData(LAYER_ID_ROLE, info.id)
             item.setFlags(item.flags() | QtCore.Qt.ItemFlag.ItemIsUserCheckable)
-            item.setCheckState(QtCore.Qt.CheckState.Checked if info.visible else QtCore.Qt.CheckState.Unchecked)
+            checked = (self.fields.is_selected(info.id) if self.fields.is_field(info.id)
+                       else info.visible)
+            item.setCheckState(QtCore.Qt.CheckState.Checked if checked else QtCore.Qt.CheckState.Unchecked)
             self.layer_list.addItem(item)
         self.layer_list.blockSignals(False)
+        self.empty_label.setVisible(self.layer_list.count() == 0)
+        self._update_delete_button()
 
     # -- building blocks ---------------------------------------------------
 
@@ -61,21 +75,27 @@ class SidePanel(QtWidgets.QWidget):
         return title
 
     def _build_layers_box(self):
-        box = QtWidgets.QGroupBox("Layers")
+        box = QtWidgets.QGroupBox(tr("fields.list_title"))
         v = QtWidgets.QVBoxLayout(box)
 
+        self.empty_label = QtWidgets.QLabel(tr("fields.empty"))
+        self.empty_label.setWordWrap(True)
+        self.empty_label.setStyleSheet("color: #666;")
+        v.addWidget(self.empty_label)
+
         self.layer_list = QtWidgets.QListWidget()
+        self.layer_list.setToolTip(tr("fields.list_tooltip"))
         self.layer_list.itemChanged.connect(self._on_item_changed)
         self.layer_list.itemDoubleClicked.connect(self._on_item_double_clicked)
+        self.layer_list.itemClicked.connect(self._on_item_clicked)
+        self.layer_list.currentItemChanged.connect(self._update_delete_button)
         v.addWidget(self.layer_list)
 
         row = QtWidgets.QHBoxLayout()
-        for text, slot in (("Add vector…", self._add_vector),
-                           ("Add raster…", self._add_raster),
-                           ("Remove", self._remove_selected)):
-            button = QtWidgets.QPushButton(text)
-            button.clicked.connect(slot)
-            row.addWidget(button)
+        row.addStretch(1)
+        self.delete_button = QtWidgets.QPushButton(tr("common.delete"))
+        self.delete_button.clicked.connect(self._remove_selected)
+        row.addWidget(self.delete_button)
         v.addLayout(row)
         return box
 
@@ -98,36 +118,74 @@ class SidePanel(QtWidgets.QWidget):
 
     # -- slots -------------------------------------------------------------
 
-    def _add_vector(self):
-        self._add_from_file(LayerKind.VECTOR, VECTOR_FILTER)
-
-    def _add_raster(self):
-        self._add_from_file(LayerKind.RASTER, RASTER_FILTER)
-
-    def _add_from_file(self, kind, file_filter):
-        path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open layer", "", file_filter)
-        if not path:
-            return
-        name = os.path.splitext(os.path.basename(path))[0]
-        spec = (LayerSpec.vector if kind is LayerKind.VECTOR else LayerSpec.raster)(name, path)
-        try:
-            layer_id = self.view.add_layer(spec)
-        except ValueError as exc:
-            QtWidgets.QMessageBox.warning(self, "Cannot open layer", str(exc))
-            return
-        self.view.zoom_to_layer(layer_id)
+    # ()
+    # what Delete acts on: the checked fields, else the highlighted row
+    def _delete_targets(self):
+        checked = self.fields.selected()
+        if checked:
+            return checked
+        item = self.layer_list.currentItem()
+        return [item.data(LAYER_ID_ROLE)] if item is not None else []
 
     def _remove_selected(self):
-        item = self.layer_list.currentItem()
-        if item is not None:
-            self.view.remove_layer(item.data(LAYER_ID_ROLE))
+        targets = self._delete_targets()
+        fields = [i for i in targets if self.fields.is_field(i)]
+        for layer_id in targets:
+            if layer_id not in fields:
+                self.view.remove_layer(layer_id)      # not a field: no file to lose
+        if not fields:
+            return
+        if len(fields) == 1:
+            text = tr("fields.remove_confirm", name=self.fields.field(fields[0]).name)
+        else:
+            text = tr("fields.remove_many_confirm", count=len(fields))
+        if dialogs.confirm(self, tr("fields.remove_title"), text,
+                           tr("common.delete"), danger=True):
+            for layer_id in fields:
+                self.fields.remove(layer_id)
 
+    # ticks the checkboxes of the chosen fields in place (no rebuild)
+    def _sync_checks(self):
+        self.layer_list.blockSignals(True)
+        for row in range(self.layer_list.count()):
+            item = self.layer_list.item(row)
+            layer_id = item.data(LAYER_ID_ROLE)
+            if self.fields.is_field(layer_id):
+                checked = self.fields.is_selected(layer_id)
+                item.setCheckState(QtCore.Qt.CheckState.Checked if checked
+                                   else QtCore.Qt.CheckState.Unchecked)
+        self.layer_list.blockSignals(False)
+        self._update_delete_button()
+
+    def _update_delete_button(self, *_):
+        self.delete_button.setEnabled(bool(self._delete_targets()))
+
+    # Qt is still handling the click on this item: never rebuild the list
+    # here (that deletes the item and crashes), only record the change
     def _on_item_changed(self, item):
-        visible = item.checkState() == QtCore.Qt.CheckState.Checked
-        self.view.set_layer_visible(item.data(LAYER_ID_ROLE), visible)
+        layer_id = item.data(LAYER_ID_ROLE)
+        checked = item.checkState() == QtCore.Qt.CheckState.Checked
+        self._checkbox_clicked = True
+        QtCore.QTimer.singleShot(0, self._forget_checkbox_click)
+        if self.fields.is_field(layer_id):
+            self.fields.set_selected(layer_id, checked)
+        else:
+            QtCore.QTimer.singleShot(0, lambda: self.view.set_layer_visible(layer_id, checked))
+
+    def _forget_checkbox_click(self):
+        self._checkbox_clicked = False
 
     def _on_item_double_clicked(self, item):
-        self.view.zoom_to_layer(item.data(LAYER_ID_ROLE))
+        if item is not None:
+            self.view.zoom_to_layer(item.data(LAYER_ID_ROLE))
+
+    # a click on the name zooms to the field; a click on the checkbox does not
+    def _on_item_clicked(self, item):
+        if item is None or getattr(self, "_checkbox_clicked", False):
+            return
+        layer_id = item.data(LAYER_ID_ROLE)
+        if self.fields.is_field(layer_id):
+            self.fields.zoom_to(layer_id)
 
     def _on_cursor(self, lon, lat):
         self.cursor_label.setText(f"{lon:.5f}, {lat:.5f}")
