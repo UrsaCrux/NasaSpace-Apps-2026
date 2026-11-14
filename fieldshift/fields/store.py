@@ -6,9 +6,11 @@ import os
 import re
 import shutil
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field as dataclass_field
 from datetime import datetime, timezone
 from pathlib import Path
+
+from fieldshift.fields.schema import DEFAULT_COLOR, normalize_color, normalize_data
 
 # root of the repository
 REPO_DIR = Path(__file__).resolve().parents[2]
@@ -32,7 +34,9 @@ _UNSAFE_FILE_CHARS = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
 
 
 # a saved field. vertices are (lon, lat) tuples in EPSG:4326, counter-
-# clockwise, first vertex not repeated at the end
+# clockwise, first vertex not repeated at the end. color is "#rrggbb" (grey
+# by default); data maps each key of schema.DATA_FIELDS to
+# {"value": ..., "source": "prefilled" | "user"}
 @dataclass(frozen=True)
 class Field:
     name: str
@@ -40,10 +44,12 @@ class Field:
     area_ha: float
     created: str
     path: Path
+    color: str = DEFAULT_COLOR
+    data: dict = dataclass_field(default_factory=dict)
 
 
 # reads and writes the fields of one folder. every field is a GeoJSON file
-# with one Feature whose properties hold name, area_ha and created
+# with one Feature whose properties hold name, area_ha, created, color and data
 class FieldStore:
 
     # (Path folder = None)
@@ -83,19 +89,25 @@ class FieldStore:
             n += 1
         return f"{base} {n}"
 
-    # (str name)
-    # why name cannot be used: "empty", "duplicate", or None when it is fine
-    def name_problem(self, name):
+    # (str name, str ignore = None)
+    # why name cannot be used: "empty", "duplicate", or None when it is fine.
+    # the field called ignore (case-insensitive) does not count as a
+    # duplicate: pass the field's own name when editing it
+    def name_problem(self, name, ignore=None):
         if not name.strip():
             return "empty"
-        if self.get(name) is not None:
+        found = self.get(name)
+        if found is not None and (ignore is None
+                                  or found.name.casefold() != ignore.strip().casefold()):
             return "duplicate"
         return None
 
-    # (str name, list vertices, str created = None)
-    # saves a new field from (lon, lat) vertices and returns it. raises
-    # ValueError for a bad name or fewer than MIN_VERTICES distinct vertices
-    def create(self, name, vertices, created=None):
+    # (str name, list vertices, str created = None, str color = None, dict data = None)
+    # saves a new field from (lon, lat) vertices and returns it. color is
+    # grey when None or invalid; data (see schema.py) is completed with
+    # prefilled values. raises ValueError for a bad name or fewer than
+    # MIN_VERTICES distinct vertices
+    def create(self, name, vertices, created=None, color=None, data=None):
         name = name.strip()
         problem = self.name_problem(name)
         if problem:
@@ -106,7 +118,8 @@ class FieldStore:
         created = created or datetime.now(timezone.utc).isoformat(timespec="seconds")
         self.folder.mkdir(parents=True, exist_ok=True)
         field = Field(name, tuple(ring), round(polygon_area_ha(ring), 4), created,
-                      self._free_path(name))
+                      self._free_path(name), normalize_color(color),
+                      normalize_data(data, ring))
         collection = {"type": "FeatureCollection", "features": [to_feature(field)]}
         field.path.write_text(json.dumps(collection, ensure_ascii=False, indent=2),
                               encoding="utf-8")
@@ -182,7 +195,8 @@ def to_feature(field):
     return {
         "type": "Feature",
         "properties": {"name": field.name, "area_ha": field.area_ha,
-                       "created": field.created},
+                       "created": field.created, "color": field.color,
+                       "data": field.data},
         "geometry": {"type": "Polygon", "coordinates": [ring + [ring[0]]]},
     }
 
@@ -217,7 +231,8 @@ def _clean_ring(vertices):
 
 
 # (Path path)
-# Field read from a file written by FieldStore.create
+# Field read from a file written by FieldStore. files from before colours and
+# data existed open with the grey colour and prefilled data
 def _read_field(path):
     data = json.loads(path.read_text(encoding="utf-8"))
     feature = data["features"][0] if data.get("type") == "FeatureCollection" else data
@@ -225,4 +240,5 @@ def _read_field(path):
     ring = feature["geometry"]["coordinates"][0]
     vertices = tuple((float(x), float(y)) for x, y, *_ in ring[:-1])
     return Field(str(props["name"]), vertices, float(props.get("area_ha", 0.0)),
-                 str(props.get("created", "")), path)
+                 str(props.get("created", "")), path, normalize_color(props.get("color")),
+                 normalize_data(props.get("data"), vertices))

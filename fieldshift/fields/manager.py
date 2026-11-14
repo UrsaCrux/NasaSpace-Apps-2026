@@ -6,10 +6,11 @@ from fieldshift.fields.store import FieldStore
 from fieldshift.map.events import Event
 from fieldshift.map.layer import LayerSpec
 
-# look of fields on the map: semi-transparent fill (#AARRGGBB), solid outline
-FIELD_FILL = "#5543a047"
-FIELD_STROKE = "#1b5e20"
-FIELD_STROKE_WIDTH = 0.8   # millimetres
+# look of fields on the map: the field's colour with a semi-transparent fill
+# (alpha 0x55, "#AARRGGBB") and a solid, darker outline
+FIELD_FILL_ALPHA = "55"
+FIELD_STROKE_DARKER = 0.6   # outline channels = colour channels * this
+FIELD_STROKE_WIDTH = 0.8    # millimetres
 
 # name drawn over each field: white text with a dark halo (readable on satellite)
 LABEL_COLOR = "#ffffff"
@@ -17,6 +18,15 @@ LABEL_HALO = "#1b1b1b"
 
 # extra space around a field when zooming to it (fraction of its size)
 ZOOM_MARGIN = 0.25
+
+
+# (str color)
+# (fill, stroke) CSS colours of a field on the map: "#rrggbb" becomes a
+# semi-transparent "#AARRGGBB" fill and a darker "#rrggbb" outline
+def style_colors(color):
+    rgb = color.lstrip("#")
+    dark = "".join(f"{int(int(rgb[i:i + 2], 16) * FIELD_STROKE_DARKER):02x}" for i in (0, 2, 4))
+    return f"#{FIELD_FILL_ALPHA}{rgb}", f"#{dark}"
 
 
 # the user's fields: saves them with a FieldStore and shows each one as a
@@ -82,11 +92,11 @@ class FieldsManager:
             self._selected.discard(layer_id)
         self.selection_changed.emit()
 
-    # (str name, list vertices)
+    # (str name, list vertices, str color = None, dict data = None)
     # saves a new field and shows it on the map; returns its layer id.
     # raises ValueError (bad name or polygon, layer cannot load) or OSError
-    def add(self, name, vertices):
-        field = self.store.create(name, vertices)
+    def add(self, name, vertices, color=None, data=None):
+        field = self.store.create(name, vertices, color=color, data=data)
         try:
             layer_id = self._show(field)
         except ValueError:
@@ -133,8 +143,9 @@ class FieldsManager:
         return self.store.export(path, names)
 
     def _show(self, field):
-        spec = LayerSpec.vector(field.name, str(field.path), fill_color=FIELD_FILL,
-                                stroke_color=FIELD_STROKE, stroke_width=FIELD_STROKE_WIDTH,
+        fill, stroke = style_colors(field.color)
+        spec = LayerSpec.vector(field.name, str(field.path), fill_color=fill,
+                                stroke_color=stroke, stroke_width=FIELD_STROKE_WIDTH,
                                 label_field="name", label_color=LABEL_COLOR,
                                 label_halo_color=LABEL_HALO)
         layer_id = self.view.add_layer(spec)

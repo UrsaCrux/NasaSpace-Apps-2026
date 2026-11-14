@@ -96,6 +96,70 @@ class FieldStoreTest(unittest.TestCase):
         self.assertEqual([f.name for f in self.store.fields()], ["ok"])
 
 
+class ColorAndDataTest(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.store = FieldStore(Path(self._tmp.name) / "fields")
+
+    def test_color_defaults_to_grey_and_invalid_colors_too(self):
+        self.assertEqual(self.store.create("A", SQUARE).color, "#9e9e9e")
+        self.assertEqual(self.store.create("B", SQUARE, color="red").color, "#9e9e9e")
+        self.assertEqual(self.store.create("C", SQUARE, color="#FF8800").color, "#ff8800")
+
+    def test_color_and_data_are_saved_in_the_geojson_and_exported(self):
+        data = {"soil_type": {"value": "sand", "source": "user"}}
+        field = self.store.create("A", SQUARE, color="#112233", data=data)
+        props = json.loads(field.path.read_text("utf-8"))["features"][0]["properties"]
+        self.assertEqual(props["color"], "#112233")
+        self.assertEqual(props["data"]["soil_type"], {"value": "sand", "source": "user"})
+        self.assertEqual(props["data"]["ph"]["source"], "prefilled")      # completed
+        out = Path(self._tmp.name) / "out.geojson"
+        self.store.export(out)
+        exported = json.loads(out.read_text("utf-8"))["features"][0]["properties"]
+        self.assertEqual((exported["color"], exported["data"]), (props["color"], props["data"]))
+        again = self.store.get("A")
+        self.assertEqual((again.color, again.data), (field.color, field.data))
+
+    def test_old_files_without_color_or_data_still_open(self):
+        from fieldshift.fields.schema import DATA_FIELDS, prefill_data
+        folder = Path(self._tmp.name) / "fields"
+        folder.mkdir()
+        ring = [list(v) for v in SQUARE] + [list(SQUARE[0])]
+        (folder / "old.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": [{
+            "type": "Feature",
+            "properties": {"name": "Old", "area_ha": 100.0, "created": "2026-01-01T00:00:00+00:00"},
+            "geometry": {"type": "Polygon", "coordinates": [ring]}}]}), "utf-8")
+        field = self.store.get("Old")
+        self.assertEqual(field.color, "#9e9e9e")
+        self.assertEqual(set(field.data), {s.key for s in DATA_FIELDS})
+        self.assertEqual(field.data, prefill_data(field.vertices))
+        self.assertTrue(all(v["source"] == "prefilled" for v in field.data.values()))
+
+    def test_invalid_data_falls_back_to_prefilled(self):
+        from fieldshift.fields.schema import normalize_data, prefill_data
+        bad = {"ph": {"value": 99, "source": "user"},               # out of range
+               "soil_type": {"value": "lava", "source": "user"},    # not an option
+               "irrigated": "yes", "unknown": {"value": 1}}
+        data = normalize_data(bad, SQUARE)
+        self.assertEqual(data, prefill_data(SQUARE))
+        self.assertNotIn("unknown", data)
+
+    def test_prefilled_values_are_stable_and_in_range(self):
+        from fieldshift.fields.schema import DATA_FIELDS, coerce_value, prefill_data
+        first, second = prefill_data(SQUARE), prefill_data(SQUARE)
+        self.assertEqual(first, second)
+        for spec in DATA_FIELDS:
+            self.assertIsNotNone(coerce_value(spec, first[spec.key]["value"]), spec.key)
+
+    def test_name_problem_ignores_the_fields_own_name(self):
+        self.store.create("Field 1", SQUARE)
+        self.store.create("Field 2", SQUARE)
+        self.assertEqual(self.store.name_problem("field 1"), "duplicate")
+        self.assertIsNone(self.store.name_problem("field 1", ignore="Field 1"))
+        self.assertEqual(self.store.name_problem("Field 2", ignore="Field 1"), "duplicate")
+
+
 class FolderTest(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()

@@ -138,9 +138,10 @@ class FieldsWindowTest(_TempFields):
                 return lst.item(i)
         self.fail(f"layer {layer_id} not in the list")
 
-    def draw(self, name):
+    def draw(self, name, color=None, data=None):
         self.bar.draw_button.click()
-        with mock.patch.object(self.bar, "_ask_name", return_value=name):
+        details = (name, color, data) if name else None
+        with mock.patch.object(self.bar, "_ask_details", return_value=details):
             self.view.simulate_polygon(SQUARE)
         fields = self.window.fields
         return next((i.id for i in self.view.layers()
@@ -205,7 +206,7 @@ class FieldsWindowTest(_TempFields):
         self.assertEqual(self.window.fields.selected(), [b])
         self.assertEqual(self.select(b).checkState(), QtCore.Qt.CheckState.Checked)
         self.assertEqual(self.panel.layer_list.currentItem().data(QtCore.Qt.ItemDataRole.UserRole), b)
-        self.assertEqual(self.panel.data_box.table.rowCount(), 1)
+        self.assertEqual(self.panel.data_box.field_count(), 1)
         self.view.simulate_double_click(a, -70.69, -33.40)
         self.assertEqual(self.window.fields.selected(), [a, b])
         self.view.simulate_double_click(b, -70.69, -33.40)         # ticked: unticks
@@ -265,16 +266,37 @@ class FieldsWindowTest(_TempFields):
         a = self.draw("A")
         b = self.draw("B")
         data = self.panel.data_box
-        self.assertTrue(data.table.isHidden())
+        self.assertTrue(data.tree.isHidden())
         self.check(a)
         self.check(b)
-        self.assertEqual(data.table.rowCount(), 2)
-        self.assertEqual(data.table.item(1, 0).text(), "B")
+        self.assertEqual(data.field_count(), 2)
+        node = data.tree.topLevelItem(1)
+        self.assertEqual(node.text(0), "B")
         area = self.window.fields.field(a).area_ha
-        self.assertEqual(data.table.item(0, 1).text(), f"{area:.2f}")
+        self.assertEqual(data.tree.topLevelItem(0).text(1), f"{area:.2f} ha")
         self.assertIn(f"{2 * area:.2f} ha", data.total_label.text())
+        # below each field: creation date, then every datum of DATA_FIELDS
+        from fieldshift.fields.schema import DATA_FIELDS
+        self.assertEqual(node.childCount(), 1 + len(DATA_FIELDS))
+        self.assertEqual(node.child(1).text(0), "Soil type")
+        self.assertEqual(node.child(1).text(2), "preloaded")
         self.check(a, False)
-        self.assertEqual(data.table.rowCount(), 1)
+        self.assertEqual(data.field_count(), 1)
+
+    def test_field_color_and_data_reach_the_map_and_the_data_box(self):
+        specs = []
+        original = self.view.add_layer
+        self.view.add_layer = lambda spec: (specs.append(spec), original(spec))[1]
+        data = {"soil_type": {"value": "sand", "source": "user"}}
+        layer_id = self.draw("Red", color="#ff0000", data=data)
+        self.assertEqual(specs[-1].options["fill_color"], "#55ff0000")
+        self.assertEqual(specs[-1].options["stroke_color"], "#990000")
+        self.window.fields.set_selected(layer_id, True)
+        soil = self.panel.data_box.tree.topLevelItem(0).child(1)
+        self.assertEqual((soil.text(1), soil.text(2)), ("Sand", "edited"))
+        gray = self.draw("Plain")
+        self.assertEqual(self.window.fields.field(gray).color, "#9e9e9e")
+        self.assertEqual(specs[-1].options["fill_color"], "#559e9e9e")
 
     def test_list_follows_selection_made_in_code(self):
         a = self.draw("A")
@@ -310,22 +332,72 @@ class FieldsWindowTest(_TempFields):
         self.assertEqual(self.window.fields.selected(), [])
 
 
-class FieldNameDialogTest(unittest.TestCase):
-    def test_suggestion_and_validation(self):
-        from fieldshift.ui.fields_bar import FieldNameDialog
-        i18n.set_language("es")
+class FieldDialogTest(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.store = FieldStore(self._tmp.name)
+        i18n.set_language("en")
         self.addCleanup(i18n.set_language, "en")
-        with tempfile.TemporaryDirectory() as tmp:
-            store = FieldStore(tmp)
-            store.create("Terreno 1", SQUARE)
-            dialog = FieldNameDialog(store)
-            self.assertEqual(dialog.name(), "Terreno 2")
-            self.assertTrue(dialog.save_button.isEnabled())
-            dialog.name_edit.setText("terreno 1")
-            self.assertFalse(dialog.save_button.isEnabled())
-            self.assertIn("Ya existe", dialog.error_label.text())
-            dialog.name_edit.setText("   ")
-            self.assertFalse(dialog.save_button.isEnabled())
+
+    def dialog(self, **kw):
+        from fieldshift.ui.field_dialog import FieldDialog
+        return FieldDialog(self.store, **kw)
+
+    def test_name_is_suggested_required_and_unique(self):
+        i18n.set_language("es")
+        self.store.create("Terreno 1", SQUARE)
+        dialog = self.dialog(vertices=SQUARE)
+        self.assertEqual(dialog.name(), "Terreno 2")
+        self.assertTrue(dialog.save_button.isEnabled())
+        dialog.name_edit.setText("terreno 1")
+        self.assertFalse(dialog.save_button.isEnabled())
+        self.assertIn("Ya existe", dialog.error_label.text())
+        dialog.name_edit.setText("   ")
+        self.assertFalse(dialog.save_button.isEnabled())
+
+    def test_color_is_grey_unless_chosen(self):
+        from fieldshift.qt import QtGui, QtWidgets
+        dialog = self.dialog(vertices=SQUARE)
+        self.assertEqual(dialog.color(), "#9e9e9e")
+        with mock.patch.object(QtWidgets.QColorDialog, "getColor",
+                               return_value=QtGui.QColor("#2E7D32")):
+            dialog.color_button.click()
+        self.assertEqual(dialog.color(), "#2e7d32")
+        with mock.patch.object(QtWidgets.QColorDialog, "getColor",
+                               return_value=QtGui.QColor()):           # cancelled
+            dialog.color_button.click()
+        self.assertEqual(dialog.color(), "#2e7d32")
+
+    def test_data_starts_prefilled_and_can_be_edited_and_restored(self):
+        from fieldshift.fields.schema import DATA_FIELDS, prefill_data
+        dialog = self.dialog(vertices=SQUARE)
+        prefilled = prefill_data(SQUARE)
+        self.assertEqual(set(dialog.data()), {s.key for s in DATA_FIELDS})
+        self.assertEqual(dialog.data(), prefilled)
+        for spec in DATA_FIELDS:
+            self.assertFalse(dialog.is_modified(spec.key))
+        dialog.set_value("ph", 4.5)
+        dialog.set_value("soil_type", "sand")
+        dialog.set_value("irrigated", True)
+        data = dialog.data()
+        self.assertEqual((data["ph"]["value"], data["ph"]["source"]), (4.5, "user"))
+        self.assertEqual(data["soil_type"], {"value": "sand", "source": "user"})
+        self.assertEqual(data["annual_rain_mm"], prefilled["annual_rain_mm"])   # untouched
+        dialog.reset_value("ph")
+        self.assertEqual(dialog.data()["ph"], prefilled["ph"])
+        self.assertFalse(dialog.is_modified("ph"))
+
+    def test_typing_in_the_editor_marks_the_datum_as_edited(self):
+        dialog = self.dialog(vertices=SQUARE)
+        spin = dialog._rows["ph"]["editor"]
+        spin.setValue(7.7 if spin.value() != 7.7 else 7.6)
+        self.assertTrue(dialog.is_modified("ph"))
+        self.assertFalse(dialog._rows["ph"]["reset"].isHidden())       # restore button shown
+        self.assertTrue(dialog._rows["soil_type"]["reset"].isHidden())  # untouched: hidden
+        combo = dialog._rows["irrigated"]["editor"]
+        combo.activated.emit(1)                         # what a user click emits
+        self.assertTrue(dialog.is_modified("irrigated"))
 
 
 class DialogsTest(unittest.TestCase):

@@ -14,6 +14,18 @@ DANGER_STYLE = ("QPushButton { background: #c62828; color: white; border: none;"
                 "QPushButton:hover { background: #b71c1c; }")
 
 
+# dialog that opens in the middle of its parent's window (Qt does not always
+# do it, e.g. on macOS)
+class CenteredDialog(QtWidgets.QDialog):
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        parent = self.parentWidget()
+        if parent is not None:
+            window = parent.window().frameGeometry()
+            self.move(window.center() - self.rect().center())
+
+
 # (QWidget parent, str title, str text, str confirm_text, bool danger = False)
 # asks a yes/no question; returns True when the user clicks confirm_text
 def confirm(parent, title, text, confirm_text, danger=False):
@@ -35,7 +47,7 @@ def inform(parent, title, text):
 
 
 def _base(parent, title, text):
-    dialog = QtWidgets.QDialog(parent)
+    dialog = CenteredDialog(parent)
     dialog.setWindowTitle(title)
     dialog.setMinimumWidth(340)
     label = QtWidgets.QLabel(text)
