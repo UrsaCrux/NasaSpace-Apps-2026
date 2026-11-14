@@ -18,6 +18,12 @@ class MapView(ABC):
         self.clicked = Event()
         # emitted with no arguments after a layer is added, removed or toggled
         self.layers_changed = Event()
+        # emitted with (list vertices) when the user closes a polygon started
+        # with start_polygon_drawing; vertices are (lon, lat) tuples and the
+        # first one is not repeated at the end
+        self.polygon_drawn = Event()
+        # emitted with no arguments when a drawing ends without a polygon
+        self.drawing_cancelled = Event()
 
     # ()
     # the QWidget to put in a window; created once and reused
@@ -72,4 +78,25 @@ class MapView(ABC):
     # redraws the map
     @abstractmethod
     def refresh(self):
+        ...
+
+    # ()
+    # lets the user draw a polygon on the map (click adds a vertex; double
+    # click, right click or a click on the first vertex closes it; Backspace
+    # removes the last vertex; Esc cancels). ends with polygon_drawn or
+    # drawing_cancelled, then the map goes back to panning
+    @abstractmethod
+    def start_polygon_drawing(self):
+        ...
+
+    # ()
+    # stops the current drawing and emits drawing_cancelled; no-op when idle
+    @abstractmethod
+    def cancel_drawing(self):
+        ...
+
+    # ()
+    # True while a drawing started with start_polygon_drawing is in progress
+    @abstractmethod
+    def is_drawing(self):
         ...
