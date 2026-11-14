@@ -41,7 +41,8 @@ class PlaceholderMapView(MapView):
     def add_layer(self, spec):
         layer_id = f"layer{next(self._ids)}"
         self._layers[layer_id] = LayerInfo(layer_id, spec.name, spec.kind, True,
-                                           bool(spec.options.get("locked")))
+                                           bool(spec.options.get("locked")),
+                                           spec.options.get("attribution", ""))
         self.layers_changed.emit()
         return layer_id
 

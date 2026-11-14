@@ -12,7 +12,7 @@ The full generated reference is in [api/PYTHON_API.md](api/PYTHON_API.md).
 ## Describing layers: `LayerSpec`
 
 ```python
-LayerSpec.xyz("OpenStreetMap", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
+LayerSpec.xyz("Basemap", "https://tiles.example.org/{z}/{y}/{x}.jpg", attribution="Imagery by Example")
 LayerSpec.vector("Fields", "/path/fields.gpkg", fill_color="#cfe8b0", stroke_color="#4a7a2a")
 LayerSpec.raster("NDVI", "/path/ndvi.tif")
 ```
@@ -22,7 +22,7 @@ LayerSpec.raster("NDVI", "/path/ndvi.tif")
 | `name` | Display name |
 | `source` | URL template (XYZ), or any path / URI OGR or GDAL can open |
 | `kind` | `LayerKind.XYZ`, `VECTOR` or `RASTER` |
-| `options` | Backend hints: `zmin`/`zmax` (XYZ), `provider` (force a data provider, e.g. `"memory"`), `locked` (base layer such as the basemap: the side panel does not list it, so the user cannot remove it; reported as `LayerInfo.locked`), `fill_color`/`stroke_color` (vectors; `"#AARRGGBB"` for transparency), `stroke_width` (vectors, mm) |
+| `options` | Backend hints: `zmin`/`zmax` (XYZ), `provider` (force a data provider, e.g. `"memory"`), `locked` (base layer such as the basemap: the side panel does not list it, so the user cannot remove it; reported as `LayerInfo.locked`), `attribution` (credit text the window shows in the status bar while the layer is visible; reported as `LayerInfo.attribution`), `fill_color`/`stroke_color` (vectors; `"#AARRGGBB"` for transparency), `stroke_width` (vectors, mm) |
 
 ## Using the map: `MapView`
 

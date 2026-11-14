@@ -18,11 +18,18 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 COUNTRIES = LayerSpec.vector("Countries", str(DATA_DIR / "countries.geojson"),
                              fill_color="#f2efe9", stroke_color="#9a8f80", locked=True)
 
-# OpenStreetMap tile layer loaded at start-up
+# Sentinel-2 cloudless 2024 (EOX): 10 m satellite mosaic, no API key. free for
+# non-commercial use under CC BY-NC-SA 4.0 as long as the credit below stays
+# visible (https://cloudless.eox.at/documentation/license); a commercial
+# product needs an agreement with EOX. tiles exist up to zoom 18. to change
+# the basemap, change only this constant
 DEFAULT_BASEMAP = LayerSpec.xyz(
-    "OpenStreetMap",
-    "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    "Sentinel-2 cloudless 2024",
+    "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2024_3857/default/g/{z}/{y}/{x}.jpg",
+    zmin=0, zmax=18,
     locked=True,
+    attribution="EOxCloudless https://cloudless.eox.at by EOX IT Services GmbH "
+                "(Contains modified Copernicus Sentinel data 2024)",
 )
 
 

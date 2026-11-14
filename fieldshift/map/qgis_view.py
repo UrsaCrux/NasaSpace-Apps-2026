@@ -37,6 +37,7 @@ class QgisMapView(MapView):
         self._order = []           # layer ids, top layer first
         self._hidden = set()
         self._locked = set()       # ids of layers added with the "locked" option
+        self._attribution = {}     # layer id -> credit text
 
         canvas = QgsMapCanvas()
         canvas.setCanvasColor(QtGui.QColor("#dde6ea"))
@@ -82,6 +83,8 @@ class QgisMapView(MapView):
         self._order.insert(0, layer.id())
         if spec.options.get("locked"):
             self._locked.add(layer.id())
+        if spec.options.get("attribution"):
+            self._attribution[layer.id()] = spec.options["attribution"]
         self._sync_canvas()
         self.layers_changed.emit()
         return layer.id()
@@ -92,6 +95,7 @@ class QgisMapView(MapView):
         self._order.remove(layer_id)
         self._hidden.discard(layer_id)
         self._locked.discard(layer_id)
+        self._attribution.pop(layer_id, None)
         self._sync_canvas()
         self._project.removeMapLayer(layer_id)
         self.layers_changed.emit()
@@ -103,7 +107,8 @@ class QgisMapView(MapView):
             if layer is not None:
                 result.append(LayerInfo(layer_id, layer.name(), _kind_of(layer),
                                         layer_id not in self._hidden,
-                                        layer_id in self._locked))
+                                        layer_id in self._locked,
+                                        self._attribution.get(layer_id, "")))
         return result
 
     def set_layer_visible(self, layer_id, visible):

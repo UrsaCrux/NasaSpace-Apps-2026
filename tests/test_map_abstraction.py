@@ -77,6 +77,14 @@ class _ViewContract:
         flags = {i.id: i.locked for i in self.view.layers()}
         self.assertEqual(flags, {locked: True, normal: False})
 
+    def test_attribution_option(self):
+        spec = self.make_spec("sat")
+        credited = self.view.add_layer(LayerSpec(spec.name, spec.source, spec.kind,
+                                                 {**spec.options, "attribution": "Credit"}))
+        plain = self.view.add_layer(self.make_spec("mine"))
+        credits = {i.id: i.attribution for i in self.view.layers()}
+        self.assertEqual(credits, {credited: "Credit", plain: ""})
+
     def test_draw_polygon(self):
         drawn = []
         self.view.polygon_drawn.connect(drawn.append)
@@ -228,6 +236,16 @@ class MainWindowTest(unittest.TestCase):
         self.assertIsInstance(splitter.widget(1), SidePanel)
         view.add_layer(LayerSpec.xyz("osm", "https://example/{z}/{x}/{y}.png"))
         self.assertEqual(window.panel.layer_list.count(), 1)
+
+    def test_attribution_shown_while_layer_is_visible(self):
+        from fieldshift.ui import MainWindow
+        view = create_map_view("placeholder")
+        window = MainWindow(view)
+        self.assertEqual(window.attribution_label.text(), "")
+        sat = view.add_layer(LayerSpec.xyz("sat", "u", attribution="Imagery by X"))
+        self.assertEqual(window.attribution_label.text(), "Imagery by X")
+        view.set_layer_visible(sat, False)
+        self.assertEqual(window.attribution_label.text(), "")
 
 
 if __name__ == "__main__":

@@ -114,7 +114,7 @@ class FieldsWindowTest(_TempFields):
         super().setUp()
         from fieldshift.ui import MainWindow
         self.view = create_map_view("placeholder")
-        self.base = self.view.add_layer(LayerSpec.xyz("OpenStreetMap", "u", locked=True))
+        self.base = self.view.add_layer(LayerSpec.xyz("Satellite", "u", locked=True))
         self.window = MainWindow(self.view)
         self.panel = self.window.panel
         self.bar = self.window.fields_bar

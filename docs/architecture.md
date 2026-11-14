@@ -48,7 +48,8 @@
    `initQgis()`.
 2. `create_map_view()`.
 3. Add the default layers, bottom first: `data/countries.geojson` (works
-   offline), then OpenStreetMap tiles.
+   offline), then the Sentinel-2 cloudless satellite tiles (EOX), whose credit
+   is shown in the status bar.
 4. Centre on Santiago, build `MainWindow`, run the event loop.
 
 ## Rules that keep it editable
