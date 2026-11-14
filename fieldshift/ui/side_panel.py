@@ -55,8 +55,8 @@ class SidePanel(QtWidgets.QWidget):
     # -- building blocks ---------------------------------------------------
 
     def _build_header(self):
-        title = QtWidgets.QLabel("<h2>Field Shift</h2>"
-                                 "<p>Adapting farmers with NASA data</p>")
+        title = QtWidgets.QLabel("<h2>farmer-shit</h2>"
+                                 "<p>Program to adapt farmers with NASA data</p>")
         title.setWordWrap(True)
         return title
 

@@ -35,7 +35,7 @@ def main(argv=None):
             view.add_layer(spec)
         except ValueError as exc:
             print(f"warning: {exc}", file=sys.stderr)
-    view.set_center(-70.6, -33.45, scale=40_000_000)  # Santiago, Chile
+    view.set_center(-70.64831, -33.45974, scale=400_000)  # Santiago, Chile
 
     window = MainWindow(view)
     window.show()
