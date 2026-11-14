@@ -6,5 +6,6 @@ env/
 cpp/build/
 .tools/
 data/local/
+terrenos/
 *.qgs~
 .DS_Store

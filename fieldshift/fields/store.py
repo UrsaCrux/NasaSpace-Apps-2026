@@ -4,14 +4,22 @@ import json
 import math
 import os
 import re
+import shutil
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-# default folder for saved fields (data/local/ is ignored by git); the
+# root of the repository
+REPO_DIR = Path(__file__).resolve().parents[2]
+
+# default folder for saved fields: terrenos/ in the repository root, ignored by
+# git. one .geojson per field, named after the field. the
 # FIELDSHIFT_FIELDS_DIR environment variable overrides it (tests, demos)
-DEFAULT_FIELDS_DIR = Path(__file__).resolve().parents[2] / "data" / "local" / "fields"
+DEFAULT_FIELDS_DIR = REPO_DIR / "terrenos"
+
+# folder used by earlier versions; its files are moved to DEFAULT_FIELDS_DIR
+LEGACY_FIELDS_DIR = REPO_DIR / "data" / "local" / "fields"
 
 # fewest vertices a field polygon can have
 MIN_VERTICES = 3
@@ -40,9 +48,13 @@ class FieldStore:
 
     # (Path folder = None)
     # uses folder for the files (default: $FIELDSHIFT_FIELDS_DIR, else
-    # DEFAULT_FIELDS_DIR); it is created on the first save
+    # DEFAULT_FIELDS_DIR); it is created on the first save. with the default
+    # folder, fields saved in LEGACY_FIELDS_DIR are moved into it first
     def __init__(self, folder=None):
-        folder = folder or os.environ.get("FIELDSHIFT_FIELDS_DIR") or DEFAULT_FIELDS_DIR
+        folder = folder or os.environ.get("FIELDSHIFT_FIELDS_DIR")
+        if not folder:
+            migrate_fields(LEGACY_FIELDS_DIR, DEFAULT_FIELDS_DIR)
+            folder = DEFAULT_FIELDS_DIR
         self.folder = Path(folder)
 
     # ()
@@ -133,6 +145,34 @@ class FieldStore:
             path = self.folder / f"{stem}-{n}.geojson"
             n += 1
         return path
+
+
+# (Path old_folder, Path new_folder)
+# moves the .geojson files of old_folder into new_folder (created if needed)
+# and removes old_folder when it ends up empty. a file whose name already
+# exists in new_folder stays where it is, with a warning. returns how many
+# files were moved
+def migrate_fields(old_folder, new_folder):
+    old_folder, new_folder = Path(old_folder), Path(new_folder)
+    if not old_folder.is_dir():
+        return 0
+    moved = 0
+    for path in sorted(old_folder.glob("*.geojson")):
+        target = new_folder / path.name
+        if target.exists():
+            print(f"warning: {target} already exists; {path} was not moved", file=sys.stderr)
+            continue
+        new_folder.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(path), str(target))
+        moved += 1
+    if moved:
+        print(f"info: moved {moved} field file(s) from {old_folder} to {new_folder}",
+              file=sys.stderr)
+    try:
+        old_folder.rmdir()            # only succeeds when empty
+    except OSError:
+        pass
+    return moved
 
 
 # (Field field)

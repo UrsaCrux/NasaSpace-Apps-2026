@@ -1,9 +1,11 @@
 """Tests for saved fields: create, delete, names and GeoJSON export (no map)."""
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from fieldshift.fields import FieldStore, polygon_area_ha
 
@@ -92,6 +94,54 @@ class FieldStoreTest(unittest.TestCase):
         self.store.create("ok", SQUARE)
         (self.folder / "broken.geojson").write_text("{not json", "utf-8")
         self.assertEqual([f.name for f in self.store.fields()], ["ok"])
+
+
+class FolderTest(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+
+    def test_default_folder_is_terrenos_in_the_repo_root(self):
+        from fieldshift.fields import store
+        self.assertEqual(store.DEFAULT_FIELDS_DIR.name, "terrenos")
+        self.assertTrue((store.REPO_DIR / "fieldshift").is_dir())
+        self.assertEqual(store.DEFAULT_FIELDS_DIR.parent, store.REPO_DIR)
+
+    def test_old_files_are_moved(self):
+        from fieldshift.fields import store
+        old, new = self.root / "old", self.root / "terrenos"
+        FieldStore(old).create("A", SQUARE)
+        FieldStore(old).create("B", SQUARE)
+        with mock.patch("sys.stderr"):
+            self.assertEqual(store.migrate_fields(old, new), 2)
+        self.assertFalse(old.exists())                 # empty folder is removed
+        self.assertEqual([f.name for f in FieldStore(new).fields()], ["A", "B"])
+
+    def test_existing_file_is_not_overwritten(self):
+        from fieldshift.fields import store
+        old, new = self.root / "old", self.root / "new"
+        FieldStore(old).create("A", SQUARE)
+        FieldStore(new).create("A", [(0, 0), (1, 0), (0, 1)])
+        with mock.patch("sys.stderr"):
+            self.assertEqual(store.migrate_fields(old, new), 0)
+        self.assertTrue((old / "A.geojson").is_file())           # kept
+        self.assertEqual(FieldStore(new).get("A").vertices[1], (1.0, 0.0))
+
+    def test_default_store_migrates_and_env_var_wins(self):
+        from fieldshift.fields import store
+        old, new = self.root / "legacy", self.root / "default"
+        FieldStore(old).create("Old field", SQUARE)
+        with mock.patch.object(store, "LEGACY_FIELDS_DIR", old), \
+                mock.patch.object(store, "DEFAULT_FIELDS_DIR", new), \
+                mock.patch("sys.stderr"):
+            with mock.patch.dict(os.environ, {"FIELDSHIFT_FIELDS_DIR": str(self.root / "x")}):
+                self.assertEqual(FieldStore().folder, self.root / "x")
+                self.assertTrue(old.exists())          # env var: nothing is moved
+            with mock.patch.dict(os.environ):
+                os.environ.pop("FIELDSHIFT_FIELDS_DIR", None)
+                self.assertEqual([f.name for f in FieldStore().fields()], ["Old field"])
+        self.assertTrue((new / "Old field.geojson").is_file())
 
 
 class AreaTest(unittest.TestCase):

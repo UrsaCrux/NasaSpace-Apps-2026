@@ -34,6 +34,7 @@ fieldshift/            Python application
 └── native/            ctypes bindings for the C++ library
 cpp/                   C++ functions callable from Python (CMake)
 data/                  bundled datasets (offline country outlines)
+terrenos/              the user's saved fields, one .geojson each (ignored by git)
 docs/                  documentation, generated API reference in docs/api/
 tools/minidoc_py.py    minidoc-style exporter for the Python code
 tests/                 unit tests (python -m unittest)

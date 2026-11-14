@@ -11,3 +11,6 @@ something even without an internet connection.
 
 Put large or downloaded datasets (NASA rasters, etc.) somewhere else and keep
 them out of git (`data/local/` is ignored).
+
+The fields the user draws are not here: they are saved one `.geojson` per
+field in `terrenos/` at the repository root (also ignored by git).
