@@ -3,8 +3,10 @@
 import os
 
 from fieldshift import native
+from fieldshift.i18n import tr
 from fieldshift.map import LayerKind, LayerSpec
 from fieldshift.qt import QtCore, QtWidgets
+from fieldshift.ui.fields_box import FieldsBox
 
 # file dialog filters per layer kind
 VECTOR_FILTER = "Vector files (*.geojson *.json *.shp *.gpkg *.kml);;All files (*)"
@@ -28,6 +30,9 @@ class SidePanel(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self._build_header())
         layout.addWidget(self._build_layers_box())
+        # fields drawn by the user: draw, save, export (see fields_box.py)
+        self.fields_box = FieldsBox(view)
+        layout.addWidget(self.fields_box)
         layout.addWidget(self._build_position_box())
         # contributors: put new feature widgets inside this box
         self.tools_box = self._build_tools_box()
@@ -35,6 +40,7 @@ class SidePanel(QtWidgets.QWidget):
         layout.addStretch(1)
 
         view.layers_changed.connect(self.refresh_layers)
+        self.fields_box.fields_changed.connect(self.refresh_layers)
         view.cursor_moved.connect(self._on_cursor)
         view.clicked.connect(self._on_click)
         self.refresh_layers()
@@ -44,8 +50,12 @@ class SidePanel(QtWidgets.QWidget):
     def refresh_layers(self):
         self.layer_list.blockSignals(True)
         self.layer_list.clear()
+        self._locked = {}          # id -> name of base layers, which cannot be removed
         for info in self.view.layers():
-            item = QtWidgets.QListWidgetItem(f"{info.name}  [{info.kind.value}]")
+            if info.locked:
+                self._locked[info.id] = info.name
+            tag = tr("layers.field_tag") if self.fields_box.is_field(info.id) else info.kind.value
+            item = QtWidgets.QListWidgetItem(f"{'🔒 ' if info.locked else ''}{info.name}  [{tag}]")
             item.setData(LAYER_ID_ROLE, info.id)
             item.setFlags(item.flags() | QtCore.Qt.ItemFlag.ItemIsUserCheckable)
             item.setCheckState(QtCore.Qt.CheckState.Checked if info.visible else QtCore.Qt.CheckState.Unchecked)
@@ -67,6 +77,7 @@ class SidePanel(QtWidgets.QWidget):
         self.layer_list = QtWidgets.QListWidget()
         self.layer_list.itemChanged.connect(self._on_item_changed)
         self.layer_list.itemDoubleClicked.connect(self._on_item_double_clicked)
+        self.layer_list.itemClicked.connect(self._on_item_clicked)
         v.addWidget(self.layer_list)
 
         row = QtWidgets.QHBoxLayout()
@@ -119,8 +130,17 @@ class SidePanel(QtWidgets.QWidget):
 
     def _remove_selected(self):
         item = self.layer_list.currentItem()
-        if item is not None:
-            self.view.remove_layer(item.data(LAYER_ID_ROLE))
+        if item is None:
+            return
+        layer_id = item.data(LAYER_ID_ROLE)
+        if self.fields_box.is_field(layer_id):
+            self.fields_box.remove_field(layer_id)      # asks, deletes its file
+        elif layer_id in self._locked:
+            QtWidgets.QMessageBox.information(
+                self, tr("layers.base_title"),
+                tr("layers.base_message", name=self._locked[layer_id]))
+        else:
+            self.view.remove_layer(layer_id)
 
     def _on_item_changed(self, item):
         visible = item.checkState() == QtCore.Qt.CheckState.Checked
@@ -128,6 +148,11 @@ class SidePanel(QtWidgets.QWidget):
 
     def _on_item_double_clicked(self, item):
         self.view.zoom_to_layer(item.data(LAYER_ID_ROLE))
+
+    def _on_item_clicked(self, item):
+        layer_id = item.data(LAYER_ID_ROLE)
+        if self.fields_box.is_field(layer_id):
+            self.fields_box.zoom_to_field(layer_id)
 
     def _on_cursor(self, lon, lat):
         self.cursor_label.setText(f"{lon:.5f}, {lat:.5f}")

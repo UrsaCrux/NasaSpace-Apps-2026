@@ -2,13 +2,15 @@
 
 import json
 import math
+import os
 import re
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-# default folder for saved fields (data/local/ is ignored by git)
+# default folder for saved fields (data/local/ is ignored by git); the
+# FIELDSHIFT_FIELDS_DIR environment variable overrides it (tests, demos)
 DEFAULT_FIELDS_DIR = Path(__file__).resolve().parents[2] / "data" / "local" / "fields"
 
 # fewest vertices a field polygon can have
@@ -36,10 +38,12 @@ class Field:
 # with one Feature whose properties hold name, area_ha and created
 class FieldStore:
 
-    # (Path folder = DEFAULT_FIELDS_DIR)
-    # uses folder for the files; it is created on the first save
+    # (Path folder = None)
+    # uses folder for the files (default: $FIELDSHIFT_FIELDS_DIR, else
+    # DEFAULT_FIELDS_DIR); it is created on the first save
     def __init__(self, folder=None):
-        self.folder = Path(folder) if folder is not None else DEFAULT_FIELDS_DIR
+        folder = folder or os.environ.get("FIELDSHIFT_FIELDS_DIR") or DEFAULT_FIELDS_DIR
+        self.folder = Path(folder)
 
     # ()
     # saved fields, oldest first; unreadable files are skipped with a warning

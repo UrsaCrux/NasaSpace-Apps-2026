@@ -1,9 +1,12 @@
 """Tests for the map abstraction layer (run without a display)."""
 
 import os
+import tempfile
 import unittest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# never read or write the user's real saved fields
+os.environ["FIELDSHIFT_FIELDS_DIR"] = tempfile.mkdtemp(prefix="fieldshift-test-")
 
 from fieldshift.map import Event, LayerKind, LayerSpec, create_map_view  # noqa: E402
 from fieldshift.qt import HAS_QGIS, QtWidgets  # noqa: E402

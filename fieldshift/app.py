@@ -11,14 +11,16 @@ from fieldshift.ui import MainWindow
 # folder with the bundled datasets
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
-# offline country outlines, drawn below the tiles (visible without internet)
+# offline country outlines, drawn below the tiles (visible without internet).
+# base layers are "locked": the panel does not let the user remove them
 COUNTRIES = LayerSpec.vector("Countries", str(DATA_DIR / "countries.geojson"),
-                             fill_color="#f2efe9", stroke_color="#9a8f80")
+                             fill_color="#f2efe9", stroke_color="#9a8f80", locked=True)
 
 # OpenStreetMap tile layer loaded at start-up
 DEFAULT_BASEMAP = LayerSpec.xyz(
     "OpenStreetMap",
     "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    locked=True,
 )
 
 
