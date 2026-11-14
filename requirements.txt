@@ -1,0 +1,3 @@
+# QGIS (and its PyQt5) cannot be installed with pip: see docs/README.md.
+# Without QGIS the app still starts with a placeholder map if PyQt5 is present.
+PyQt5>=5.15 ; python_version < "4"

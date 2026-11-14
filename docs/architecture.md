@@ -1,0 +1,57 @@
+# Architecture
+
+```
+┌──────────────────────────── MainWindow (QSplitter) ────────────────────────────┐
+│                                                  │                             │
+│   MapView.widget()                               │   SidePanel                 │
+│   (QgsMapCanvas)                                 │   layers · position · tools │
+│                                                  │                             │
+└──────────────────────────────────────────────────┴─────────────────────────────┘
+          ▲  add_layer / set_center / ...                │
+          │  cursor_moved / clicked / layers_changed     │
+          └───────────────── MapView (abstract) ◄────────┘
+                               ▲            ▲
+                     QgisMapView   PlaceholderMapView
+                         │
+                    QGIS (qgis.core, qgis.gui)
+
+   fieldshift.native ──ctypes──► cpp/build/libfieldshift_core.so
+```
+
+## Layers of the code
+
+1. **UI** (`fieldshift/ui/`): Qt widgets. `MainWindow` puts the map widget on
+   the left and the `SidePanel` on the right of a `QSplitter` (3:1 stretch,
+   the user can drag the divider). The UI only knows `MapView`, `LayerSpec`,
+   `LayerInfo` and `LayerKind`.
+2. **Map abstraction** (`fieldshift/map/`): an engine-independent API. All
+   coordinates are longitude/latitude in degrees. Notifications are plain
+   Python `Event` objects, not Qt signals, so the abstraction does not
+   depend on Qt and is easy to test or mock.
+3. **Map backends**: `QgisMapView` wraps a `QgsMapCanvas` that draws in Web
+   Mercator (EPSG:3857) and converts to and from EPSG:4326 at the boundary.
+   `PlaceholderMapView` keeps layers in memory only, for machines without
+   QGIS. `create_map_view()` picks one.
+4. **Native core** (`cpp/` and `fieldshift/native/`): C++ compiled into a
+   shared library with an `extern "C"` API, loaded with `ctypes`. Optional:
+   the app runs without it.
+
+## Start-up sequence (`fieldshift/app.py`)
+
+1. Create a `QgsApplication` (or a `QApplication` without QGIS) and call
+   `initQgis()`.
+2. `create_map_view()`.
+3. Add the default layers, bottom first: `data/countries.geojson` (works
+   offline), then OpenStreetMap tiles.
+4. Centre on Santiago, build `MainWindow`, run the event loop.
+
+## Rules that keep it editable
+
+- UI code never imports `qgis.*`. If a feature needs something the
+  abstraction does not offer, add a method to `MapView` and implement it in
+  every backend (see [map-abstraction.md](map-abstraction.md)).
+- QGIS-only power features can use `QgisMapView.canvas()`, but keep that code
+  in `fieldshift/map/`.
+- Import Qt from `fieldshift.qt`, never from `PyQt5` directly: QGIS ships its
+  own PyQt build.
+- Only C types cross the Python/C++ boundary.
