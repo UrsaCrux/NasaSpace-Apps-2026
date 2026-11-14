@@ -8,6 +8,7 @@
 | [cpp.md](cpp.md) | Writing C++ functions and calling them from Python |
 | [minidoc.md](minidoc.md) | How code is documented and how `docs/api/` is generated |
 | [contributing.md](contributing.md) | Workflow, adding a panel feature, tests |
+| [analysis.md](analysis.md) | Analyze button, result tabs, adding an analysis |
 | [fields.md](fields.md) | Fields: files, colour, zone data (`DATA_FIELDS`) |
 | [i18n.md](i18n.md) | User-visible texts per language (`en.json`, `es.json`) |
 | [api/PYTHON_API.md](api/PYTHON_API.md) | Generated reference of the Python code |
