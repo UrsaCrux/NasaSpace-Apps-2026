@@ -60,13 +60,17 @@ class PlaceholderMapView(MapView):
             self.layers_changed.emit()
 
     def set_center(self, lon, lat, scale=None):
-        pass
+        self.view_changed.emit()
 
     def zoom_to_extent(self, xmin, ymin, xmax, ymax):
-        pass
+        self.view_changed.emit()
 
     def zoom_to_layer(self, layer_id):
-        pass
+        if layer_id in self._layers:
+            self.view_changed.emit()
+
+    def meters_per_pixel(self):
+        return None                 # no map, no scale
 
     def refresh(self):
         pass

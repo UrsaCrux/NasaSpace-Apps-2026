@@ -1,5 +1,6 @@
 """MapView implemented with a QGIS map canvas."""
 
+import math
 from urllib.parse import quote
 
 from qgis.core import (
@@ -36,6 +37,8 @@ PICK_TOLERANCE_PX = 4
 # a very long time means: keep showing the previous picture until the new one
 # is complete, so the satellite tiles never vanish while new ones download
 MAP_UPDATE_INTERVAL_MS = 60_000
+# mean Earth radius (metres) used to measure the scale
+EARTH_RADIUS_M = 6_371_008.8
 # initial extent in lon/lat (Web Mercator is undefined at the poles)
 WORLD = QgsRectangle(-180, -85, 180, 85)
 
@@ -78,6 +81,7 @@ class QgisMapView(MapView):
         canvas.setMapTool(self._pan_tool)
         canvas.mapToolSet.connect(self._on_map_tool_set)
         canvas.xyCoordinates.connect(self._on_move)
+        canvas.extentsChanged.connect(self.view_changed.emit)
 
         # a new canvas has a null extent, and centring / zooming on a null
         # extent does nothing: start with the whole world
@@ -230,6 +234,21 @@ class QgisMapView(MapView):
                 return True
         return False
 
+    def meters_per_pixel(self):
+        width = self._canvas.width()
+        units_per_pixel = self._canvas.mapUnitsPerPixel()
+        if width <= 0 or not units_per_pixel or math.isnan(units_per_pixel):
+            return None
+        # measure 100 pixels across the centre of the view on the ground
+        center = self._canvas.center()
+        half = 50 * units_per_pixel
+        try:
+            a = self._to_wgs.transform(QgsPointXY(center.x() - half, center.y()))
+            b = self._to_wgs.transform(QgsPointXY(center.x() + half, center.y()))
+        except Exception:                 # outside Web Mercator (beyond the poles)
+            return None
+        return _haversine_m(a.y(), a.x(), b.y(), b.x()) / 100
+
     def _on_move(self, point):
         p = self._to_wgs.transform(point)
         self.cursor_moved.emit(p.x(), p.y())
@@ -237,6 +256,15 @@ class QgisMapView(MapView):
     def _on_click(self, point, _button):
         p = self._to_wgs.transform(point)
         self.clicked.emit(p.x(), p.y())
+
+
+# (float lat1, float lon1, float lat2, float lon2)
+# great-circle distance in metres between two points in degrees
+def _haversine_m(lat1, lon1, lat2, lon2):
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp, dl = p2 - p1, math.radians(lon2 - lon1)
+    h = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * EARTH_RADIUS_M * math.asin(math.sqrt(h))
 
 
 # (LayerSpec spec)

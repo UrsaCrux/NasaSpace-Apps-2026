@@ -29,6 +29,9 @@ class MapView(ABC):
         # layer first). never while drawing a polygon. a double click on a
         # feature does not zoom the map in
         self.layer_double_clicked = Event()
+        # emitted with no arguments after the visible area changes (pan, zoom,
+        # resize); read meters_per_pixel() to draw a scale bar
+        self.view_changed = Event()
 
     # ()
     # the QWidget to put in a window; created once and reused
@@ -104,4 +107,12 @@ class MapView(ABC):
     # True while a drawing started with start_polygon_drawing is in progress
     @abstractmethod
     def is_drawing(self):
+        ...
+
+    # ()
+    # ground distance in metres covered by one screen pixel, measured across
+    # the centre of the view (it changes with latitude in Web Mercator), or
+    # None when the backend cannot tell
+    @abstractmethod
+    def meters_per_pixel(self):
         ...

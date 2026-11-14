@@ -1,5 +1,6 @@
 """Tests for the map abstraction layer (run without a display)."""
 
+import math
 import os
 import tempfile
 import unittest
@@ -135,6 +136,17 @@ class _ViewContract:
         self.assertEqual([c[0] for c in clicked], [layer_id])
         self.assertNotEqual(layer_id, locked)
 
+    def test_view_changed_on_zoom(self):
+        changes = []
+        self.view.view_changed.connect(lambda: changes.append(1))
+        self.view.zoom_to_extent(-70.72, -33.42, -70.67, -33.39)
+        self.view.set_center(-70.70, -33.40)
+        self.assertGreaterEqual(len(changes), 2)
+
+    def test_meters_per_pixel_is_none_or_positive(self):
+        value = self.view.meters_per_pixel()
+        self.assertTrue(value is None or value > 0)
+
     def make_spec(self, name):
         return LayerSpec.vector(name, "Point?crs=EPSG:4326")
 
@@ -157,6 +169,9 @@ class _ViewContract:
 class PlaceholderViewTest(_ViewContract, unittest.TestCase):
     backend = "placeholder"
 
+    def test_no_scale_without_a_map(self):
+        self.assertIsNone(self.view.meters_per_pixel())
+
     def add_square_layer(self, name, **options):
         self._square_id = self.view.add_layer(LayerSpec.vector(name, "square.geojson", **options))
         return self._square_id
@@ -176,6 +191,17 @@ class QgisViewTest(_ViewContract, unittest.TestCase):
         # in-memory vector layer: no file and no network needed
         return LayerSpec(name, "Point?crs=EPSG:4326", LayerKind.VECTOR,
                          {"provider": "memory"})
+
+    def test_meters_per_pixel_matches_the_ground(self):
+        self._pixels(SQUARE)                    # 800 px wide, about 0.05 deg of longitude
+        canvas = self.view.canvas()
+        extent = self.view._to_wgs.transformBoundingBox(canvas.extent())
+        lat = math.radians(extent.center().y())
+        expected = extent.width() * 111_195 * math.cos(lat) / canvas.width()
+        self.assertAlmostEqual(self.view.meters_per_pixel() / expected, 1, delta=0.01)
+        before = self.view.meters_per_pixel()
+        self.view.set_center(-70.70, -33.40, scale=canvas.scale() / 4)    # zoom in x4
+        self.assertAlmostEqual(before / self.view.meters_per_pixel(), 4, delta=0.1)
 
     def test_canvas_keeps_the_old_picture_while_redrawing(self):
         # regression: the satellite tiles vanished every time the map moved
