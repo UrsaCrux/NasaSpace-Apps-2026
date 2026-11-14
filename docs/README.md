@@ -18,7 +18,29 @@ Field Shift targets **QGIS 4**, which is built on **Qt6 / PyQt6**. QGIS 3
 QGIS brings its own Python bindings and PyQt6; they cannot be installed with
 `pip`. Run the app with the Python interpreter that can `import qgis`.
 
-**Conda (any OS, recommended for development)**
+**micromamba + conda-forge (Linux, no compiling, recommended)**
+
+Prebuilt QGIS 4 with Python bindings, installed in your home directory and
+independent of the system packages. `make run` detects it automatically.
+
+```bash
+mkdir -p ~/.local/bin && curl -L https://conda.anaconda.org/conda-forge/linux-64/micromamba-2.10.0-0.tar.bz2 | tar -xj -C ~/.local bin/micromamba
+```
+
+```bash
+make env
+```
+
+```bash
+make run
+```
+
+`make env` creates `~/micromamba/envs/fieldshift` (about 1–2 GB).
+`make which` shows which Python and QGIS `make run` will use;
+`make run CONDA=0` forces the system Python. Override the locations with
+`MAMBA=`, `MAMBA_ROOT=` and `ENV_NAME=`.
+
+**Conda (any OS)**
 
 ```bash
 conda create -n fieldshift -c conda-forge "qgis>=4" python=3.12
@@ -88,6 +110,9 @@ Typical causes:
 
 ### Gentoo
 
+Easiest: use the micromamba route above (`make env`), no rebuild needed.
+To use the Portage package instead:
+
 QGIS is `sci-geosciences/qgis`; the Python bindings need `USE=python`, and
 they are built only for its `PYTHON_SINGLE_TARGET`.
 
@@ -127,7 +152,9 @@ PyQt6 must be built for the same Python (`dev-python/pyqt6`, pulled in by
 
 | Command | Does |
 |---------|------|
-| `make run` | start the app |
+| `make env` | create the micromamba environment with QGIS 4 |
+| `make run` | start the app (inside that environment when it exists) |
+| `make which` | show the Python / QGIS `make run` uses |
 | `make cpp` | build `cpp/build/libfieldshift_core.so` |
 | `make test` | run the tests |
 | `make docs` | regenerate `docs/api/` |
