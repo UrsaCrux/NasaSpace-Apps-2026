@@ -32,6 +32,10 @@ WGS84 = QgsCoordinateReferenceSystem("EPSG:4326")
 WEB_MERCATOR = QgsCoordinateReferenceSystem("EPSG:3857")
 # a double click counts as "on a feature" within this many pixels of it
 PICK_TOLERANCE_PX = 4
+# how often (ms) the canvas may show a half-finished picture while it redraws.
+# a very long time means: keep showing the previous picture until the new one
+# is complete, so the satellite tiles never vanish while new ones download
+MAP_UPDATE_INTERVAL_MS = 60_000
 # initial extent in lon/lat (Web Mercator is undefined at the poles)
 WORLD = QgsRectangle(-180, -85, 180, 85)
 
@@ -53,6 +57,14 @@ class QgisMapView(MapView):
         canvas.setCanvasColor(QtGui.QColor("#dde6ea"))
         canvas.setDestinationCrs(WEB_MERCATOR)
         canvas.enableAntiAliasing(True)
+        # same rendering set-up as QGIS desktop: layers drawn in parallel,
+        # unchanged layers reused from a cache, the area around the view
+        # rendered in advance (panning shows tiles at once), and no
+        # half-drawn pictures (see MAP_UPDATE_INTERVAL_MS)
+        canvas.setParallelRenderingEnabled(True)
+        canvas.setCachingEnabled(True)
+        canvas.setPreviewJobsEnabled(True)
+        canvas.setMapUpdateInterval(MAP_UPDATE_INTERVAL_MS)
         self._canvas = canvas
 
         self._to_map = QgsCoordinateTransform(WGS84, WEB_MERCATOR, self._project)
