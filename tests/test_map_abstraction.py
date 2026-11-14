@@ -136,6 +136,21 @@ class QgisViewTest(_ViewContract, unittest.TestCase):
         with self.assertRaises(ValueError):
             self.view.add_layer(LayerSpec.vector("bad", "/does/not/exist.geojson"))
 
+    def test_label_option_turns_labels_on(self):
+        spec = self.make_spec("labelled")
+        plain = self.view.add_layer(spec)
+        labelled = self.view.add_layer(LayerSpec(
+            "labelled", spec.source, spec.kind,
+            {**spec.options, "label_field": "name", "label_color": "#ffffff"}))
+        project = self.view._project
+        self.assertFalse(project.mapLayer(plain).labelsEnabled())
+        layer = project.mapLayer(labelled)
+        self.assertTrue(layer.labelsEnabled())
+        settings = layer.labeling().settings()
+        self.assertEqual(settings.fieldName, "name")
+        self.assertTrue(settings.format().buffer().enabled())          # halo
+        self.assertEqual(settings.format().color().name(), "#ffffff")
+
     def close_polygon(self, vertices):
         from qgis.core import QgsPointXY
         self._pixels(vertices)          # zoom in: vertices must be pixels apart

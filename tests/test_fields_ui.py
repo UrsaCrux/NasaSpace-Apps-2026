@@ -53,6 +53,13 @@ class FieldsManagerTest(_TempFields):
         self.assertTrue((self.folder / "A.geojson").is_file())
         self.assertEqual(changes, [1])
 
+    def test_each_field_asks_for_its_name_as_label(self):
+        specs = []
+        original = self.view.add_layer
+        self.view.add_layer = lambda spec: (specs.append(spec), original(spec))[1]
+        self.fields.add("A", SQUARE)
+        self.assertEqual(specs[0].options["label_field"], "name")
+
     def test_remove(self):
         layer_id = self.fields.add("A", SQUARE)
         self.assertTrue(self.fields.remove(layer_id))

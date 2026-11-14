@@ -16,7 +16,10 @@ class LayerKind(Enum):
 # layer the panel does not list, so the user cannot remove it), "attribution"
 # (credit text the window must show while the layer is visible) and, for
 # vectors, "fill_color" / "stroke_color" (CSS colour strings, "#AARRGGBB"
-# for transparency) and "stroke_width" (millimetres)
+# for transparency), "stroke_width" (millimetres) and the text drawn over each
+# feature: "label_field" (attribute to show; no label when absent),
+# "label_color" / "label_halo_color" (text and outline, CSS colours) and
+# "label_size" (points)
 @dataclass(frozen=True)
 class LayerSpec:
     name: str

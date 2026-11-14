@@ -11,6 +11,10 @@ FIELD_FILL = "#5543a047"
 FIELD_STROKE = "#1b5e20"
 FIELD_STROKE_WIDTH = 0.8   # millimetres
 
+# name drawn over each field: white text with a dark halo (readable on satellite)
+LABEL_COLOR = "#ffffff"
+LABEL_HALO = "#1b1b1b"
+
 # extra space around a field when zooming to it (fraction of its size)
 ZOOM_MARGIN = 0.25
 
@@ -130,7 +134,9 @@ class FieldsManager:
 
     def _show(self, field):
         spec = LayerSpec.vector(field.name, str(field.path), fill_color=FIELD_FILL,
-                                stroke_color=FIELD_STROKE, stroke_width=FIELD_STROKE_WIDTH)
+                                stroke_color=FIELD_STROKE, stroke_width=FIELD_STROKE_WIDTH,
+                                label_field="name", label_color=LABEL_COLOR,
+                                label_halo_color=LABEL_HALO)
         layer_id = self.view.add_layer(spec)
         self._fields[layer_id] = field
         return layer_id

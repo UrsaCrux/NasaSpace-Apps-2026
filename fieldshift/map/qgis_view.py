@@ -3,13 +3,18 @@
 from urllib.parse import quote
 
 from qgis.core import (
+    Qgis,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
+    QgsPalLayerSettings,
     QgsPointXY,
     QgsProject,
     QgsRasterLayer,
     QgsRectangle,
+    QgsTextBufferSettings,
+    QgsTextFormat,
     QgsVectorLayer,
+    QgsVectorLayerSimpleLabeling,
 )
 from qgis.gui import QgsMapCanvas, QgsMapToolEmitPoint, QgsMapToolPan
 
@@ -79,6 +84,7 @@ class QgisMapView(MapView):
         if not layer.isValid():
             raise ValueError(f"cannot open layer {spec.name!r} from {spec.source!r}")
         _apply_style(layer, spec.options)
+        _apply_labels(layer, spec.options)
         self._project.addMapLayer(layer, False)
         self._order.insert(0, layer.id())
         if spec.options.get("locked"):
@@ -233,6 +239,38 @@ def _apply_style(layer, options):
         symbol_layer = symbol.symbolLayer(0)
         if hasattr(symbol_layer, "setStrokeWidth"):
             symbol_layer.setStrokeWidth(float(width))
+    layer.triggerRepaint()
+
+
+# (QgsMapLayer layer, dict options)
+# shows the "label_field" attribute over each feature of a vector layer,
+# with a halo so it can be read on top of satellite imagery
+def _apply_labels(layer, options):
+    field = options.get("label_field")
+    if not field or not isinstance(layer, QgsVectorLayer):
+        return
+    text = QgsTextFormat()
+    text.setSize(options.get("label_size", 11))
+    text.setSizeUnit(Qgis.RenderUnit.Points)
+    text.setColor(QtGui.QColor(options.get("label_color", "#ffffff")))
+    font = text.font()
+    font.setBold(True)
+    text.setFont(font)
+    halo = QgsTextBufferSettings()
+    halo.setEnabled(True)
+    halo.setSize(1.6)
+    halo.setSizeUnit(Qgis.RenderUnit.Millimeters)
+    halo.setColor(QtGui.QColor(options.get("label_halo_color", "#1b1b1b")))
+    text.setBuffer(halo)
+
+    settings = QgsPalLayerSettings()
+    settings.fieldName = field
+    settings.placement = Qgis.LabelPlacement.Horizontal   # inside the polygon
+    settings.centroidInside = True
+    settings.displayAll = True                            # never drop a name
+    settings.setFormat(text)
+    layer.setLabeling(QgsVectorLayerSimpleLabeling(settings))
+    layer.setLabelsEnabled(True)
     layer.triggerRepaint()
 
 

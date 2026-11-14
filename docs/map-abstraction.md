@@ -22,7 +22,7 @@ LayerSpec.raster("NDVI", "/path/ndvi.tif")
 | `name` | Display name |
 | `source` | URL template (XYZ), or any path / URI OGR or GDAL can open |
 | `kind` | `LayerKind.XYZ`, `VECTOR` or `RASTER` |
-| `options` | Backend hints: `zmin`/`zmax` (XYZ), `provider` (force a data provider, e.g. `"memory"`), `locked` (base layer such as the basemap: the side panel does not list it, so the user cannot remove it; reported as `LayerInfo.locked`), `attribution` (credit text the window shows in the status bar while the layer is visible; reported as `LayerInfo.attribution`), `fill_color`/`stroke_color` (vectors; `"#AARRGGBB"` for transparency), `stroke_width` (vectors, mm) |
+| `options` | Backend hints: `zmin`/`zmax` (XYZ), `provider` (force a data provider, e.g. `"memory"`), `locked` (base layer such as the basemap: the side panel does not list it, so the user cannot remove it; reported as `LayerInfo.locked`), `attribution` (credit text the window shows in the status bar while the layer is visible; reported as `LayerInfo.attribution`), `fill_color`/`stroke_color` (vectors; `"#AARRGGBB"` for transparency), `stroke_width` (vectors, mm), `label_field` (vectors: attribute shown over each feature, with a halo; also `label_color`, `label_halo_color`, `label_size`) |
 
 ## Using the map: `MapView`
 
