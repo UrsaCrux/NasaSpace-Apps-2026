@@ -1,0 +1,28 @@
+{
+  "common.save": "Guardar",
+  "common.cancel": "Cancelar",
+  "common.remove": "Eliminar",
+
+  "layers.base_title": "Capa base",
+  "layers.base_message": "«{name}» es una capa base y no se puede eliminar. Desmárcala para ocultarla.",
+  "layers.field_tag": "terreno",
+
+  "fields.title": "Terrenos",
+  "fields.draw": "Marcar terreno",
+  "fields.drawing": "Dibujando… (Esc para cancelar)",
+  "fields.hint": "Haz clic para agregar puntos. Doble clic, clic derecho o clic en el primer punto para terminar (mínimo 3 puntos). Backspace borra el último punto, Esc cancela.",
+  "fields.export": "Exportar terrenos…",
+  "fields.export_title": "Exportar terrenos",
+  "fields.export_filter": "GeoJSON (*.geojson)",
+  "fields.export_default_file": "terrenos.geojson",
+  "fields.export_done": "{count} terreno(s) exportados a {path}",
+  "fields.export_failed": "No se pudieron exportar los terrenos: {error}",
+  "fields.default_name": "Terreno",
+  "fields.save_title": "Guardar como terreno",
+  "fields.name_label": "Nombre:",
+  "fields.error_empty": "Escribe un nombre.",
+  "fields.error_duplicate": "Ya existe un terreno llamado «{name}».",
+  "fields.save_failed": "No se pudo guardar el terreno: {error}",
+  "fields.remove_title": "Eliminar terreno",
+  "fields.remove_confirm": "¿Eliminar el terreno «{name}»? También se borrará su archivo guardado."
+}

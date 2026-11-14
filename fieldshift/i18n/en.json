@@ -1,0 +1,28 @@
+{
+  "common.save": "Save",
+  "common.cancel": "Cancel",
+  "common.remove": "Remove",
+
+  "layers.base_title": "Base layer",
+  "layers.base_message": "“{name}” is a base layer and cannot be removed. Uncheck it to hide it.",
+  "layers.field_tag": "field",
+
+  "fields.title": "Fields",
+  "fields.draw": "Draw field",
+  "fields.drawing": "Drawing… (Esc to cancel)",
+  "fields.hint": "Click to add points. Double-click, right-click or click the first point to finish (3 points minimum). Backspace removes the last point, Esc cancels.",
+  "fields.export": "Export fields…",
+  "fields.export_title": "Export fields",
+  "fields.export_filter": "GeoJSON (*.geojson)",
+  "fields.export_default_file": "fields.geojson",
+  "fields.export_done": "{count} field(s) exported to {path}",
+  "fields.export_failed": "Could not export the fields: {error}",
+  "fields.default_name": "Field",
+  "fields.save_title": "Save as field",
+  "fields.name_label": "Name:",
+  "fields.error_empty": "Write a name.",
+  "fields.error_duplicate": "There is already a field called “{name}”.",
+  "fields.save_failed": "Could not save the field: {error}",
+  "fields.remove_title": "Remove field",
+  "fields.remove_confirm": "Remove the field “{name}”? Its saved file will be deleted too."
+}
