@@ -13,9 +13,13 @@ class LayerKind(Enum):
 
 # what to load: the UI builds one of these and hands it to MapView.add_layer.
 # options may hold "provider" (force a data provider), "locked" (True: a base
-# layer the panel does not list, so the user cannot remove it) and, for vectors, "fill_color" /
-# "stroke_color" (CSS colour strings, "#AARRGGBB" for transparency) and
-# "stroke_width" (millimetres)
+# layer the panel does not list, so the user cannot remove it), "attribution"
+# (credit text the window must show while the layer is visible) and, for
+# vectors, "fill_color" / "stroke_color" (CSS colour strings, "#AARRGGBB"
+# for transparency), "stroke_width" (millimetres) and the text drawn over each
+# feature: "label_field" (attribute to show; no label when absent),
+# "label_color" / "label_halo_color" (text and outline, CSS colours) and
+# "label_size" (points)
 @dataclass(frozen=True)
 class LayerSpec:
     name: str
@@ -43,7 +47,8 @@ class LayerSpec:
 
 
 # what MapView.layers returns: a loaded layer as seen by the UI.
-# locked is True for base layers added with the "locked" option
+# locked is True for base layers added with the "locked" option; attribution
+# is the credit text of the "attribution" option ("" when there is none)
 @dataclass(frozen=True)
 class LayerInfo:
     id: str
@@ -51,3 +56,4 @@ class LayerInfo:
     kind: LayerKind
     visible: bool
     locked: bool = False
+    attribution: str = ""

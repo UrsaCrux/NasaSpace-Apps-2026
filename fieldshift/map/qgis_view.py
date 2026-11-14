@@ -1,19 +1,28 @@
 """MapView implemented with a QGIS map canvas."""
 
+import math
 from urllib.parse import quote
 
 from qgis.core import (
+    Qgis,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
+    QgsFeatureRequest,
+    QgsGeometry,
+    QgsPalLayerSettings,
     QgsPointXY,
     QgsProject,
     QgsRasterLayer,
     QgsRectangle,
+    QgsTextBufferSettings,
+    QgsTextFormat,
     QgsVectorLayer,
+    QgsVectorLayerSimpleLabeling,
 )
-from qgis.gui import QgsMapCanvas, QgsMapToolEmitPoint, QgsMapToolPan
+from qgis.gui import QgsMapCanvas, QgsMapToolEmitPoint
 
 from fieldshift.map.layer import LayerInfo, LayerKind
+from fieldshift.map.pick_tool import PickPanTool
 from fieldshift.map.polygon_tool import PolygonDrawTool
 from fieldshift.map.view import MapView
 from fieldshift.qt import QtGui
@@ -22,6 +31,14 @@ from fieldshift.qt import QtGui
 WGS84 = QgsCoordinateReferenceSystem("EPSG:4326")
 # CRS the canvas draws in (same as web tiles)
 WEB_MERCATOR = QgsCoordinateReferenceSystem("EPSG:3857")
+# a double click counts as "on a feature" within this many pixels of it
+PICK_TOLERANCE_PX = 4
+# how often (ms) the canvas may show a half-finished picture while it redraws.
+# a very long time means: keep showing the previous picture until the new one
+# is complete, so the satellite tiles never vanish while new ones download
+MAP_UPDATE_INTERVAL_MS = 60_000
+# mean Earth radius (metres) used to measure the scale
+EARTH_RADIUS_M = 6_371_008.8
 # initial extent in lon/lat (Web Mercator is undefined at the poles)
 WORLD = QgsRectangle(-180, -85, 180, 85)
 
@@ -37,17 +54,26 @@ class QgisMapView(MapView):
         self._order = []           # layer ids, top layer first
         self._hidden = set()
         self._locked = set()       # ids of layers added with the "locked" option
+        self._attribution = {}     # layer id -> credit text
 
         canvas = QgsMapCanvas()
         canvas.setCanvasColor(QtGui.QColor("#dde6ea"))
         canvas.setDestinationCrs(WEB_MERCATOR)
         canvas.enableAntiAliasing(True)
+        # same rendering set-up as QGIS desktop: layers drawn in parallel,
+        # unchanged layers reused from a cache, the area around the view
+        # rendered in advance (panning shows tiles at once), and no
+        # half-drawn pictures (see MAP_UPDATE_INTERVAL_MS)
+        canvas.setParallelRenderingEnabled(True)
+        canvas.setCachingEnabled(True)
+        canvas.setPreviewJobsEnabled(True)
+        canvas.setMapUpdateInterval(MAP_UPDATE_INTERVAL_MS)
         self._canvas = canvas
 
         self._to_map = QgsCoordinateTransform(WGS84, WEB_MERCATOR, self._project)
         self._to_wgs = QgsCoordinateTransform(WEB_MERCATOR, WGS84, self._project)
 
-        self._pan_tool = QgsMapToolPan(canvas)
+        self._pan_tool = PickPanTool(canvas, self._on_double_click)
         self._click_tool = QgsMapToolEmitPoint(canvas)
         self._click_tool.canvasClicked.connect(self._on_click)
         self._draw_tool = PolygonDrawTool(canvas, self._on_polygon_done,
@@ -55,6 +81,7 @@ class QgisMapView(MapView):
         canvas.setMapTool(self._pan_tool)
         canvas.mapToolSet.connect(self._on_map_tool_set)
         canvas.xyCoordinates.connect(self._on_move)
+        canvas.extentsChanged.connect(self.view_changed.emit)
 
         # a new canvas has a null extent, and centring / zooming on a null
         # extent does nothing: start with the whole world
@@ -78,10 +105,13 @@ class QgisMapView(MapView):
         if not layer.isValid():
             raise ValueError(f"cannot open layer {spec.name!r} from {spec.source!r}")
         _apply_style(layer, spec.options)
+        _apply_labels(layer, spec.options)
         self._project.addMapLayer(layer, False)
         self._order.insert(0, layer.id())
         if spec.options.get("locked"):
             self._locked.add(layer.id())
+        if spec.options.get("attribution"):
+            self._attribution[layer.id()] = spec.options["attribution"]
         self._sync_canvas()
         self.layers_changed.emit()
         return layer.id()
@@ -92,6 +122,7 @@ class QgisMapView(MapView):
         self._order.remove(layer_id)
         self._hidden.discard(layer_id)
         self._locked.discard(layer_id)
+        self._attribution.pop(layer_id, None)
         self._sync_canvas()
         self._project.removeMapLayer(layer_id)
         self.layers_changed.emit()
@@ -103,7 +134,8 @@ class QgisMapView(MapView):
             if layer is not None:
                 result.append(LayerInfo(layer_id, layer.name(), _kind_of(layer),
                                         layer_id not in self._hidden,
-                                        layer_id in self._locked))
+                                        layer_id in self._locked,
+                                        self._attribution.get(layer_id, "")))
         return result
 
     def set_layer_visible(self, layer_id, visible):
@@ -181,6 +213,42 @@ class QgisMapView(MapView):
         self._canvas.setLayers([layer for layer in visible if layer is not None])
         self._canvas.refresh()
 
+    # (QgsPointXY point)
+    # double click while panning: reports the topmost visible, unlocked
+    # vector feature under point (canvas CRS). True when there was one
+    def _on_double_click(self, point):
+        tolerance = self._canvas.mapUnitsPerPixel() * PICK_TOLERANCE_PX
+        box = QgsRectangle(point.x() - tolerance, point.y() - tolerance,
+                           point.x() + tolerance, point.y() + tolerance)
+        for layer_id in self._order:                      # top layer first
+            layer = self._project.mapLayer(layer_id)
+            if (layer_id in self._hidden or layer_id in self._locked
+                    or not isinstance(layer, QgsVectorLayer)):
+                continue
+            to_layer = QgsCoordinateTransform(WEB_MERCATOR, layer.crs(), self._project)
+            area = QgsGeometry.fromRect(to_layer.transformBoundingBox(box))
+            request = QgsFeatureRequest().setFilterRect(area.boundingBox())
+            if any(f.geometry().intersects(area) for f in layer.getFeatures(request)):
+                p = self._to_wgs.transform(point)
+                self.layer_double_clicked.emit(layer_id, p.x(), p.y())
+                return True
+        return False
+
+    def meters_per_pixel(self):
+        width = self._canvas.width()
+        units_per_pixel = self._canvas.mapUnitsPerPixel()
+        if width <= 0 or not units_per_pixel or math.isnan(units_per_pixel):
+            return None
+        # measure 100 pixels across the centre of the view on the ground
+        center = self._canvas.center()
+        half = 50 * units_per_pixel
+        try:
+            a = self._to_wgs.transform(QgsPointXY(center.x() - half, center.y()))
+            b = self._to_wgs.transform(QgsPointXY(center.x() + half, center.y()))
+        except Exception:                 # outside Web Mercator (beyond the poles)
+            return None
+        return _haversine_m(a.y(), a.x(), b.y(), b.x()) / 100
+
     def _on_move(self, point):
         p = self._to_wgs.transform(point)
         self.cursor_moved.emit(p.x(), p.y())
@@ -188,6 +256,15 @@ class QgisMapView(MapView):
     def _on_click(self, point, _button):
         p = self._to_wgs.transform(point)
         self.clicked.emit(p.x(), p.y())
+
+
+# (float lat1, float lon1, float lat2, float lon2)
+# great-circle distance in metres between two points in degrees
+def _haversine_m(lat1, lon1, lat2, lon2):
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp, dl = p2 - p1, math.radians(lon2 - lon1)
+    h = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * EARTH_RADIUS_M * math.asin(math.sqrt(h))
 
 
 # (LayerSpec spec)
@@ -228,6 +305,38 @@ def _apply_style(layer, options):
         symbol_layer = symbol.symbolLayer(0)
         if hasattr(symbol_layer, "setStrokeWidth"):
             symbol_layer.setStrokeWidth(float(width))
+    layer.triggerRepaint()
+
+
+# (QgsMapLayer layer, dict options)
+# shows the "label_field" attribute over each feature of a vector layer,
+# with a halo so it can be read on top of satellite imagery
+def _apply_labels(layer, options):
+    field = options.get("label_field")
+    if not field or not isinstance(layer, QgsVectorLayer):
+        return
+    text = QgsTextFormat()
+    text.setSize(options.get("label_size", 11))
+    text.setSizeUnit(Qgis.RenderUnit.Points)
+    text.setColor(QtGui.QColor(options.get("label_color", "#ffffff")))
+    font = text.font()
+    font.setBold(True)
+    text.setFont(font)
+    halo = QgsTextBufferSettings()
+    halo.setEnabled(True)
+    halo.setSize(1.6)
+    halo.setSizeUnit(Qgis.RenderUnit.Millimeters)
+    halo.setColor(QtGui.QColor(options.get("label_halo_color", "#1b1b1b")))
+    text.setBuffer(halo)
+
+    settings = QgsPalLayerSettings()
+    settings.fieldName = field
+    settings.placement = Qgis.LabelPlacement.Horizontal   # inside the polygon
+    settings.centroidInside = True
+    settings.displayAll = True                            # never drop a name
+    settings.setFormat(text)
+    layer.setLabeling(QgsVectorLayerSimpleLabeling(settings))
+    layer.setLabelsEnabled(True)
     layer.triggerRepaint()
 
 

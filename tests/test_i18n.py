@@ -2,6 +2,7 @@
 
 import json
 import unittest
+from unittest import mock
 
 from fieldshift import i18n
 
@@ -30,6 +31,19 @@ class I18nTest(unittest.TestCase):
     def test_unknown_language_raises(self):
         with self.assertRaises(ValueError):
             i18n.set_language("xx")
+
+
+class CommandLineTest(unittest.TestCase):
+    def test_lang_option_is_taken_out_of_the_qt_arguments(self):
+        from fieldshift.app import parse_args
+        self.assertEqual(parse_args(["fieldshift", "--lang", "es", "-style", "fusion"]),
+                         ("es", ["fieldshift", "-style", "fusion"]))
+        self.assertEqual(parse_args(["fieldshift"]), (None, ["fieldshift"]))
+
+    def test_unknown_language_is_refused(self):
+        from fieldshift.app import parse_args
+        with self.assertRaises(SystemExit), mock.patch("sys.stderr"):
+            parse_args(["fieldshift", "--lang", "xx"])
 
 
 if __name__ == "__main__":

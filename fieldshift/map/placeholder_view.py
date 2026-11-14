@@ -41,7 +41,8 @@ class PlaceholderMapView(MapView):
     def add_layer(self, spec):
         layer_id = f"layer{next(self._ids)}"
         self._layers[layer_id] = LayerInfo(layer_id, spec.name, spec.kind, True,
-                                           bool(spec.options.get("locked")))
+                                           bool(spec.options.get("locked")),
+                                           spec.options.get("attribution", ""))
         self.layers_changed.emit()
         return layer_id
 
@@ -59,13 +60,17 @@ class PlaceholderMapView(MapView):
             self.layers_changed.emit()
 
     def set_center(self, lon, lat, scale=None):
-        pass
+        self.view_changed.emit()
 
     def zoom_to_extent(self, xmin, ymin, xmax, ymax):
-        pass
+        self.view_changed.emit()
 
     def zoom_to_layer(self, layer_id):
-        pass
+        if layer_id in self._layers:
+            self.view_changed.emit()
+
+    def meters_per_pixel(self):
+        return None                 # no map, no scale
 
     def refresh(self):
         pass
@@ -80,6 +85,15 @@ class PlaceholderMapView(MapView):
 
     def is_drawing(self):
         return self._drawing
+
+    # (str layer_id, float lon = 0, float lat = 0)
+    # reports a double click on a feature of this layer, as the real map
+    # would; nothing happens for unknown, locked or hidden layers, or while
+    # drawing
+    def simulate_double_click(self, layer_id, lon=0.0, lat=0.0):
+        info = self._layers.get(layer_id)
+        if info is not None and info.visible and not info.locked and not self._drawing:
+            self.layer_double_clicked.emit(layer_id, lon, lat)
 
     # (list vertices)
     # ends the current drawing as if the user had closed this polygon of

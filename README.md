@@ -19,6 +19,17 @@ make cpp
 make run            # or: python3 -m fieldshift
 ```
 
+## Field data
+
+```python
+from fieldshift.api import get_site_data
+site = get_site_data(lon=-71.0, lat=-34.5, radius_m=1500)
+print(site.summary())      # soil type and properties, ET, elevation, weather, ...
+```
+
+See [docs/data-api.md](docs/data-api.md) for the sources and the free keys
+some of them need.
+
 ## Layout
 
 ```
@@ -28,12 +39,16 @@ fieldshift/            Python application
 │   ├── view.py        abstract MapView: the only map API the UI uses
 │   ├── qgis_view.py   QGIS implementation (QgsMapCanvas)
 │   └── placeholder_view.py   used when QGIS is not installed
-├── ui/                main window (map + fields bar left, panel right), dialogs
+├── ui/                main window (map + fields bar left, panel right), field dialog, dialogs
 ├── fields/            the user's fields: GeoJSON store and FieldsManager
+├── analysis/          analyses of a field (placeholders for now) and their results
 ├── i18n/              user-visible texts per language (en.json, es.json)
+├── api/               get_site_data(lon, lat, radius): field data from many sources
+│   └── providers/     one module per data source (SoilGrids, WaPOR, ERA5-Land, ...)
 └── native/            ctypes bindings for the C++ library
 cpp/                   C++ functions callable from Python (CMake)
 data/                  bundled datasets (offline country outlines)
+terrenos/              the user's saved fields, one .geojson each (ignored by git)
 docs/                  documentation, generated API reference in docs/api/
 tools/minidoc_py.py    minidoc-style exporter for the Python code
 tests/                 unit tests (python -m unittest)
@@ -44,6 +59,7 @@ tests/                 unit tests (python -m unittest)
 Start at [docs/README.md](docs/README.md):
 [architecture](docs/architecture.md) ·
 [map abstraction layer](docs/map-abstraction.md) ·
+[field data API](docs/data-api.md) ·
 [C++ functions](docs/cpp.md) ·
 [documenting with minidoc](docs/minidoc.md) ·
 [contributing](docs/contributing.md) ·

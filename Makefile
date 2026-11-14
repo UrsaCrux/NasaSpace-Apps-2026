@@ -14,6 +14,8 @@ MAMBA_ROOT  ?= $(HOME)/micromamba
 ENV_NAME    ?= fieldshift
 CONDA       ?= 1
 ENV_DIR     := $(MAMBA_ROOT)/envs/$(ENV_NAME)
+# packages used by fieldshift.api (data sources)
+DATA_PKGS   := requests rasterio xarray h5py h5netcdf netcdf4 earthaccess cdsapi
 
 ifeq ($(CONDA)$(if $(MAMBA),y)$(if $(wildcard $(ENV_DIR)/bin/python),y),1yy)
   RUN := $(MAMBA) run -r $(MAMBA_ROOT) -n $(ENV_NAME) python
@@ -24,19 +26,26 @@ BUILD_DIR   := cpp/build
 MINIDOC_DIR := .tools/minidoc
 MINIDOC_URL := https://gitlab.com/matsuori/minidoc.git
 
-.PHONY: help run env which cpp test docs docs-cpp docs-python clean
+# language of the texts: make run LANG_UI=es  (see docs/i18n.md). Not LANG,
+# which the operating system already uses.
+LANG_UI     ?=
+
+.PHONY: help run env env-data which site cpp test test-live docs docs-cpp docs-python clean
 
 help:
 	@echo "make env          create the micromamba environment with QGIS 4"
 	@echo "make run          start the application (uses the env if present)"
+	@echo "make run LANG_UI=es   same, with the texts in Spanish (en, es)"
+	@echo "make env-data     add the data-API packages to an existing env"
 	@echo "make which        show which Python make run will use"
+	@echo "make site LON=.. LAT=.. [RADIUS=..]   print field data for a position"
 	@echo "make cpp          build the C++ library in cpp/build"
 	@echo "make test         run the tests"
 	@echo "make docs         regenerate docs/api/ with minidoc"
 	@echo "make clean        remove build outputs"
 
 run:
-	$(RUN) -m fieldshift
+	$(RUN) -m fieldshift $(if $(LANG_UI),--lang $(LANG_UI))
 
 which:
 	@echo "make run uses: $(RUN)"
@@ -46,7 +55,17 @@ which:
 
 env:
 	@test -n "$(MAMBA)" || { echo "micromamba not found: see docs/README.md"; exit 1; }
-	$(MAMBA) create -y -r $(MAMBA_ROOT) -n $(ENV_NAME) -c conda-forge "qgis>=4" python=3.12
+	$(MAMBA) create -y -r $(MAMBA_ROOT) -n $(ENV_NAME) -c conda-forge "qgis>=4" python=3.12 $(DATA_PKGS)
+
+env-data:
+	@test -n "$(MAMBA)" || { echo "micromamba not found: see docs/README.md"; exit 1; }
+	$(MAMBA) install -y -r $(MAMBA_ROOT) -n $(ENV_NAME) -c conda-forge $(DATA_PKGS)
+
+LON    ?= -71.0
+LAT    ?= -34.5
+RADIUS ?= 1000
+site:
+	$(RUN) -m fieldshift.api $(LON) $(LAT) --radius $(RADIUS)
 
 cpp:
 	cmake -S cpp -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=Release
@@ -54,6 +73,10 @@ cpp:
 
 test:
 	$(RUN) -m unittest discover -s tests -v
+
+# also query the public data APIs that need no key
+test-live:
+	FIELDSHIFT_LIVE=1 $(RUN) -m unittest discover -s tests -v
 
 docs: docs-cpp docs-python
 

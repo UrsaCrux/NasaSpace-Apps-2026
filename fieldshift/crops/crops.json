@@ -1,0 +1,550 @@
+{
+ "_comment": "PLACEHOLDER catalogue: crop names are real, the varieties are made up ('variety 1', 'variety 2'...). Ids: '<crop id>.v<number>'.",
+ "crops": [
+  {
+   "id": "peach",
+   "names": {
+    "en": "Peach",
+    "es": "Durazno"
+   },
+   "aliases": {
+    "es": [
+     "melocotón"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "nectarine",
+   "names": {
+    "en": "Nectarine",
+    "es": "Nectarín"
+   },
+   "aliases": {
+    "es": [
+     "nectarina"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "plum",
+   "names": {
+    "en": "Plum",
+    "es": "Ciruelo"
+   },
+   "aliases": {
+    "es": [
+     "ciruela"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "cherry",
+   "names": {
+    "en": "Cherry",
+    "es": "Cerezo"
+   },
+   "aliases": {
+    "es": [
+     "cereza"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "apple",
+   "names": {
+    "en": "Apple",
+    "es": "Manzano"
+   },
+   "aliases": {
+    "es": [
+     "manzana"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "pear",
+   "names": {
+    "en": "Pear",
+    "es": "Peral"
+   },
+   "aliases": {
+    "es": [
+     "pera"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "apricot",
+   "names": {
+    "en": "Apricot",
+    "es": "Damasco"
+   },
+   "aliases": {
+    "es": [
+     "albaricoque",
+     "chabacano"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "table_grape",
+   "names": {
+    "en": "Table grape",
+    "es": "Uva de mesa"
+   },
+   "varieties": 3
+  },
+  {
+   "id": "wine_grape",
+   "names": {
+    "en": "Wine grape",
+    "es": "Uva vinífera"
+   },
+   "aliases": {
+    "es": [
+     "vid",
+     "parra"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "blueberry",
+   "names": {
+    "en": "Blueberry",
+    "es": "Arándano"
+   },
+   "varieties": 3
+  },
+  {
+   "id": "raspberry",
+   "names": {
+    "en": "Raspberry",
+    "es": "Frambuesa"
+   },
+   "varieties": 3
+  },
+  {
+   "id": "strawberry",
+   "names": {
+    "en": "Strawberry",
+    "es": "Frutilla"
+   },
+   "aliases": {
+    "es": [
+     "fresa"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "avocado",
+   "names": {
+    "en": "Avocado",
+    "es": "Palto"
+   },
+   "aliases": {
+    "es": [
+     "palta",
+     "aguacate"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "walnut",
+   "names": {
+    "en": "Walnut",
+    "es": "Nogal"
+   },
+   "aliases": {
+    "es": [
+     "nuez"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "almond",
+   "names": {
+    "en": "Almond",
+    "es": "Almendro"
+   },
+   "aliases": {
+    "es": [
+     "almendra"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "hazelnut",
+   "names": {
+    "en": "Hazelnut",
+    "es": "Avellano europeo"
+   },
+   "aliases": {
+    "es": [
+     "avellana"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "olive",
+   "names": {
+    "en": "Olive",
+    "es": "Olivo"
+   },
+   "aliases": {
+    "es": [
+     "aceituna",
+     "oliva"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "lemon",
+   "names": {
+    "en": "Lemon",
+    "es": "Limonero"
+   },
+   "aliases": {
+    "es": [
+     "limón"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "orange",
+   "names": {
+    "en": "Orange",
+    "es": "Naranjo"
+   },
+   "aliases": {
+    "es": [
+     "naranja"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "mandarin",
+   "names": {
+    "en": "Mandarin",
+    "es": "Mandarino"
+   },
+   "aliases": {
+    "es": [
+     "mandarina",
+     "clementina"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "kiwi",
+   "names": {
+    "en": "Kiwifruit",
+    "es": "Kiwi"
+   },
+   "aliases": {
+    "en": [
+     "kiwi"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "wheat",
+   "names": {
+    "en": "Wheat",
+    "es": "Trigo"
+   },
+   "varieties": 3
+  },
+  {
+   "id": "maize",
+   "names": {
+    "en": "Maize",
+    "es": "Maíz"
+   },
+   "aliases": {
+    "en": [
+     "corn"
+    ],
+    "es": [
+     "choclo"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "rice",
+   "names": {
+    "en": "Rice",
+    "es": "Arroz"
+   },
+   "varieties": 3
+  },
+  {
+   "id": "oat",
+   "names": {
+    "en": "Oat",
+    "es": "Avena"
+   },
+   "varieties": 3
+  },
+  {
+   "id": "barley",
+   "names": {
+    "en": "Barley",
+    "es": "Cebada"
+   },
+   "varieties": 3
+  },
+  {
+   "id": "canola",
+   "names": {
+    "en": "Canola",
+    "es": "Raps"
+   },
+   "aliases": {
+    "en": [
+     "rapeseed"
+    ],
+    "es": [
+     "canola",
+     "colza"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "lupin",
+   "names": {
+    "en": "Lupin",
+    "es": "Lupino"
+   },
+   "aliases": {
+    "es": [
+     "lupín",
+     "altramuz"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "bean",
+   "names": {
+    "en": "Common bean",
+    "es": "Poroto"
+   },
+   "aliases": {
+    "en": [
+     "bean"
+    ],
+    "es": [
+     "frijol",
+     "judía"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "chickpea",
+   "names": {
+    "en": "Chickpea",
+    "es": "Garbanzo"
+   },
+   "varieties": 3
+  },
+  {
+   "id": "lentil",
+   "names": {
+    "en": "Lentil",
+    "es": "Lenteja"
+   },
+   "varieties": 3
+  },
+  {
+   "id": "pea",
+   "names": {
+    "en": "Pea",
+    "es": "Arveja"
+   },
+   "aliases": {
+    "es": [
+     "guisante"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "potato",
+   "names": {
+    "en": "Potato",
+    "es": "Papa"
+   },
+   "aliases": {
+    "es": [
+     "patata"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "sugar_beet",
+   "names": {
+    "en": "Sugar beet",
+    "es": "Remolacha azucarera"
+   },
+   "aliases": {
+    "es": [
+     "betarraga"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "tomato",
+   "names": {
+    "en": "Tomato",
+    "es": "Tomate"
+   },
+   "varieties": 3
+  },
+  {
+   "id": "onion",
+   "names": {
+    "en": "Onion",
+    "es": "Cebolla"
+   },
+   "varieties": 3
+  },
+  {
+   "id": "garlic",
+   "names": {
+    "en": "Garlic",
+    "es": "Ajo"
+   },
+   "varieties": 3
+  },
+  {
+   "id": "lettuce",
+   "names": {
+    "en": "Lettuce",
+    "es": "Lechuga"
+   },
+   "varieties": 3
+  },
+  {
+   "id": "pumpkin",
+   "names": {
+    "en": "Pumpkin",
+    "es": "Zapallo"
+   },
+   "aliases": {
+    "es": [
+     "calabaza"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "sunflower",
+   "names": {
+    "en": "Sunflower",
+    "es": "Maravilla"
+   },
+   "aliases": {
+    "es": [
+     "girasol"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "alfalfa",
+   "names": {
+    "en": "Alfalfa",
+    "es": "Alfalfa"
+   },
+   "aliases": {
+    "en": [
+     "lucerne"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "red_clover",
+   "names": {
+    "en": "Red clover",
+    "es": "Trébol rosado"
+   },
+   "aliases": {
+    "es": [
+     "trébol rojo"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "ryegrass",
+   "names": {
+    "en": "Ryegrass",
+    "es": "Ballica"
+   },
+   "aliases": {
+    "es": [
+     "raigrás"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "vetch",
+   "names": {
+    "en": "Vetch",
+    "es": "Vicia"
+   },
+   "aliases": {
+    "es": [
+     "arvejilla"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "quinoa",
+   "names": {
+    "en": "Quinoa",
+    "es": "Quínoa"
+   },
+   "aliases": {
+    "es": [
+     "quinua"
+    ]
+   },
+   "varieties": 3
+  },
+  {
+   "id": "hemp",
+   "names": {
+    "en": "Hemp",
+    "es": "Cáñamo"
+   },
+   "varieties": 3
+  }
+ ]
+}

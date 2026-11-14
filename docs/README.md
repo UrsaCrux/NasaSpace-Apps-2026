@@ -4,9 +4,12 @@
 |------|----------------|
 | [architecture.md](architecture.md) | How the pieces fit together |
 | [map-abstraction.md](map-abstraction.md) | `MapView` / `LayerSpec` API, adding a map backend |
+| [data-api.md](data-api.md) | `get_site_data(lon, lat, radius)`: weather, soil, water, terrain from the data sources |
 | [cpp.md](cpp.md) | Writing C++ functions and calling them from Python |
 | [minidoc.md](minidoc.md) | How code is documented and how `docs/api/` is generated |
 | [contributing.md](contributing.md) | Workflow, adding a panel feature, tests |
+| [analysis.md](analysis.md) | Analyze button, result tabs, adding an analysis |
+| [fields.md](fields.md) | Fields: files, the save dialog (crop search, zone data loaded from the APIs), `DATA_FIELDS` |
 | [i18n.md](i18n.md) | User-visible texts per language (`en.json`, `es.json`) |
 | [api/PYTHON_API.md](api/PYTHON_API.md) | Generated reference of the Python code |
 | [api/CPP_API.md](api/CPP_API.md) | Generated reference of the C++ code |
@@ -157,5 +160,6 @@ PyQt6 must be built for the same Python (`dev-python/pyqt6`, pulled in by
 | `make run` | start the app (inside that environment when it exists) |
 | `make which` | show the Python / QGIS `make run` uses |
 | `make cpp` | build `cpp/build/libfieldshift_core.so` |
-| `make test` | run the tests |
+| `make site LON=.. LAT=..` | print field data for a position |
+| `make test` | run the tests (`make test-live` also queries public APIs) |
 | `make docs` | regenerate `docs/api/` |
