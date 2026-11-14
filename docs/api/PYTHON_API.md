@@ -593,6 +593,17 @@ WaPOR dekad codes overlapping the period, e.g. ["2026-10-D3", "2026-11-D1"]
 
 ### Functions
 
+#### `parse_args`
+
+```python
+def parse_args(argv)
+```
+
+- **Arguments:** `(list argv)`
+- **Line:** 40
+
+reads the command line: returns (str language or None, list of the arguments left for Qt). --lang must be one of i18n.available_languages(); anything else makes the program print the usage and exit
+
 #### `main`
 
 ```python
@@ -600,17 +611,17 @@ def main(argv=None)
 ```
 
 - **Arguments:** `(list argv)`
-- **Line:** 30
+- **Line:** 53
 
-creates the QApplication (QgsApplication when QGIS is present), shows the main window and runs the event loop; returns the exit code
+creates the QApplication (QgsApplication when QGIS is present), shows the main window and runs the event loop; returns the exit code. --lang CODE picks the language of the texts
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
-| `DATA_DIR` | folder with the bundled datasets | 12 |
-| `COUNTRIES` | offline country outlines, drawn below the tiles (visible without internet). base layers are "locked": the panel does not list them, so they cannot be removed | 16 |
-| `DEFAULT_BASEMAP` | OpenStreetMap tile layer loaded at start-up | 20 |
+| `DATA_DIR` | folder with the bundled datasets | 14 |
+| `COUNTRIES` | offline country outlines, drawn below the tiles (visible without internet). base layers are "locked": the panel does not list them, so they cannot be removed | 18 |
+| `DEFAULT_BASEMAP` | Sentinel-2 cloudless 2024 (EOX): 10 m satellite mosaic, no API key. free for non-commercial use under CC BY-NC-SA 4.0 as long as the credit below stays visible (https://cloudless.eox.at/documentation/license); a commercial product needs an agreement with EOX. tiles exist up to zoom 18. to change the basemap, change only this constant | 26 |
 
 ## `fieldshift/fields/manager.py`
 
@@ -622,11 +633,22 @@ creates the QApplication (QgsApplication when QGIS is present), shows the main w
 class FieldsManager
 ```
 
-- **Line:** 21
+- **Line:** 35
 
 the user's fields: saves them with a FieldStore and shows each one as a MapView layer. the UI (fields bar, side panel, future field sheets) shares one FieldsManager
 
 ### Functions
+
+#### `style_colors`
+
+```python
+def style_colors(color)
+```
+
+- **Arguments:** `(str color)`
+- **Line:** 26
+
+(fill, stroke) CSS colours of a field on the map: "#rrggbb" becomes a semi-transparent "#AARRGGBB" fill and a darker "#rrggbb" outline
 
 #### `FieldsManager.__init__`
 
@@ -635,7 +657,7 @@ def __init__(self, view, store=None)
 ```
 
 - **Arguments:** `(MapView view, FieldStore store = None)`
-- **Line:** 25
+- **Line:** 39
 
 loads the fields saved in earlier sessions onto the map
 
@@ -646,7 +668,7 @@ def count(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 42
+- **Line:** 56
 
 how many fields are on the map
 
@@ -657,7 +679,7 @@ def is_field(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 47
+- **Line:** 61
 
 True when the layer is a saved field
 
@@ -668,7 +690,7 @@ def field(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 52
+- **Line:** 66
 
 the Field shown by this layer, or None
 
@@ -679,7 +701,7 @@ def layer_ids(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 57
+- **Line:** 71
 
 layer ids of every field, oldest first
 
@@ -690,7 +712,7 @@ def selected(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 62
+- **Line:** 76
 
 layer ids of the fields the user chose, oldest first
 
@@ -701,7 +723,7 @@ def is_selected(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 67
+- **Line:** 81
 
 True when the user chose this field
 
@@ -712,20 +734,31 @@ def set_selected(self, layer_id, selected)
 ```
 
 - **Arguments:** `(str layer_id, bool selected)`
-- **Line:** 72
+- **Line:** 86
 
 adds a field to the chosen ones or takes it out
 
 #### `FieldsManager.add`
 
 ```python
-def add(self, name, vertices)
+def add(self, name, vertices, color=None, data=None)
 ```
 
-- **Arguments:** `(str name, list vertices)`
-- **Line:** 84
+- **Arguments:** `(str name, list vertices, str color = None, dict data = None)`
+- **Line:** 98
 
 saves a new field and shows it on the map; returns its layer id. raises ValueError (bad name or polygon, layer cannot load) or OSError
+
+#### `FieldsManager.update`
+
+```python
+def update(self, layer_id, name, color=None, data=None)
+```
+
+- **Arguments:** `(str layer_id, str name, str color = None, dict data = None)`
+- **Line:** 113
+
+changes name, colour and data of a field: the file, the map layer and the lists follow, and the field stays checked if it was. the layer gets a new id, which is returned. raises ValueError (not a field, bad name, layer cannot load) or OSError; then nothing has changed
 
 #### `FieldsManager.remove`
 
@@ -734,7 +767,7 @@ def remove(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 97
+- **Line:** 135
 
 removes a field from the map and deletes its file; returns False when the layer is not a field
 
@@ -745,7 +778,7 @@ def zoom_to(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 112
+- **Line:** 150
 
 centres and zooms the map on a field, with some margin around it
 
@@ -756,7 +789,7 @@ def export(self, path, layer_ids=None)
 ```
 
 - **Arguments:** `(str path, list layer_ids = None)`
-- **Line:** 126
+- **Line:** 164
 
 writes these fields (all when None) to one GeoJSON file; returns how many. raises OSError
 
@@ -764,10 +797,80 @@ writes these fields (all when None) to one GeoJSON file; returns how many. raise
 
 | Name | Description | Line |
 |------|-------------|------|
-| `FIELD_FILL` | look of fields on the map: semi-transparent fill (#AARRGGBB), solid outline | 10 |
-| `ZOOM_MARGIN` | extra space around a field when zooming to it (fraction of its size) | 15 |
-| `FieldsManager.fields_changed` | emitted with no arguments after a field is added or removed | 29 |
-| `FieldsManager.selection_changed` | emitted with no arguments when the set of chosen fields changes | 31 |
+| `FIELD_FILL_ALPHA` | look of fields on the map: the field's colour with a semi-transparent fill (alpha 0x55, "#AARRGGBB") and a solid, darker outline | 11 |
+| `LABEL_COLOR` | name drawn over each field: white text with a dark halo (readable on satellite) | 16 |
+| `ZOOM_MARGIN` | extra space around a field when zooming to it (fraction of its size) | 20 |
+| `FieldsManager.fields_changed` | emitted with no arguments after a field is added or removed | 43 |
+| `FieldsManager.selection_changed` | emitted with no arguments when the set of chosen fields changes | 45 |
+
+## `fieldshift/fields/schema.py`
+
+### Classes
+
+#### `DataField`
+
+```python
+class DataField
+```
+
+- **Line:** 37
+
+definition of one datum. key names it in the GeoJSON "data" property and in the i18n files. options is for KIND_CHOICE; unit, minimum, maximum and decimals are for KIND_NUMBER
+
+### Functions
+
+#### `normalize_color`
+
+```python
+def normalize_color(text)
+```
+
+- **Arguments:** `(str text)`
+- **Line:** 59
+
+"#rrggbb" in lower case; DEFAULT_COLOR when text is not a colour like that
+
+#### `coerce_value`
+
+```python
+def coerce_value(spec, raw)
+```
+
+- **Arguments:** `(DataField spec, any raw)`
+- **Line:** 67
+
+raw as a valid value of this datum, or None when it is not one
+
+#### `prefill_data`
+
+```python
+def prefill_data(vertices)
+```
+
+- **Arguments:** `(list vertices)`
+- **Line:** 81
+
+the prefilled data of a field: {key: {"value": ..., "source": "prefilled"}} for every entry of DATA_FIELDS, looked up at the centre of the polygon
+
+#### `normalize_data`
+
+```python
+def normalize_data(raw, vertices)
+```
+
+- **Arguments:** `(any raw, list vertices)`
+- **Line:** 92
+
+raw (data read from a file or from the dialog) as a complete, valid data dict: unknown keys are dropped, and a missing or invalid datum gets its prefilled value. so files without data still open
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `KIND_CHOICE` | kinds of datum, and what editor the dialog shows for each | 19 |
+| `SOURCE_PREFILLED` | where a value came from | 24 |
+| `DEFAULT_COLOR` | colour of a field when the user does not choose one (grey) | 28 |
+| `DATA_FIELDS` | PLACEHOLDER LIST: these four data are only examples. The final list has not been decided; edit it here (and in the i18n files) when it is | 49 |
 
 ## `fieldshift/fields/store.py`
 
@@ -779,9 +882,9 @@ writes these fields (all when None) to one GeoJSON file; returns how many. raise
 class Field
 ```
 
-- **Line:** 29
+- **Line:** 41
 
-a saved field. vertices are (lon, lat) tuples in EPSG:4326, counter- clockwise, first vertex not repeated at the end
+a saved field. vertices are (lon, lat) tuples in EPSG:4326, counter- clockwise, first vertex not repeated at the end. color is "#rrggbb" (grey by default); data maps each key of schema.DATA_FIELDS to {"value": ..., "source": "prefilled" | "user"}
 
 #### `FieldStore`
 
@@ -789,9 +892,9 @@ a saved field. vertices are (lon, lat) tuples in EPSG:4326, counter- clockwise, 
 class FieldStore
 ```
 
-- **Line:** 39
+- **Line:** 53
 
-reads and writes the fields of one folder. every field is a GeoJSON file with one Feature whose properties hold name, area_ha and created
+reads and writes the fields of one folder. every field is a GeoJSON file with one Feature whose properties hold name, area_ha, created, color and data
 
 ### Functions
 
@@ -802,9 +905,9 @@ def __init__(self, folder=None)
 ```
 
 - **Arguments:** `(Path folder = None)`
-- **Line:** 44
+- **Line:** 59
 
-uses folder for the files (default: $FIELDSHIFT_FIELDS_DIR, else DEFAULT_FIELDS_DIR); it is created on the first save
+uses folder for the files (default: $FIELDSHIFT_FIELDS_DIR, else DEFAULT_FIELDS_DIR); it is created on the first save. with the default folder, fields saved in LEGACY_FIELDS_DIR are moved into it first
 
 #### `FieldStore.fields`
 
@@ -813,7 +916,7 @@ def fields(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 50
+- **Line:** 68
 
 saved fields, oldest first; unreadable files are skipped with a warning
 
@@ -824,7 +927,7 @@ def get(self, name)
 ```
 
 - **Arguments:** `(str name)`
-- **Line:** 61
+- **Line:** 79
 
 the field with this name (case-insensitive), or None
 
@@ -835,31 +938,42 @@ def suggest_name(self, base)
 ```
 
 - **Arguments:** `(str base)`
-- **Line:** 67
+- **Line:** 85
 
 first free name of the form "<base> 1", "<base> 2"...
 
 #### `FieldStore.name_problem`
 
 ```python
-def name_problem(self, name)
+def name_problem(self, name, ignore=None)
 ```
 
-- **Arguments:** `(str name)`
-- **Line:** 76
+- **Arguments:** `(str name, str ignore = None)`
+- **Line:** 96
 
-why name cannot be used: "empty", "duplicate", or None when it is fine
+why name cannot be used: "empty", "duplicate", or None when it is fine. the field called ignore (case-insensitive) does not count as a duplicate: pass the field's own name when editing it
 
 #### `FieldStore.create`
 
 ```python
-def create(self, name, vertices, created=None)
+def create(self, name, vertices, created=None, color=None, data=None)
 ```
 
-- **Arguments:** `(str name, list vertices, str created = None)`
-- **Line:** 86
+- **Arguments:** `(str name, list vertices, str created = None, str color = None, dict data = None)`
+- **Line:** 110
 
-saves a new field from (lon, lat) vertices and returns it. raises ValueError for a bad name or fewer than MIN_VERTICES distinct vertices
+saves a new field from (lon, lat) vertices and returns it. color is grey when None or invalid; data (see schema.py) is completed with prefilled values. raises ValueError for a bad name or fewer than MIN_VERTICES distinct vertices
+
+#### `FieldStore.update`
+
+```python
+def update(self, name, new_name, color=None, data=None)
+```
+
+- **Arguments:** `(str name, str new_name, str color = None, dict data = None)`
+- **Line:** 134
+
+changes name, colour and data of the saved field called name; None keeps the current colour or data. the file is renamed when the name changes; shape, area and creation date stay. returns the updated Field. raises ValueError when the field does not exist or new_name is empty or taken by another field (the field's own name is fine)
 
 #### `FieldStore.delete`
 
@@ -868,7 +982,7 @@ def delete(self, name)
 ```
 
 - **Arguments:** `(str name)`
-- **Line:** 105
+- **Line:** 157
 
 deletes the field file; returns False when there is no such field
 
@@ -879,9 +993,20 @@ def export(self, path, names=None)
 ```
 
 - **Arguments:** `(str path, list names = None)`
-- **Line:** 115
+- **Line:** 167
 
 writes the fields with these names (all when None) to one GeoJSON FeatureCollection (EPSG:4326); returns how many fields were written
+
+#### `migrate_fields`
+
+```python
+def migrate_fields(old_folder, new_folder)
+```
+
+- **Arguments:** `(Path old_folder, Path new_folder)`
+- **Line:** 196
+
+moves the .geojson files of old_folder into new_folder (created if needed) and removes old_folder when it ends up empty. a file whose name already exists in new_folder stays where it is, with a warning. returns how many files were moved
 
 #### `to_feature`
 
@@ -890,7 +1015,7 @@ def to_feature(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 140
+- **Line:** 221
 
 GeoJSON Feature (dict) of a field, with a closed polygon ring
 
@@ -901,7 +1026,7 @@ def polygon_area_ha(vertices)
 ```
 
 - **Arguments:** `(list vertices)`
-- **Line:** 152
+- **Line:** 234
 
 area in hectares of a lon/lat polygon, on a sphere (error well under 1 %)
 
@@ -909,9 +1034,11 @@ area in hectares of a lon/lat polygon, on a sphere (error well under 1 %)
 
 | Name | Description | Line |
 |------|-------------|------|
-| `DEFAULT_FIELDS_DIR` | default folder for saved fields (data/local/ is ignored by git); the FIELDSHIFT_FIELDS_DIR environment variable overrides it (tests, demos) | 14 |
-| `MIN_VERTICES` | fewest vertices a field polygon can have | 17 |
-| `EARTH_RADIUS_M` | equatorial radius of the WGS84 ellipsoid, in metres | 20 |
+| `REPO_DIR` | root of the repository | 16 |
+| `DEFAULT_FIELDS_DIR` | default folder for saved fields: terrenos/ in the repository root, ignored by git. one .geojson per field, named after the field. the FIELDSHIFT_FIELDS_DIR environment variable overrides it (tests, demos) | 21 |
+| `LEGACY_FIELDS_DIR` | folder used by earlier versions; its files are moved to DEFAULT_FIELDS_DIR | 24 |
+| `MIN_VERTICES` | fewest vertices a field polygon can have | 27 |
+| `EARTH_RADIUS_M` | equatorial radius of the WGS84 ellipsoid, in metres | 30 |
 
 ## `fieldshift/i18n/__init__.py`
 
@@ -1063,9 +1190,9 @@ kind of data a layer holds; each backend maps it to its own provider
 class LayerSpec
 ```
 
-- **Line:** 20
+- **Line:** 24
 
-what to load: the UI builds one of these and hands it to MapView.add_layer. options may hold "provider" (force a data provider), "locked" (True: a base layer the panel does not list, so the user cannot remove it) and, for vectors, "fill_color" / "stroke_color" (CSS colour strings, "#AARRGGBB" for transparency) and "stroke_width" (millimetres)
+what to load: the UI builds one of these and hands it to MapView.add_layer. options may hold "provider" (force a data provider), "locked" (True: a base layer the panel does not list, so the user cannot remove it), "attribution" (credit text the window must show while the layer is visible) and, for vectors, "fill_color" / "stroke_color" (CSS colour strings, "#AARRGGBB" for transparency), "stroke_width" (millimetres) and the text drawn over each feature: "label_field" (attribute to show; no label when absent), "label_color" / "label_halo_color" (text and outline, CSS colours) and "label_size" (points)
 
 #### `LayerInfo`
 
@@ -1073,9 +1200,9 @@ what to load: the UI builds one of these and hands it to MapView.add_layer. opti
 class LayerInfo
 ```
 
-- **Line:** 48
+- **Line:** 53
 
-what MapView.layers returns: a loaded layer as seen by the UI. locked is True for base layers added with the "locked" option
+what MapView.layers returns: a loaded layer as seen by the UI. locked is True for base layers added with the "locked" option; attribution is the credit text of the "attribution" option ("" when there is none)
 
 ### Functions
 
@@ -1086,7 +1213,7 @@ def xyz(cls, name, url, zmin=0, zmax=19, **options)
 ```
 
 - **Arguments:** `(str name, str url_template, int zmin = 0, int zmax = 19, **options)`
-- **Line:** 29
+- **Line:** 33
 
 tile layer such as OpenStreetMap; url uses {x} {y} {z} placeholders
 
@@ -1097,7 +1224,7 @@ def vector(cls, name, path, **options)
 ```
 
 - **Arguments:** `(str name, str path, **options)`
-- **Line:** 35
+- **Line:** 39
 
 vector file readable by OGR: GeoJSON, Shapefile, GeoPackage, KML...
 
@@ -1108,9 +1235,36 @@ def raster(cls, name, path)
 ```
 
 - **Arguments:** `(str name, str path)`
-- **Line:** 41
+- **Line:** 45
 
 raster file readable by GDAL: GeoTIFF, NetCDF, HDF...
+
+## `fieldshift/map/pick_tool.py`
+
+### Classes
+
+#### `PickPanTool`
+
+```python
+class PickPanTool(QgsMapToolPan)
+```
+
+- **Line:** 13
+
+the default map tool: drag to pan, wheel to zoom. a double click first asks on_double_click whether a feature is under the cursor; only when nobody claims the click does it zoom in as the plain pan tool does. unlike the plain pan tool, a click without dragging does not recentre the map: the map would jump away under the cursor while the user double-clicks a field
+
+### Functions
+
+#### `PickPanTool.__init__`
+
+```python
+def __init__(self, canvas, on_double_click)
+```
+
+- **Arguments:** `(QgsMapCanvas canvas, callable on_double_click)`
+- **Line:** 18
+
+on_double_click gets the clicked QgsPointXY (canvas CRS) and returns True when it used the click
 
 ## `fieldshift/map/placeholder_view.py`
 
@@ -1139,6 +1293,17 @@ def __init__(self)
 
 creates an empty in-memory view
 
+#### `PlaceholderMapView.simulate_double_click`
+
+```python
+def simulate_double_click(self, layer_id, lon=0.0, lat=0.0)
+```
+
+- **Arguments:** `(str layer_id, float lon = 0, float lat = 0)`
+- **Line:** 89
+
+reports a double click on a feature of this layer, as the real map would; nothing happens for unknown, locked or hidden layers, or while drawing
+
 #### `PlaceholderMapView.simulate_polygon`
 
 ```python
@@ -1146,7 +1311,7 @@ def simulate_polygon(self, vertices)
 ```
 
 - **Arguments:** `(list vertices)`
-- **Line:** 87
+- **Line:** 97
 
 ends the current drawing as if the user had closed this polygon of (lon, lat) vertices; there is no map to click on, so tests use this
 
@@ -1160,7 +1325,7 @@ ends the current drawing as if the user had closed this polygon of (lon, lat) ve
 class PolygonDrawTool(QgsMapTool)
 ```
 
-- **Line:** 26
+- **Line:** 32
 
 map tool for drawing a polygon: left click adds a vertex, double click, right click or a click on the first vertex closes it, Backspace removes the last vertex, Esc cancels. a rubber band previews the polygon up to the cursor. points are in the canvas CRS
 
@@ -1173,7 +1338,7 @@ def __init__(self, canvas, on_finished, on_cancelled)
 ```
 
 - **Arguments:** `(QgsMapCanvas canvas, callable on_finished, callable on_cancelled)`
-- **Line:** 30
+- **Line:** 36
 
 on_finished gets the list of QgsPointXY vertices; on_cancelled no arguments
 
@@ -1184,7 +1349,7 @@ def start(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 50
+- **Line:** 63
 
 begins a new, empty drawing
 
@@ -1195,9 +1360,20 @@ def is_active(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 56
+- **Line:** 69
 
 True between start() and the end of the drawing
+
+#### `PolygonDrawTool.closing`
+
+```python
+def closing(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 75
+
+True when a click at the cursor would close the polygon: at least MIN_VERTICES vertices and the cursor within CLOSE_TOLERANCE_PX of the first
 
 #### `PolygonDrawTool.points`
 
@@ -1206,7 +1382,7 @@ def points(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 61
+- **Line:** 82
 
 vertices placed so far (QgsPointXY, canvas CRS)
 
@@ -1217,7 +1393,7 @@ def add_vertex(self, point)
 ```
 
 - **Arguments:** `(QgsPointXY point)`
-- **Line:** 66
+- **Line:** 87
 
 adds a vertex unless it is on top of the previous one
 
@@ -1228,7 +1404,7 @@ def undo_vertex(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 76
+- **Line:** 97
 
 removes the last vertex
 
@@ -1239,7 +1415,7 @@ def finish(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 84
+- **Line:** 105
 
 closes the polygon and calls on_finished; returns False (and keeps drawing) when there are fewer than MIN_VERTICES vertices
 
@@ -1250,7 +1426,7 @@ def cancel(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 95
+- **Line:** 116
 
 abandons the drawing and calls on_cancelled; no-op when idle
 
@@ -1261,6 +1437,7 @@ abandons the drawing and calls on_cancelled; no-op when idle
 | `CLOSE_TOLERANCE_PX` | a click closer than this (pixels) to the first vertex closes the polygon | 9 |
 | `DUPLICATE_TOLERANCE_PX` | a click closer than this (pixels) to the last vertex adds no new vertex | 11 |
 | `MIN_VERTICES` | fewest vertices of a polygon | 13 |
+| `VERTEX_SIZE_PX` | size (pixels) of a vertex marker, and of the first one when a click would close the polygon; the closing marker is amber so it stands out | 21 |
 
 ## `fieldshift/map/qgis_view.py`
 
@@ -1272,7 +1449,7 @@ abandons the drawing and calls on_cancelled; no-op when idle
 class QgisMapView(MapView)
 ```
 
-- **Line:** 30
+- **Line:** 40
 
 MapView backed by QgsMapCanvas; layers are registered in QgsProject.instance()
 
@@ -1285,7 +1462,7 @@ def __init__(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 34
+- **Line:** 44
 
 creates the canvas in Web Mercator with pan as the default tool
 
@@ -1296,7 +1473,7 @@ def canvas(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 65
+- **Line:** 76
 
 the underlying QgsMapCanvas, for code that needs QGIS-specific features
 
@@ -1307,7 +1484,7 @@ def set_click_mode(self, enabled)
 ```
 
 - **Arguments:** `(bool enabled)`
-- **Line:** 70
+- **Line:** 81
 
 switches between the pan tool and the click tool (emits `clicked`)
 
@@ -1315,9 +1492,10 @@ switches between the pan tool and the click tool (emits `clicked`)
 
 | Name | Description | Line |
 |------|-------------|------|
-| `WGS84` | CRS the public API speaks (longitude / latitude) | 22 |
-| `WEB_MERCATOR` | CRS the canvas draws in (same as web tiles) | 24 |
-| `WORLD` | initial extent in lon/lat (Web Mercator is undefined at the poles) | 26 |
+| `WGS84` | CRS the public API speaks (longitude / latitude) | 30 |
+| `WEB_MERCATOR` | CRS the canvas draws in (same as web tiles) | 32 |
+| `PICK_TOLERANCE_PX` | a double click counts as "on a feature" within this many pixels of it | 34 |
+| `WORLD` | initial extent in lon/lat (Web Mercator is undefined at the poles) | 36 |
 
 ## `fieldshift/map/view.py`
 
@@ -1353,7 +1531,7 @@ def widget(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 31
+- **Line:** 36
 
 the QWidget to put in a window; created once and reused
 
@@ -1364,7 +1542,7 @@ def add_layer(self, spec)
 ```
 
 - **Arguments:** `(LayerSpec spec)`
-- **Line:** 38
+- **Line:** 43
 
 loads the layer on top of the others; returns its id. raises ValueError when the source cannot be opened
 
@@ -1375,7 +1553,7 @@ def remove_layer(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 44
+- **Line:** 49
 
 removes a layer added with add_layer; unknown ids are ignored
 
@@ -1386,7 +1564,7 @@ def layers(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 50
+- **Line:** 55
 
 list of LayerInfo, top layer first
 
@@ -1397,7 +1575,7 @@ def set_layer_visible(self, layer_id, visible)
 ```
 
 - **Arguments:** `(str layer_id, bool visible)`
-- **Line:** 56
+- **Line:** 61
 
 shows or hides a layer without removing it
 
@@ -1408,7 +1586,7 @@ def set_center(self, lon, lat, scale=None)
 ```
 
 - **Arguments:** `(float lon, float lat, float scale = None)`
-- **Line:** 62
+- **Line:** 67
 
 centres the map on a point; keeps the current scale when none is given
 
@@ -1419,7 +1597,7 @@ def zoom_to_extent(self, xmin, ymin, xmax, ymax)
 ```
 
 - **Arguments:** `(float xmin, float ymin, float xmax, float ymax)`
-- **Line:** 68
+- **Line:** 73
 
 fits the view to a lon/lat bounding box
 
@@ -1430,7 +1608,7 @@ def zoom_to_layer(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 74
+- **Line:** 79
 
 fits the view to the extent of one layer
 
@@ -1441,7 +1619,7 @@ def refresh(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 80
+- **Line:** 85
 
 redraws the map
 
@@ -1452,7 +1630,7 @@ def start_polygon_drawing(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 89
+- **Line:** 94
 
 lets the user draw a polygon on the map (click adds a vertex; double click, right click or a click on the first vertex closes it; Backspace removes the last vertex; Esc cancels). ends with polygon_drawn or drawing_cancelled, then the map goes back to panning
 
@@ -1463,7 +1641,7 @@ def cancel_drawing(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 95
+- **Line:** 100
 
 stops the current drawing and emits drawing_cancelled; no-op when idle
 
@@ -1474,7 +1652,7 @@ def is_drawing(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 101
+- **Line:** 106
 
 True while a drawing started with start_polygon_drawing is in progress
 
@@ -1487,6 +1665,7 @@ True while a drawing started with start_polygon_drawing is in progress
 | `MapView.layers_changed` | emitted with no arguments after a layer is added, removed or toggled | 20 |
 | `MapView.polygon_drawn` | emitted with (list vertices) when the user closes a polygon started with start_polygon_drawing; vertices are (lon, lat) tuples and the first one is not repeated at the end | 24 |
 | `MapView.drawing_cancelled` | emitted with no arguments when a drawing ends without a polygon | 26 |
+| `MapView.layer_double_clicked` | emitted with (str layer_id, float lon, float lat) when the user double-clicks a feature of a layer that is not locked (topmost layer first). never while drawing a polygon. a double click on a feature does not zoom the map in | 31 |
 
 ## `fieldshift/native/__init__.py`
 
@@ -1558,6 +1737,18 @@ NDVI of two equally long sequences; returns a list of floats
 
 ## `fieldshift/ui/dialogs.py`
 
+### Classes
+
+#### `CenteredDialog`
+
+```python
+class CenteredDialog(QtWidgets.QDialog)
+```
+
+- **Line:** 19
+
+dialog that opens in the middle of its parent's window (Qt does not always do it, e.g. on macOS)
+
 ### Functions
 
 #### `confirm`
@@ -1567,7 +1758,7 @@ def confirm(parent, title, text, confirm_text, danger=False)
 ```
 
 - **Arguments:** `(QWidget parent, str title, str text, str confirm_text, bool danger = False)`
-- **Line:** 19
+- **Line:** 31
 
 asks a yes/no question; returns True when the user clicks confirm_text
 
@@ -1578,7 +1769,7 @@ def inform(parent, title, text)
 ```
 
 - **Arguments:** `(QWidget parent, str title, str text)`
-- **Line:** 31
+- **Line:** 43
 
 shows a message with an OK button
 
@@ -1588,19 +1779,180 @@ shows a message with an OK button
 |------|-------------|------|
 | `DANGER_STYLE` | style of the button that deletes something | 12 |
 
-## `fieldshift/ui/fields_bar.py`
+## `fieldshift/ui/field_dialog.py`
 
 ### Classes
 
-#### `FieldNameDialog`
+#### `FieldDialog`
 
 ```python
-class FieldNameDialog(QtWidgets.QDialog)
+class FieldDialog(CenteredDialog)
 ```
 
-- **Line:** 26
+- **Line:** 42
 
-dialog asking for the name of a new field: required, unique, pre-filled with the next free "Field N"
+dialog with the details of a field. needs a name (required, unique); the colour (grey if never chosen) and the zone data of schema.DATA_FIELDS are optional. each datum starts prefilled; changing it marks it "edited" and a button brings the prefilled value back. with field= it edits that saved field (its own name is not a duplicate), otherwise it asks for a new one drawn with vertices=
+
+### Functions
+
+#### `format_value`
+
+```python
+def format_value(spec, value)
+```
+
+- **Arguments:** `(str key, any value)`
+- **Line:** 21
+
+text of a datum's value in the current language ("Clay", "6.5 ", "Yes"...)
+
+#### `data_label`
+
+```python
+def data_label(key)
+```
+
+- **Arguments:** `(str key)`
+- **Line:** 32
+
+translated name of a datum ("Soil type")
+
+#### `FieldDialog.__init__`
+
+```python
+def __init__(self, store, vertices=None, field=None, parent=None)
+```
+
+- **Arguments:** `(FieldStore store, list vertices = None, Field field = None, QWidget parent = None)`
+- **Line:** 46
+
+builds the dialog; Save stays disabled while the name is not valid
+
+#### `FieldDialog.name`
+
+```python
+def name(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 102
+
+the name typed, without surrounding spaces
+
+#### `FieldDialog.color`
+
+```python
+def color(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 107
+
+the chosen colour as "#rrggbb" (grey when none was chosen)
+
+#### `FieldDialog.data`
+
+```python
+def data(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 112
+
+the data as schema.DATA_FIELDS describes it: {key: {"value", "source"}}
+
+#### `FieldDialog.is_modified`
+
+```python
+def is_modified(self, key)
+```
+
+- **Arguments:** `(str key)`
+- **Line:** 119
+
+True when the user changed this datum (it is not the prefilled one)
+
+#### `FieldDialog.set_value`
+
+```python
+def set_value(self, key, value)
+```
+
+- **Arguments:** `(str key, any value)`
+- **Line:** 124
+
+sets a datum as if the user had typed it (marks it edited)
+
+#### `FieldDialog.reset_value`
+
+```python
+def reset_value(self, key)
+```
+
+- **Arguments:** `(str key)`
+- **Line:** 131
+
+puts the prefilled value back and marks the datum as not edited
+
+## `fieldshift/ui/field_list.py`
+
+### Classes
+
+#### `FieldList`
+
+```python
+class FieldList(QtWidgets.QListWidget)
+```
+
+- **Line:** 48
+
+QListWidget whose field rows have an Edit button. clicking the button emits edit_requested(layer_id) and does nothing else (no zoom, no check)
+
+### Functions
+
+#### `edit_button_rect`
+
+```python
+def edit_button_rect(row_rect, metrics)
+```
+
+- **Arguments:** `(QRect row_rect, QFontMetrics metrics)`
+- **Line:** 17
+
+where the Edit button of a row is: right-aligned, slightly smaller than the row
+
+#### `FieldList.__init__`
+
+```python
+def __init__(self, parent=None)
+```
+
+- **Arguments:** `(QWidget parent = None)`
+- **Line:** 55
+
+creates the list with the Edit-button delegate
+
+#### `FieldList.edit_button_at`
+
+```python
+def edit_button_at(self, pos)
+```
+
+- **Arguments:** `(QPoint pos)`
+- **Line:** 62
+
+the layer id whose Edit button is at viewport position pos, or None
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `LAYER_ID_ROLE` | role: the layer id of a row; and True on rows that get an Edit button | 8 |
+| `FieldList.edit_requested` | emitted with the layer id (str) when an Edit button is clicked | 51 |
+
+## `fieldshift/ui/fields_bar.py`
+
+### Classes
 
 #### `FieldsBar`
 
@@ -1608,33 +1960,11 @@ dialog asking for the name of a new field: required, unique, pre-filled with the
 class FieldsBar(QtWidgets.QFrame)
 ```
 
-- **Line:** 73
+- **Line:** 27
 
 bar placed under the map: draws new fields and exports the checked ones (all of them when none is checked)
 
 ### Functions
-
-#### `FieldNameDialog.__init__`
-
-```python
-def __init__(self, store, parent=None)
-```
-
-- **Arguments:** `(FieldStore store, QWidget parent = None)`
-- **Line:** 30
-
-builds the dialog; Save stays disabled while the name is not valid
-
-#### `FieldNameDialog.name`
-
-```python
-def name(self)
-```
-
-- **Arguments:** `()`
-- **Line:** 60
-
-the name typed, without surrounding spaces
 
 #### `FieldsBar.__init__`
 
@@ -1643,7 +1973,7 @@ def __init__(self, view, fields, parent=None)
 ```
 
 - **Arguments:** `(MapView view, FieldsManager fields, QWidget parent = None)`
-- **Line:** 77
+- **Line:** 31
 
 builds the bar and listens to the drawing events of the view
 
@@ -1651,7 +1981,7 @@ builds the bar and listens to the drawing events of the view
 
 | Name | Description | Line |
 |------|-------------|------|
-| `BAR_STYLE` | look of the bar and of its main button | 14 |
+| `BAR_STYLE` | look of the bar and of its main button | 15 |
 
 ## `fieldshift/ui/fields_data.py`
 
@@ -1663,9 +1993,9 @@ builds the bar and listens to the drawing events of the view
 class FieldsDataBox(QtWidgets.QGroupBox)
 ```
 
-- **Line:** 23
+- **Line:** 34
 
-box listing the checked fields in a small table, with the total area
+box listing the checked fields as a tree, with the total area
 
 ### Functions
 
@@ -1676,9 +2006,20 @@ def format_created(iso_text)
 ```
 
 - **Arguments:** `(str iso_text)`
-- **Line:** 15
+- **Line:** 18
 
-creation date in local time ("2026-11-14 09:30"); the raw text if unreadable
+creation date in local time ("2026-11-14"); the raw text if unreadable
+
+#### `color_icon`
+
+```python
+def color_icon(color)
+```
+
+- **Arguments:** `(str color)`
+- **Line:** 27
+
+small square icon filled with a "#rrggbb" colour
 
 #### `FieldsDataBox.__init__`
 
@@ -1687,9 +2028,20 @@ def __init__(self, fields, parent=None)
 ```
 
 - **Arguments:** `(FieldsManager fields, QWidget parent = None)`
-- **Line:** 27
+- **Line:** 38
 
 builds the box and follows the checked fields
+
+#### `FieldsDataBox.field_count`
+
+```python
+def field_count(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 75
+
+number of fields shown
 
 #### `FieldsDataBox.refresh`
 
@@ -1698,9 +2050,9 @@ def refresh(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 61
+- **Line:** 80
 
-fills the table with the fields checked right now
+rebuilds the tree from the fields checked right now
 
 ## `fieldshift/ui/main_window.py`
 
@@ -1712,7 +2064,7 @@ fills the table with the fields checked right now
 class MainWindow(QtWidgets.QMainWindow)
 ```
 
-- **Line:** 16
+- **Line:** 17
 
 top-level window. Owns a MapView with the FieldsBar under it (left) and a SidePanel (right); both share one FieldsManager
 
@@ -1725,7 +2077,7 @@ def __init__(self, view, parent=None)
 ```
 
 - **Arguments:** `(MapView view, QWidget parent = None)`
-- **Line:** 20
+- **Line:** 21
 
 builds the splitter layout around an already created map view
 
@@ -1733,7 +2085,8 @@ builds the splitter layout around an already created map view
 
 | Name | Description | Line |
 |------|-------------|------|
-| `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 10 |
+| `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 11 |
+| `MainWindow.attribution_label` | credit of the visible layers (basemap licences require it) | 48 |
 
 ## `fieldshift/ui/side_panel.py`
 
@@ -1745,7 +2098,7 @@ builds the splitter layout around an already created map view
 class SidePanel(QtWidgets.QWidget)
 ```
 
-- **Line:** 19
+- **Line:** 18
 
 panel with the user's fields (and any other non-base layer), the data of the checked fields, cursor position and an empty "Tools" box where new features are meant to be added. a field's checkbox chooses it (for data, export, delete); for other layers it shows / hides them. base layers (LayerInfo.locked) stay on the map but are not listed
 
@@ -1758,7 +2111,7 @@ def __init__(self, view, parent=None, fields=None)
 ```
 
 - **Arguments:** `(MapView view, QWidget parent = None, FieldsManager fields = None)`
-- **Line:** 24
+- **Line:** 23
 
 builds the panel and subscribes to the view events; creates its own FieldsManager when none is shared
 
@@ -1777,6 +2130,5 @@ rebuilds the list from view.layers(), leaving out the base layers
 
 | Name | Description | Line |
 |------|-------------|------|
-| `LAYER_ID_ROLE` | role used to store the layer id on each list item | 11 |
-| `SidePanel.data_box` | data of the checked fields (see fields_data.py) | 34 |
-| `SidePanel.tools_box` | contributors: put new feature widgets inside this box | 38 |
+| `SidePanel.data_box` | data of the checked fields (see fields_data.py) | 33 |
+| `SidePanel.tools_box` | contributors: put new feature widgets inside this box | 37 |

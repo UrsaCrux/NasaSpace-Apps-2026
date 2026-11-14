@@ -24,6 +24,11 @@ class MapView(ABC):
         self.polygon_drawn = Event()
         # emitted with no arguments when a drawing ends without a polygon
         self.drawing_cancelled = Event()
+        # emitted with (str layer_id, float lon, float lat) when the user
+        # double-clicks a feature of a layer that is not locked (topmost
+        # layer first). never while drawing a polygon. a double click on a
+        # feature does not zoom the map in
+        self.layer_double_clicked = Event()
 
     # ()
     # the QWidget to put in a window; created once and reused

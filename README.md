@@ -39,7 +39,7 @@ fieldshift/            Python application
 │   ├── view.py        abstract MapView: the only map API the UI uses
 │   ├── qgis_view.py   QGIS implementation (QgsMapCanvas)
 │   └── placeholder_view.py   used when QGIS is not installed
-├── ui/                main window (map + fields bar left, panel right), dialogs
+├── ui/                main window (map + fields bar left, panel right), field dialog, dialogs
 ├── fields/            the user's fields: GeoJSON store and FieldsManager
 ├── i18n/              user-visible texts per language (en.json, es.json)
 ├── api/               get_site_data(lon, lat, radius): field data from many sources
@@ -47,6 +47,7 @@ fieldshift/            Python application
 └── native/            ctypes bindings for the C++ library
 cpp/                   C++ functions callable from Python (CMake)
 data/                  bundled datasets (offline country outlines)
+terrenos/              the user's saved fields, one .geojson each (ignored by git)
 docs/                  documentation, generated API reference in docs/api/
 tools/minidoc_py.py    minidoc-style exporter for the Python code
 tests/                 unit tests (python -m unittest)

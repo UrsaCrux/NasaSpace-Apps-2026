@@ -12,7 +12,7 @@ The full generated reference is in [api/PYTHON_API.md](api/PYTHON_API.md).
 ## Describing layers: `LayerSpec`
 
 ```python
-LayerSpec.xyz("OpenStreetMap", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
+LayerSpec.xyz("Basemap", "https://tiles.example.org/{z}/{y}/{x}.jpg", attribution="Imagery by Example")
 LayerSpec.vector("Fields", "/path/fields.gpkg", fill_color="#cfe8b0", stroke_color="#4a7a2a")
 LayerSpec.raster("NDVI", "/path/ndvi.tif")
 ```
@@ -22,7 +22,7 @@ LayerSpec.raster("NDVI", "/path/ndvi.tif")
 | `name` | Display name |
 | `source` | URL template (XYZ), or any path / URI OGR or GDAL can open |
 | `kind` | `LayerKind.XYZ`, `VECTOR` or `RASTER` |
-| `options` | Backend hints: `zmin`/`zmax` (XYZ), `provider` (force a data provider, e.g. `"memory"`), `locked` (base layer such as the basemap: the side panel does not list it, so the user cannot remove it; reported as `LayerInfo.locked`), `fill_color`/`stroke_color` (vectors; `"#AARRGGBB"` for transparency), `stroke_width` (vectors, mm) |
+| `options` | Backend hints: `zmin`/`zmax` (XYZ), `provider` (force a data provider, e.g. `"memory"`), `locked` (base layer such as the basemap: the side panel does not list it, so the user cannot remove it; reported as `LayerInfo.locked`), `attribution` (credit text the window shows in the status bar while the layer is visible; reported as `LayerInfo.attribution`), `fill_color`/`stroke_color` (vectors; `"#AARRGGBB"` for transparency), `stroke_width` (vectors, mm), `label_field` (vectors: attribute shown over each feature, with a halo; also `label_color`, `label_halo_color`, `label_size`) |
 
 ## Using the map: `MapView`
 
@@ -48,6 +48,11 @@ LayerSpec.raster("NDVI", "/path/ndvi.tif")
 | `layers_changed` | – |
 | `polygon_drawn` | `vertices`: list of `(lon, lat)`, first vertex not repeated |
 | `drawing_cancelled` | – |
+| `layer_double_clicked` | `layer_id, lon, lat`: double click on a feature of a visible, unlocked layer (topmost first), never while drawing. The map does not zoom in on that click |
+
+The default tool (`PickPanTool`, `fieldshift/map/pick_tool.py`) pans by
+dragging. A click without dragging does not recentre the map, so it does not
+jump under the cursor when the user double-clicks a field.
 
 ### Drawing a polygon
 

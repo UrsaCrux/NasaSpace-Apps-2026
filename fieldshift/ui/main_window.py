@@ -1,6 +1,7 @@
 """Main window: map on the left, side panel on the right."""
 
 from fieldshift import __version__
+from fieldshift.i18n import tr
 from fieldshift.fields.manager import FieldsManager
 from fieldshift.qt import QtCore, QtWidgets
 from fieldshift.ui.fields_bar import FieldsBar
@@ -42,8 +43,22 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(splitter)
         self.setWindowTitle(f"Field Shift {__version__}")
         self.resize(1280, 800)
-        self.statusBar().showMessage("Ready")
+        self.statusBar().showMessage(tr("status.ready"))
+        # credit of the visible layers (basemap licences require it)
+        self.attribution_label = QtWidgets.QLabel()
+        self.attribution_label.setStyleSheet("color: #444; padding-right: 6px;")
+        self.statusBar().addPermanentWidget(self.attribution_label)
+        view.layers_changed.connect(self._show_attribution)
+        self._show_attribution()
         view.cursor_moved.connect(self._show_cursor)
 
+    # shows the "attribution" of every visible layer, once each
+    def _show_attribution(self):
+        credits = []
+        for info in self.view.layers():
+            if info.visible and info.attribution and info.attribution not in credits:
+                credits.append(info.attribution)
+        self.attribution_label.setText(" · ".join(credits))
+
     def _show_cursor(self, lon, lat):
-        self.statusBar().showMessage(f"lon {lon:.5f}   lat {lat:.5f}")
+        self.statusBar().showMessage(tr("status.cursor", lon=f"{lon:.5f}", lat=f"{lat:.5f}"))

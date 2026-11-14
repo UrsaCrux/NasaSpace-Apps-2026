@@ -1,9 +1,11 @@
 """Application bootstrap: creates the Qt/QGIS application and the window."""
 
+import argparse
 import os
 import sys
 from pathlib import Path
 
+from fieldshift import i18n
 from fieldshift.qt import HAS_QGIS, QT_MAJOR, QtWidgets
 from fieldshift.map import LayerSpec, create_map_view
 from fieldshift.ui import MainWindow
@@ -16,19 +18,43 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 COUNTRIES = LayerSpec.vector("Countries", str(DATA_DIR / "countries.geojson"),
                              fill_color="#f2efe9", stroke_color="#9a8f80", locked=True)
 
-# OpenStreetMap tile layer loaded at start-up
+# Sentinel-2 cloudless 2024 (EOX): 10 m satellite mosaic, no API key. free for
+# non-commercial use under CC BY-NC-SA 4.0 as long as the credit below stays
+# visible (https://cloudless.eox.at/documentation/license); a commercial
+# product needs an agreement with EOX. tiles exist up to zoom 18. to change
+# the basemap, change only this constant
 DEFAULT_BASEMAP = LayerSpec.xyz(
-    "OpenStreetMap",
-    "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    "Sentinel-2 cloudless 2024",
+    "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2024_3857/default/g/{z}/{y}/{x}.jpg",
+    zmin=0, zmax=18,
     locked=True,
+    attribution="EOxCloudless https://cloudless.eox.at by EOX IT Services GmbH "
+                "(Contains modified Copernicus Sentinel data 2024)",
 )
 
 
 # (list argv)
+# reads the command line: returns (str language or None, list of the
+# arguments left for Qt). --lang must be one of i18n.available_languages();
+# anything else makes the program print the usage and exit
+def parse_args(argv):
+    parser = argparse.ArgumentParser(prog="fieldshift", add_help=True)
+    parser.add_argument("--lang", choices=i18n.available_languages(), metavar="CODE",
+                        help="language of the texts: " + ", ".join(i18n.available_languages())
+                        + f" (default: $FIELDSHIFT_LANG or {i18n.DEFAULT_LANGUAGE})")
+    args, rest = parser.parse_known_args(argv[1:])
+    return args.lang, [argv[0]] + rest
+
+
+# (list argv)
 # creates the QApplication (QgsApplication when QGIS is present), shows the
-# main window and runs the event loop; returns the exit code
+# main window and runs the event loop; returns the exit code. --lang CODE
+# picks the language of the texts
 def main(argv=None):
     argv = list(argv if argv is not None else sys.argv)
+    lang, argv = parse_args(argv)
+    if lang:
+        i18n.set_language(lang)         # before any widget reads its texts
     app = _create_application(argv)
 
     view = create_map_view()
