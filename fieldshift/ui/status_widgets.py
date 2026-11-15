@@ -64,8 +64,9 @@ def source_text(source):
 # it to jump to its row
 class SummaryTile(QtWidgets.QFrame):
 
-    # (SummaryTile tile)
-    def __init__(self, tile, parent=None):
+    # (SummaryTile tile, int days)
+    # days: length of the period the trend compares with
+    def __init__(self, tile, days, parent=None):
         super().__init__(parent)
         self.tile = tile
         # emitted with (str section id, str row key) on click
@@ -84,7 +85,7 @@ class SummaryTile(QtWidgets.QFrame):
         name.setStyleSheet("color: #555; font-size: 11px;")
         value = QtWidgets.QLabel(f"<b>{format_value(row, row.latest())}</b>")
         value.setStyleSheet("font-size: 16px; color: #1b1b1b;")
-        trend = QtWidgets.QLabel(trend_text(row))
+        trend = QtWidgets.QLabel(tr("status.tile_trend", trend=trend_text(row), days=days))
         trend.setStyleSheet(f"color: {color}; font-size: 11px;")
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(8, 6, 8, 6)
@@ -318,8 +319,7 @@ class AlertRow(QtWidgets.QFrame):
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(8, 5, 8, 5)
         icon = "🔮" if alert.upcoming else ("⛔" if alert.level == LEVEL_ALERT else "⚠️")
-        prefix = f"<b>{tr('status.upcoming')}</b> " if alert.upcoming else ""
-        text = QtWidgets.QLabel(f"{icon} {prefix}{tr(alert.text_key, **alert.params)}")
+        text = QtWidgets.QLabel(f"{icon} {tr(alert.text_key, **alert.params)}")
         text.setWordWrap(True)
         layout.addWidget(text, 1)
         if alert.suggestion:
@@ -332,12 +332,43 @@ class AlertRow(QtWidgets.QFrame):
             layout.addWidget(self.link)
 
 
+# card with the warnings about the next 7 days (short forecast) of every
+# section, apart from what was observed
+class UpcomingCard(QtWidgets.QFrame):
+
+    # (list alerts)
+    def __init__(self, alerts, parent=None):
+        super().__init__(parent)
+        # emitted with no arguments when an alert's "See suggestion" is clicked
+        self.suggestion_requested = Event()
+        self.setObjectName("upcomingCard")
+        self.setStyleSheet("QFrame#upcomingCard { background: #f3f0fa; border: 1px solid #c9bfe3;"
+                           " border-radius: 8px; }")
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(12, 10, 12, 12)
+        layout.setSpacing(6)
+        title = QtWidgets.QLabel(f"🔮 <b>{tr('status.upcoming_title')}</b>")
+        title.setStyleSheet("font-size: 15px; border: none; background: transparent;")
+        layout.addWidget(title)
+        self.alert_rows = []
+        if not alerts:
+            none = QtWidgets.QLabel(tr("status.upcoming_none"))
+            none.setStyleSheet("color: #555; border: none; background: transparent;")
+            layout.addWidget(none)
+        for alert in alerts:
+            row = AlertRow(alert)
+            row.suggestion_requested.connect(self.suggestion_requested.emit)
+            layout.addWidget(row)
+            self.alert_rows.append(row)
+
+
 # a section card: title, optional note (crop stage), optional soil
 # triangle, table (left) and chart (right), and its alerts
 class SectionCard(QtWidgets.QFrame):
 
-    # (StatusSection section)
-    def __init__(self, section, parent=None):
+    # (StatusSection section, int days)
+    # days: length of the period shown (the dates come from the rows)
+    def __init__(self, section, days, parent=None):
         super().__init__(parent)
         self.section = section
         # emitted with no arguments when an alert's "See suggestion" is clicked
@@ -348,7 +379,12 @@ class SectionCard(QtWidgets.QFrame):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(12, 10, 12, 12)
         layout.setSpacing(8)
-        title = QtWidgets.QLabel(f"{section.icon} <b>{tr(section.title_key)}</b>")
+        dates = next((r.dates for r in section.rows if not r.fixed), section.rows[0].dates)
+        title = QtWidgets.QLabel(
+            f"{section.icon} <b>{tr(section.title_key)}</b>"
+            f" <span style='color:#666; font-size:12px;'>· "
+            f"{tr('status.period_title', days=days, start=short_date(dates[0]), end=short_date(dates[-1]))}"
+            f"</span>")
         title.setStyleSheet("font-size: 15px; border: none;")
         layout.addWidget(title)
         if section.note_key:
@@ -371,7 +407,12 @@ class SectionCard(QtWidgets.QFrame):
         self.table.select_key(first.key)
 
         self.alert_rows = []
-        for alert in section.alerts:
+        observed = [a for a in section.alerts if not a.upcoming]
+        if observed:
+            heading = QtWidgets.QLabel(tr("status.observed_alerts", days=days))
+            heading.setStyleSheet("color: #555; font-size: 11px; border: none;")
+            layout.addWidget(heading)
+        for alert in observed:
             row = AlertRow(alert)
             row.suggestion_requested.connect(self.suggestion_requested.emit)
             layout.addWidget(row)

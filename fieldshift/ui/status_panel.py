@@ -14,7 +14,7 @@ from fieldshift.map import Event
 from fieldshift.qt import QtCore, QtWidgets
 from fieldshift.status import PERIODS, status_report
 from fieldshift.ui.analysis_widgets import format_date
-from fieldshift.ui.status_widgets import SectionCard, SummaryTile
+from fieldshift.ui.status_widgets import SectionCard, SummaryTile, UpcomingCard
 
 # smallest width of the panel (pixels)
 MIN_WIDTH_PX = 520
@@ -56,6 +56,9 @@ class StatusPanel(QtWidgets.QFrame):
         self.period_buttons = {}
         periods = QtWidgets.QHBoxLayout()
         periods.setSpacing(0)
+        look_back = QtWidgets.QLabel(tr("status.look_back"))
+        look_back.setStyleSheet("color: #555; margin-right: 4px;")
+        periods.addWidget(look_back)
         group = QtWidgets.QButtonGroup(self)
         for days in PERIODS:
             button = QtWidgets.QPushButton(tr("status.days", days=days))
@@ -130,8 +133,7 @@ class StatusPanel(QtWidgets.QFrame):
         if field is None:
             return
         self.report = report = status_report(field, self.days)
-        self.info_label.setText(tr("status.info", date=format_date(report.last_date),
-                                   days=report.days))
+        self.info_label.setText(tr("status.info", date=format_date(report.last_date)))
         self.example_label.setVisible(report.example)
         while self.content_layout.count():
             item = self.content_layout.takeAt(0)
@@ -139,24 +141,31 @@ class StatusPanel(QtWidgets.QFrame):
                 item.widget().deleteLater()
         self.sections = {}
 
-        today = QtWidgets.QLabel(f"<b>{tr('status.today')}</b>")
+        today = QtWidgets.QLabel(
+            f"<b>{tr('status.today')}</b> <span style='color:#666;'>· "
+            f"{format_date(report.last_date)}</span>")
+        today.setStyleSheet("font-size: 15px;")
         self.content_layout.addWidget(today)
         tiles = QtWidgets.QGridLayout()
         tiles.setSpacing(6)
         for i, tile in enumerate(report.summary):
-            widget = SummaryTile(tile)
+            widget = SummaryTile(tile, report.days)
             widget.clicked.connect(self.show_row)
             tiles.addWidget(widget, i // 3, i % 3)
-        alerts = len(report.alerts())
         holder = QtWidgets.QWidget()
         holder.setLayout(tiles)
         self.content_layout.addWidget(holder)
-        if alerts:
-            count = QtWidgets.QLabel(tr("status.alert_count", count=alerts))
-            count.setStyleSheet("color: #c62828;")
-            self.content_layout.addWidget(count)
+        # what comes: the short-forecast warnings of every section
+        self.upcoming = UpcomingCard([a for a in report.alerts() if a.upcoming])
+        self.upcoming.suggestion_requested.connect(
+            lambda: self.suggestion_requested.emit(self.layer_id))
+        self.content_layout.addWidget(self.upcoming)
+        # what was observed: the last days, one card per section
+        past = QtWidgets.QLabel(f"<b>{tr('status.past_title', days=report.days)}</b>")
+        past.setStyleSheet("font-size: 15px; margin-top: 6px;")
+        self.content_layout.addWidget(past)
         for section in report.sections:
-            card = SectionCard(section)
+            card = SectionCard(section, report.days)
             card.suggestion_requested.connect(
                 lambda: self.suggestion_requested.emit(self.layer_id))
             self.content_layout.addWidget(card)
