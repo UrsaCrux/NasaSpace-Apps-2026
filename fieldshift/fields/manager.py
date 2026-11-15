@@ -16,6 +16,9 @@ FIELD_STROKE_WIDTH = 0.8    # millimetres
 LABEL_COLOR = "#ffffff"
 LABEL_HALO = "#1b1b1b"
 
+# MapView render group of the field layers (see the "render_group" option)
+FIELDS_RENDER_GROUP = "fields"
+
 # extra space around a field when zooming to it (fraction of its size)
 ZOOM_MARGIN = 0.25
 
@@ -45,6 +48,9 @@ class FieldsManager:
         self.selection_changed = Event()
         self._fields = {}          # layer id -> Field
         self._selected = set()     # layer ids of the fields the user checked
+        # the map outlines the checked fields
+        self.selection_changed.connect(self._show_marks)
+        self.fields_changed.connect(self._show_marks)
         for field in self.store.fields():
             try:
                 self._show(field)
@@ -149,10 +155,22 @@ class FieldsManager:
     # centres and zooms the map on a field, with some margin around it
     def zoom_to(self, layer_id):
         field = self._fields.get(layer_id)
-        if field is None:
-            return
-        lons = [v[0] for v in field.vertices]
-        lats = [v[1] for v in field.vertices]
+        if field is not None:
+            self._zoom_to_vertices(field.vertices)
+
+    # ()
+    # fits the map to all the fields at once (does nothing without fields);
+    # returns True when it moved the map
+    def zoom_to_all(self):
+        vertices = [v for f in self._fields.values() for v in f.vertices]
+        if not vertices:
+            return False
+        self._zoom_to_vertices(vertices)
+        return True
+
+    def _zoom_to_vertices(self, vertices):
+        lons = [v[0] for v in vertices]
+        lats = [v[1] for v in vertices]
         dx = (max(lons) - min(lons)) * ZOOM_MARGIN or 0.001
         dy = (max(lats) - min(lats)) * ZOOM_MARGIN or 0.001
         self.view.zoom_to_extent(min(lons) - dx, min(lats) - dy,
@@ -166,12 +184,19 @@ class FieldsManager:
             self._fields[i].name for i in layer_ids if i in self._fields]
         return self.store.export(path, names)
 
+    # outlines the checked fields on the map
+    def _show_marks(self):
+        self.view.set_marked([self._fields[i].vertices for i in self.selected()])
+
     def _show(self, field):
         fill, stroke = style_colors(field.color)
         spec = LayerSpec.vector(field.name, str(field.path), fill_color=fill,
                                 stroke_color=stroke, stroke_width=FIELD_STROKE_WIDTH,
                                 label_field="name", label_color=LABEL_COLOR,
-                                label_halo_color=LABEL_HALO)
+                                label_halo_color=LABEL_HALO,
+                                # all fields drawn as one picture: one map-sized
+                                # image per field used gigabytes with many fields
+                                render_group=FIELDS_RENDER_GROUP)
         layer_id = self.view.add_layer(spec)
         self._fields[layer_id] = field
         return layer_id

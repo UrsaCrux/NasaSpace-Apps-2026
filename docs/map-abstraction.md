@@ -22,7 +22,7 @@ LayerSpec.raster("NDVI", "/path/ndvi.tif")
 | `name` | Display name |
 | `source` | URL template (XYZ), or any path / URI OGR or GDAL can open |
 | `kind` | `LayerKind.XYZ`, `VECTOR` or `RASTER` |
-| `options` | Backend hints: `zmin`/`zmax` (XYZ), `provider` (force a data provider, e.g. `"memory"`), `locked` (base layer such as the basemap: the side panel does not list it, so the user cannot remove it; reported as `LayerInfo.locked`), `attribution` (credit text the window shows in the status bar while the layer is visible; reported as `LayerInfo.attribution`), `fill_color`/`stroke_color` (vectors; `"#AARRGGBB"` for transparency), `stroke_width` (vectors, mm), `label_field` (vectors: attribute shown over each feature, with a halo; also `label_color`, `label_halo_color`, `label_size`) |
+| `options` | Backend hints: `zmin`/`zmax` (XYZ), `provider` (force a data provider, e.g. `"memory"`), `locked` (base layer such as the basemap: the side panel does not list it, so the user cannot remove it; reported as `LayerInfo.locked`), `attribution` (credit text the window shows in the status bar while the layer is visible; reported as `LayerInfo.attribution`), `fill_color`/`stroke_color` (vectors; `"#AARRGGBB"` for transparency), `stroke_width` (vectors, mm), `label_field` (vectors: attribute shown over each feature, with a halo; also `label_color`, `label_halo_color`, `label_size`), `render_group` (vectors: name of a group whose layers are drawn together as **one** picture — see below) |
 
 ## Using the map: `MapView`
 
@@ -40,6 +40,11 @@ LayerSpec.raster("NDVI", "/path/ndvi.tif")
 | `start_polygon_drawing()` | Let the user draw a polygon (see below) |
 | `cancel_drawing()` | Stop the drawing in progress |
 | `is_drawing() -> bool` | A drawing is in progress |
+| `set_marked(polygons)` / `marked()` | Thick cyan outline around each (lon, lat) polygon (the checked fields), under the hover highlight |
+| `set_highlight(vertices)` / `highlighted()` | Bright outline around a (lon, lat) polygon over every layer; `None` removes it |
+| `show_pin(lon, lat)` / `clear_pin()` / `pin()` | Temporary red pin on a found place |
+| `center() -> (lon, lat)` | Centre of the view (`None` when unknown) |
+| `zoom_by(factor)` | Zoom around the centre: visible width × factor (0.5 = twice as close) |
 | `meters_per_pixel() -> float` | Ground metres covered by one screen pixel at the centre of the view (`None` without a real map); used by the scale bar |
 
 | Event | Arguments |
@@ -49,6 +54,9 @@ LayerSpec.raster("NDVI", "/path/ndvi.tif")
 | `layers_changed` | – |
 | `polygon_drawn` | `vertices`: list of `(lon, lat)`, first vertex not repeated |
 | `drawing_cancelled` | – |
+| `drawing_started` | – (a drawing began) |
+| `layer_right_clicked` | `layer_id, lon, lat`: right click on a feature of a visible, unlocked layer; not while drawing |
+| `layer_hovered` | `layer_id` or `None`, `lon, lat`: the mouse moved onto a feature of another visible, unlocked layer, or off every feature; not while dragging or drawing |
 | `view_changed` | – (after a pan, zoom or resize) |
 | `layer_double_clicked` | `layer_id, lon, lat`: double click on a feature of a visible, unlocked layer (topmost first), never while drawing. The map does not zoom in on that click |
 
@@ -99,3 +107,21 @@ box"):
 Subclass `MapView`, implement every abstract method, call
 `super().__init__()`, and register it in `create_map_view()` in
 `factory.py`. Then add a test class that inherits `_ViewContract`.
+
+## Memory: drawing many layers (`render_group`)
+
+The QGIS canvas keeps one picture as big as the map **per drawn layer** —
+while rendering, in its cache and for the preview of the area around the
+view. On a HiDPI screen each picture is ~33 MB, so drawing every field as its
+own layer made the app grow by ~60 MB per field (3.6 GB was seen).
+
+Layers added with the same `render_group` option are therefore not drawn one
+by one: `QgisMapView` keeps one in-memory layer per group with a copy of all
+their features (each with its layer's fill, outline and label) and draws that
+instead. The member layers stay in the project and are what the API works
+with (`layers()`, picking, hover, double click, zoom, remove). Hiding,
+adding or removing a member refills the group's layer. Measured with a
+1920×1080 window at scale 2: 15 fields 1.9 GB → 1.06 GB, 40 fields 1.03 GB
+(memory no longer depends on the number of fields).
+
+`FieldsManager` puts every field in the `"fields"` group.

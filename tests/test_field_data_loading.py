@@ -166,6 +166,43 @@ class LoadingTest(_DialogCase):
         self.assertEqual(dialog.crop(), "pear.v3")
         self.assertTrue(dialog.save_button.isEnabled())
 
+    def test_an_existing_field_can_be_saved_while_loading(self):
+        field = self.store.create("A", SQUARE, data={
+            "ph": {"value": 5.5, "source": "user"},
+            "crop": {"value": "pear.v3", "source": "user"}})
+        release = threading.Event()
+        self.addCleanup(release.set)
+
+        def slow(group, area):
+            if group.name != "copernicus_dem":
+                release.wait(5)
+            return dict(FAKE_VALUES[group.name])
+
+        dialog = self.dialog(field=field, fetch=slow)
+        wait_until(lambda: dialog.row_state("slope") == "prefilled")
+        self.assertTrue(dialog.is_loading())
+        self.assertTrue(dialog.save_button.isEnabled())            # not blocked when editing
+        self.assertIn("save now", dialog.load_label.text())
+        dialog.accept()
+        self.assertEqual(dialog.result(), 1)                       # saved
+        self.assertFalse(dialog.is_loading())                      # loading stopped
+        data = dialog.data()
+        self.assertEqual(data["ph"], {"value": 5.5, "source": "user"})        # kept
+        self.assertEqual(data["slope"]["value"], 3.5)                          # had arrived
+        self.assertEqual(data["ndvi"], {"value": None, "source": "missing"})   # stopped
+        release.set()
+        get_app().processEvents()
+        self.assertEqual(dialog.data()["ndvi"]["value"], None)    # late answer ignored
+
+    def test_a_new_field_still_waits(self):
+        release = threading.Event()
+        self.addCleanup(release.set)
+        dialog = self.dialog(vertices=SQUARE,
+                             fetch=lambda g, a: (release.wait(5), dict(FAKE_VALUES[g.name]))[1])
+        dialog.crop_search.choose("peach.v1")
+        self.assertFalse(dialog.editing)
+        self.assertFalse(dialog.save_button.isEnabled())
+
     def test_nothing_is_loaded_when_every_row_has_a_value(self):
         data = {k: {"value": v, "source": "prefilled"}
                 for values in FAKE_VALUES.values() for k, v in values.items()}
@@ -180,6 +217,77 @@ class LoadingTest(_DialogCase):
             dialog = self.dialog(vertices=SQUARE)
         self.assertFalse(dialog.is_loading())
         self.assertEqual(dialog.row_state("ph"), "missing")
+
+
+class ReloadTest(_DialogCase):
+    def test_reload_downloads_one_datum_again(self):
+        calls = []
+        answers = {"ph": 6.4}
+
+        def fetch(group, area):
+            calls.append(group.name)
+            values = dict(FAKE_VALUES[group.name])
+            values.update({k: v for k, v in answers.items() if k in values})
+            return values
+        dialog = self.dialog(vertices=SQUARE, fetch=fetch)
+        wait_until(lambda: not dialog.is_loading())
+        dialog.set_value("ph", 5.0)                              # the user's value
+        dialog.set_value("cec", 9.0)
+        answers["ph"] = 7.1                                       # the source changed
+        calls.clear()
+        dialog._rows["ph"]["reload"].click()
+        self.assertTrue(dialog.is_reloading("ph"))
+        wait_until(lambda: not dialog.is_reloading("ph"))
+        self.assertEqual(calls, ["soilgrids"])
+        self.assertEqual(dialog.data()["ph"], {"value": 7.1, "source": "prefilled",
+                                               "prefilled": 7.1})
+        self.assertEqual(dialog.data()["cec"]["value"], 9.0)      # other rows untouched
+        self.assertTrue(dialog._rows["irrigated"]["reload"].isHidden())   # farmer data
+        self.assertFalse(dialog._rows["ph"]["reload"].isHidden())
+
+    def test_failed_reload_keeps_the_value(self):
+        state = {"fail": False}
+
+        def fetch(group, area):
+            if state["fail"]:
+                raise ConnectionError("offline")
+            return dict(FAKE_VALUES[group.name])
+        dialog = self.dialog(vertices=SQUARE, fetch=fetch)
+        wait_until(lambda: not dialog.is_loading())
+        state["fail"] = True
+        dialog.reload_value("slope")
+        wait_until(lambda: not dialog.is_reloading("slope"))
+        self.assertEqual(dialog.data()["slope"]["value"], 3.5)
+        self.assertEqual(dialog.row_state("slope"), "prefilled")
+        self.assertIn("ConnectionError", dialog._rows["slope"]["status"].toolTip())
+
+    def test_reload_skips_the_cache(self):
+        dialog = self.dialog(vertices=SQUARE, fetch=fake_fetch)
+        wait_until(lambda: not dialog.is_loading())
+        dialog._fetch = None                                      # the real path
+        with mock.patch.object(zone_data, "fetch_group",
+                               return_value=dict(FAKE_VALUES["modis_ndvi"], ndvi=0.5)) as fetch, \
+                mock.patch.dict(os.environ, {"FIELDSHIFT_OFFLINE": "0"}):
+            dialog.reload_value("ndvi")
+            wait_until(lambda: not dialog.is_reloading("ndvi"))
+        self.assertTrue(fetch.call_args.kwargs.get("refresh"))
+        self.assertEqual(dialog.data()["ndvi"]["value"], 0.5)
+
+
+class DialogSizeTest(_DialogCase):
+    def test_scrolls_and_opens_as_tall_as_the_window_minus_a_margin(self):
+        from fieldshift.map import create_map_view
+        from fieldshift.ui import MainWindow
+        from fieldshift.ui.field_dialog import WINDOW_MARGIN_PX
+        with mock.patch.dict(os.environ, {"FIELDSHIFT_FIELDS_DIR": self._tmp.name}):
+            window = MainWindow(create_map_view("placeholder"))
+        window.resize(1200, 760)
+        dialog = self.dialog(vertices=SQUARE, parent=window.fields_bar)
+        self.assertEqual(dialog.height(), 760 - WINDOW_MARGIN_PX)
+        self.assertIs(dialog.scroll_area.widget().parent(), dialog.scroll_area.viewport())
+        # Save / Cancel are outside the scrolled part: always visible
+        self.assertFalse(dialog.scroll_area.widget().isAncestorOf(dialog.save_button))
+        self.assertTrue(dialog.scroll_area.widget().isAncestorOf(dialog.name_edit))
 
 
 class CropSearchTest(_DialogCase):

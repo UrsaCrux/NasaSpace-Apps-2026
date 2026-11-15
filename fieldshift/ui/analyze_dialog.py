@@ -1,6 +1,10 @@
 """Dialog to choose a field and the analyses to run on it, and the progress
 window that runs them."""
 
+import sys
+import traceback
+from concurrent.futures import ThreadPoolExecutor
+
 from fieldshift.analysis import ANALYSES
 from fieldshift.i18n import tr
 from fieldshift.qt import QtCore, QtWidgets
@@ -10,6 +14,8 @@ from fieldshift.ui.fields_data import color_icon
 # PLACEHOLDER: pause (ms) between progress steps, to show how loading data
 # will feel. the real analyses will report their own progress
 PLACEHOLDER_STEP_MS = 350
+# how often (ms) the progress window checks whether the running analysis finished
+POLL_MS = 50
 
 
 # asks for one field (combo box) and one or more analyses (checkboxes).
@@ -109,6 +115,14 @@ class AnalysisProgress(CenteredDialog):
             self._steps.append((tr("analysis.step.recommend", analysis=name), None))
         self._next = 0
         self._cancelled = False
+        # analyses run in this worker thread (plain Python, no Qt); a timer
+        # on the GUI thread collects each result, so no Qt call ever happens
+        # in the worker (that raced with the window closing)
+        self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="analysis")
+        self._future = None
+        self._poll = QtCore.QTimer(self)
+        self._poll.setInterval(POLL_MS)
+        self._poll.timeout.connect(self._collect)
 
         self.setWindowTitle(tr("analysis.progress_title", field=field.name))
         self.setMinimumWidth(420)
@@ -135,17 +149,40 @@ class AnalysisProgress(CenteredDialog):
         if self._cancelled:
             return
         if self._next >= len(self._steps):
+            self._pool.shutdown(wait=False)
             self.accept()
             return
         text, analysis = self._steps[self._next]
         self.step_label.setText(text)
         if analysis is not None:
-            self._results.append(analysis.run(self.field))
+            # analyses may download data and simulate (seconds): they run in
+            # the worker so the window keeps moving; _collect picks the result
+            self._future = self._pool.submit(analysis.run, self.field)
+            self._poll.start()
+            return
+        self._advance()
+
+    def _advance(self):
         self._next += 1
         self.bar.setValue(self._next)
         QtCore.QTimer.singleShot(PLACEHOLDER_STEP_MS, self._step)
 
+    def _collect(self):
+        if self._future is None or not self._future.done():
+            return
+        self._poll.stop()
+        future, self._future = self._future, None
+        if self._cancelled:
+            return
+        try:
+            self._results.append(future.result())
+        except Exception:                           # an analysis bug must not hang the window
+            traceback.print_exception(future.exception(), file=sys.stderr)
+        self._advance()
+
     def reject(self):
         self._cancelled = True                       # the pending step does nothing
+        self._poll.stop()
+        self._pool.shutdown(wait=False, cancel_futures=True)
         self._results = []
         super().reject()

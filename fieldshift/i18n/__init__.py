@@ -8,6 +8,11 @@ itself, it asks for it by key::
     button = QtWidgets.QPushButton(tr("fields.draw"))
     tr("fields.export_done", count=3, path="/tmp/f.geojson")
 
+Tooltips live in ``tooltips/tooltips.json`` (``{key: {"en": ..., "es": ...}}``)
+and are read with :func:`tip`::
+
+    button.setToolTip(tip("field_dialog.save"))
+
 The language comes from the ``FIELDSHIFT_LANG`` environment variable
 (default ``en``) or from :func:`set_language`. Missing keys fall back to
 English, then to the key itself, so a half-translated file never crashes.
@@ -57,6 +62,35 @@ def tr(key, **values):
     if text is None:
         text = _load(DEFAULT_LANGUAGE).get(key, key)
     return text.format(**values) if values else text
+
+
+# file with the tooltips: {key: {language code: text}}. Edit it to change a
+# tooltip; a key missing for the current language falls back to English
+TOOLTIPS_PATH = LOCALES_DIR / "tooltips" / "tooltips.json"
+_tooltips = None
+
+
+# (str key)
+# tooltip text for key in the current language ("" when the file has none)
+def tip(key):
+    global _tooltips
+    if _tooltips is None:
+        try:
+            _tooltips = json.loads(TOOLTIPS_PATH.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            print(f"warning: cannot read tooltips {TOOLTIPS_PATH}: {exc}", file=sys.stderr)
+            _tooltips = {}
+    entry = _tooltips.get(key)
+    if not isinstance(entry, dict):
+        return ""
+    return entry.get(_language) or entry.get(DEFAULT_LANGUAGE) or ""
+
+
+# ()
+# forgets the tooltips read so far (the next tip() reads the file again)
+def reload_tooltips():
+    global _tooltips
+    _tooltips = None
 
 
 # (str code)

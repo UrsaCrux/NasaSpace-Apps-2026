@@ -1,6 +1,6 @@
 """Base class and helpers shared by every data provider."""
 
-import importlib
+import importlib.util
 import os
 from pathlib import Path
 

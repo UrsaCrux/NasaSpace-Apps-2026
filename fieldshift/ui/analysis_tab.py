@@ -17,7 +17,8 @@ from fieldshift.analysis.models import (
 from fieldshift.analysis.registry import get_analysis
 from fieldshift.i18n import tr
 from fieldshift.qt import QtCore, QtWidgets
-from fieldshift.ui.analysis_widgets import FieldPreview, LineChart, format_date, localize
+from fieldshift.ui.analysis_widgets import (
+    FieldPreview, LineChart, figure_widget, format_date, localize)
 
 # time between dates while playing (ms)
 PLAY_STEP_MS = 600
@@ -47,9 +48,13 @@ class AnalysisTab(QtWidgets.QWidget):
         self._play_timer.setInterval(PLAY_STEP_MS)
         self._play_timer.timeout.connect(self._play_step)
 
+        # results without a time line (series is None) show their figure
+        # instead of the chart; without map frames there is no map part
+        self.has_series = result.series is not None
         top = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         top.addWidget(self._build_data_box())
-        top.addWidget(self._build_map_box())
+        if result.frames is not None:
+            top.addWidget(self._build_map_box())
         bottom = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         bottom.addWidget(self._build_results_box())
         bottom.addWidget(self._build_recommendations_box())
@@ -63,7 +68,8 @@ class AnalysisTab(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.addLayout(self._build_header())
         layout.addWidget(rows, 1)
-        self.set_date_index(len(result.series.dates) - 1)
+        if self.has_series:
+            self.set_date_index(len(result.series.dates) - 1)
 
     # ()
     # title of the tab: "<short name> · <field>"
@@ -74,28 +80,34 @@ class AnalysisTab(QtWidgets.QWidget):
     # (int index)
     # shows the date number index in the chart, the map and the labels
     def set_date_index(self, index):
+        if not self.has_series:
+            return
         series = self.result.series
         index = max(0, min(index, len(series.dates) - 1))
         if self.slider.value() != index:
             self.slider.setValue(index)            # comes back here through the signal
             return
         self.chart.set_cursor(index)
-        self.preview.set_frame(index)
+        if self.result.frames is not None:
+            self.preview.set_frame(index)
         date = format_date(series.dates[index])
         value = f"{series.values[index]:g} {series.unit}".strip()
         self.date_label.setText(date)
         self.value_label.setText(tr("analysis.value_at", label=tr(series.label_key),
                                     date=date, value=value))
-        self.map_title.setText(f"{tr(self.result.frames.label_key)} — {date}")
+        if self.result.frames is not None:
+            self.map_title.setText(f"{tr(self.result.frames.label_key)} — {date}")
 
     # ()
     # index of the date shown
     def date_index(self):
-        return self.slider.value()
+        return self.slider.value() if self.has_series else 0
 
     # (bool playing)
     # starts or stops moving through the dates
     def set_playing(self, playing):
+        if not self.has_series:
+            return
         if playing:
             self._play_timer.start()
         else:
@@ -108,13 +120,14 @@ class AnalysisTab(QtWidgets.QWidget):
 
     def _build_header(self):
         title = QtWidgets.QLabel(f"<h2>{tr(self.analysis.title_key)} · {self.result.field_name}</h2>")
-        dates = self.result.series.dates
-        period = QtWidgets.QLabel(tr("analysis.period", start=format_date(dates[0]),
-                                     end=format_date(dates[-1])))
-        period.setStyleSheet("color: #555;")
         row = QtWidgets.QHBoxLayout()
         row.addWidget(title)
-        row.addWidget(period)
+        if self.has_series and self.result.series.dates:
+            dates = self.result.series.dates
+            period = QtWidgets.QLabel(tr("analysis.period", start=format_date(dates[0]),
+                                         end=format_date(dates[-1])))
+            period.setStyleSheet("color: #555;")
+            row.addWidget(period)
         row.addStretch(1)
         if self.result.placeholder:
             self.example_badge = QtWidgets.QLabel(tr("analysis.example_data"))
@@ -133,6 +146,15 @@ class AnalysisTab(QtWidgets.QWidget):
             for s in self.result.sources)
         sources_label = QtWidgets.QLabel(f"{tr('analysis.sources')}<br>{sources}")
         sources_label.setWordWrap(True)
+        if not self.has_series:
+            layout = QtWidgets.QVBoxLayout(box)
+            layout.addWidget(sources_label)
+            self.figure = figure_widget(self.result.figure)
+            if self.figure is not None:
+                layout.addWidget(self.figure, 1)
+            else:
+                layout.addStretch(1)
+            return box
         self.chart = LineChart(self.result.series)
 
         self.play_button = QtWidgets.QPushButton("▶")

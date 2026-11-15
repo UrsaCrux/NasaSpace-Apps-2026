@@ -15,13 +15,25 @@ from fieldshift.analysis import ANALYSES, get_analysis  # noqa: E402
 from fieldshift.analysis.models import AnalysisResult  # noqa: E402
 from fieldshift.fields.store import Field  # noqa: E402
 from qt_app import get_app  # noqa: E402
+import fake_sources  # noqa: E402
 
 SQUARE = [(-70.70, -33.40), (-70.69, -33.40), (-70.69, -33.41), (-70.70, -33.41)]
+# analyses with real data (the others are placeholders)
+REAL_ANALYSES = {"texture", "crop_growth", "vegetation", "frost", "water", "heat", "rotation"}
 FIELD = Field("Viña", tuple(SQUARE), 100.0, "2026-01-01T00:00:00+00:00", None)
 
 
+_restore = None
+
+
 def setUpModule():
+    global _restore
     get_app()
+    _restore = fake_sources.install()          # real analyses read synthetic data
+
+
+def tearDownModule():
+    _restore()
 
 
 def _texts(code):
@@ -44,8 +56,12 @@ class AnalysesTest(unittest.TestCase):
                 result = analysis.run(FIELD)
                 self.assertIsInstance(result, AnalysisResult)
                 self.assertEqual((result.analysis_id, result.field_name), (analysis.id, "Viña"))
-                self.assertTrue(result.placeholder)
+                self.assertEqual(result.placeholder, analysis.id not in REAL_ANALYSES)
+                self.assertGreaterEqual(len(result.metrics), 1)
+                self.assertGreaterEqual(len(result.recommendations), 1)
                 series, frames = result.series, result.frames
+                if series is None:                    # a result without time line has a
+                    continue                          # figure or explains why not
                 self.assertEqual(len(series.dates), len(series.values))
                 self.assertEqual(frames.dates, series.dates)          # chart and map move together
                 self.assertEqual(len(frames.grids), len(series.dates))
@@ -60,12 +76,14 @@ class AnalysesTest(unittest.TestCase):
 
     def test_every_text_exists_in_both_languages(self):
         # keys named directly, and keys embedded in values ("month.7", "crop.wheat")
-        embedded = re.compile(r"\b(?:month|crop)\.[a-z0-9_]+\b")
+        embedded = re.compile(r"\b(?:month|crop)\.[a-z0-9_]+\b"
+                              r"|\b(?:data_fields|analysis)\.[a-z0-9_]+(?:\.[a-z0-9_]+)+\b")
         en, es = _texts("en"), _texts("es")
         for analysis in ANALYSES:
             result = analysis.run(FIELD)
             keys = {analysis.title_key, analysis.short_key, analysis.description_key,
-                    result.summary_key, result.series.label_key, result.frames.label_key}
+                    result.summary_key}
+            keys |= {r.label_key for r in (result.series, result.frames) if r is not None}
             keys |= {s.variable_key for s in result.sources}
             keys |= {m.label_key for m in result.metrics}
             keys |= {r.text_key for r in result.recommendations}
@@ -97,6 +115,23 @@ class _WithFields(unittest.TestCase):
 
 
 class AnalyzeDialogTest(_WithFields):
+    # Status opens its panel over the map; Trends one tab, reused on a second click
+    def test_status_panel_and_trends_tab(self):
+        from fieldshift.status import PERIODS
+        panel = self.window.status_panel
+        self.assertTrue(self.window.open_status(self.b))
+        self.assertEqual(panel.layer_id, self.b)
+        self.assertIs(self.window.right_stack.currentWidget(), panel)
+        self.assertTrue(self.window.fields_bar.status_button.isChecked())
+        self.assertEqual(set(panel.sections), {"weather", "growth", "soil"})
+        panel.set_days(PERIODS[-1])
+        self.assertEqual(len(panel.report.section("weather").rows[0].values), PERIODS[-1])
+        panel.show_row("soil", "soil_moisture")
+        self.window.fields_bar.fields_button.click()
+        self.assertIs(self.window.right_stack.currentWidget(), self.window.panel)
+        first = self.window.open_mode("trends")
+        self.assertIs(self.window.open_mode("trends"), first)
+
     def dialog(self, layer_id=None):
         from fieldshift.ui.analyze_dialog import AnalyzeDialog
         return AnalyzeDialog(self.window.fields, layer_id)
@@ -139,10 +174,13 @@ class ProgressTest(_WithFields):
 
 
 class AnalysisTabTest(_WithFields):
+    """The tab's layout, with the old made-up results (fixed dates, badge)."""
+
     def tab(self, analysis_id="frost"):
+        from fieldshift.analysis import placeholders
         from fieldshift.ui.analysis_tab import AnalysisTab
         field = self.window.fields.field(self.a)
-        return AnalysisTab(get_analysis(analysis_id).run(field), field)
+        return AnalysisTab(getattr(placeholders, f"run_{analysis_id}")(field), field)
 
     def test_four_parts_and_example_badge(self):
         from fieldshift.qt import QtWidgets
@@ -258,3 +296,62 @@ class AnalyzeFlowTest(_WithFields):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RealAnalysesTest(unittest.TestCase):
+    """The real analyses on the synthetic sources of fake_sources."""
+
+    def run_analysis(self, analysis_id, data=None):
+        field = Field("Viña", tuple(SQUARE), 100.0, "2026-01-01T00:00:00+00:00", None,
+                      data=data or {})
+        return get_analysis(analysis_id).run(field)
+
+    def test_two_years_of_months_and_real_grids(self):
+        for analysis_id in ("vegetation", "frost", "water", "heat"):
+            with self.subTest(analysis=analysis_id):
+                result = self.run_analysis(analysis_id)
+                self.assertFalse(result.placeholder)
+                dates = result.series.dates
+                self.assertEqual(dates[-1], "2026-10")                # last complete month
+                self.assertLessEqual(len(dates), 24)
+                self.assertEqual(result.frames.dates, dates)
+
+    def test_frost_counts_days_and_spreads_over_relief(self):
+        result = self.run_analysis("frost")
+        days = next(m.value for m in result.metrics if m.label_key == "analysis.frost.m.days")
+        self.assertGreater(int(days), 0)
+        grid = result.frames.grids[-1]
+        self.assertGreater(grid[0][0], grid[-1][-1])           # higher cells are colder
+        forecast = next(m.value for m in result.metrics if m.label_key == "analysis.frost.m.forecast")
+        self.assertEqual(forecast, "—")                        # forecast unavailable: no number
+
+    def test_heat_uses_the_crops_limit(self):
+        general = self.run_analysis("heat")
+        crop = self.run_analysis("heat", {"crop": {"value": "maize.v1", "source": "user"}})
+        limit = lambda r: next(m.value for m in r.metrics                      # noqa: E731
+                               if m.label_key == "analysis.heat.m.threshold")
+        self.assertEqual(limit(general), "32 °C")
+        self.assertEqual(limit(crop), "26 °C (EcoCrop)")       # fake crop: optimum up to 26
+
+    def test_rotation_compares_three_strategies(self):
+        result = self.run_analysis("rotation", {"crop": {"value": "maize.v1", "source": "user"},
+                                                "irrigated": {"value": True, "source": "user"}})
+        labels = [m.label_key.rsplit(".", 1)[-1] for m in result.metrics]
+        self.assertEqual(labels[:4], ["plan", "score", "alternative", "current"])
+        self.assertEqual(result.metrics[0].value.count("→"), 2)     # three seasons
+        self.assertEqual(len(result.series.dates), 12)
+
+    def test_unavailable_data_is_said_not_invented(self):
+        from fieldshift.analysis import sources
+
+        def down(*args, **kw):
+            raise ConnectionError("offline")
+        saved = sources.power_daily
+        sources.power_daily = down
+        sources.clear_cache()
+        try:
+            result = self.run_analysis("frost")
+        finally:
+            sources.power_daily = saved
+        self.assertIsNone(result.series)
+        self.assertEqual(result.summary_key, "analysis.common.summary_unavailable")

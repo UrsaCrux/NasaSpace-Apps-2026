@@ -43,6 +43,7 @@ fieldshift/            Python application
 ├── fields/            the user's fields: GeoJSON store and FieldsManager
 ├── analysis/          analyses of a field (placeholders for now) and their results
 ├── i18n/              user-visible texts per language (en.json, es.json)
+├── crops/             crop catalogue (crops.json) and FAO EcoCrop crop data (ecocrop.py)
 ├── api/               get_site_data(lon, lat, radius): field data from many sources
 │   └── providers/     one module per data source (SoilGrids, WaPOR, ERA5-Land, ...)
 └── native/            ctypes bindings for the C++ library

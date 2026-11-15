@@ -8,7 +8,11 @@ from qgis.core import (
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
     QgsFeatureRequest,
+    QgsFeature,
+    QgsField,
     QgsGeometry,
+    QgsProperty,
+    QgsSymbolLayer,
     QgsPalLayerSettings,
     QgsPointXY,
     QgsProject,
@@ -19,13 +23,13 @@ from qgis.core import (
     QgsVectorLayer,
     QgsVectorLayerSimpleLabeling,
 )
-from qgis.gui import QgsMapCanvas, QgsMapToolEmitPoint
+from qgis.gui import QgsMapCanvas, QgsMapToolEmitPoint, QgsRubberBand
 
 from fieldshift.map.layer import LayerInfo, LayerKind
 from fieldshift.map.pick_tool import PickPanTool
 from fieldshift.map.polygon_tool import PolygonDrawTool
 from fieldshift.map.view import MapView
-from fieldshift.qt import QtGui
+from fieldshift.qt import QtCore, QtGui
 
 # CRS the public API speaks (longitude / latitude)
 WGS84 = QgsCoordinateReferenceSystem("EPSG:4326")
@@ -55,6 +59,16 @@ class QgisMapView(MapView):
         self._hidden = set()
         self._locked = set()       # ids of layers added with the "locked" option
         self._attribution = {}     # layer id -> credit text
+        # layers added with the "render_group" option are not drawn one by
+        # one: a single in-memory layer per group holds a copy of all their
+        # features (with each layer's colours and label) and is drawn
+        # instead. The canvas keeps one map-sized picture per drawn layer
+        # (while rendering and in its cache), so 15 fields used ~1 GB more on
+        # a HiDPI screen; now they cost one picture. The member layers stay
+        # in the project (ids, picking, extent) and are what the API reports
+        self._render_group = {}    # layer id -> group name
+        self._options = {}         # layer id -> LayerSpec options (render groups)
+        self._group_layers = {}    # group name -> merged QgsVectorLayer
 
         canvas = QgsMapCanvas()
         canvas.setCanvasColor(QtGui.QColor("#dde6ea"))
@@ -73,7 +87,31 @@ class QgisMapView(MapView):
         self._to_map = QgsCoordinateTransform(WGS84, WEB_MERCATOR, self._project)
         self._to_wgs = QgsCoordinateTransform(WEB_MERCATOR, WGS84, self._project)
 
-        self._pan_tool = PickPanTool(canvas, self._on_double_click)
+        self._pan_tool = PickPanTool(canvas, self._on_double_click, self._on_hover,
+                                     self._on_right_click)
+        self._hovered = None              # layer id under the mouse
+        self._highlight_vertices = None
+        # outline of the checked fields; created first so the hover highlight
+        # is drawn on top of it
+        self._pin = None
+        self._pin_band = QgsRubberBand(canvas, Qgis.GeometryType.Point)
+        self._pin_band.setIcon(QgsRubberBand.IconType.ICON_CIRCLE)
+        self._pin_band.setIconSize(16)
+        self._pin_band.setColor(QtGui.QColor("#e53935"))
+        self._pin_band.setSecondaryStrokeColor(QtGui.QColor("white"))
+        self._pin_band.setWidth(3)
+        self._marked = []
+        self._marked_band = QgsRubberBand(canvas, Qgis.GeometryType.Polygon)
+        self._marked_band.setFillColor(QtGui.QColor(0, 229, 255, 30))
+        self._marked_band.setStrokeColor(QtGui.QColor("#00e5ff"))
+        self._marked_band.setWidth(3)
+        self._highlight_band = QgsRubberBand(canvas, Qgis.GeometryType.Polygon)
+        self._highlight_band.setFillColor(QtGui.QColor(255, 255, 255, 40))
+        self._highlight_band.setStrokeColor(QtGui.QColor("#ffeb3b"))
+        self._highlight_band.setWidth(4)
+        # the mouse leaving the map ends the hover
+        self._leave_watcher = _LeaveWatcher(lambda: self._set_hovered(None, None), canvas)
+        canvas.installEventFilter(self._leave_watcher)
         self._click_tool = QgsMapToolEmitPoint(canvas)
         self._click_tool.canvasClicked.connect(self._on_click)
         self._draw_tool = PolygonDrawTool(canvas, self._on_polygon_done,
@@ -110,6 +148,9 @@ class QgisMapView(MapView):
         self._order.insert(0, layer.id())
         if spec.options.get("locked"):
             self._locked.add(layer.id())
+        if spec.options.get("render_group") and isinstance(layer, QgsVectorLayer):
+            self._render_group[layer.id()] = str(spec.options["render_group"])
+            self._options[layer.id()] = dict(spec.options)
         if spec.options.get("attribution"):
             self._attribution[layer.id()] = spec.options["attribution"]
         self._sync_canvas()
@@ -123,7 +164,11 @@ class QgisMapView(MapView):
         self._hidden.discard(layer_id)
         self._locked.discard(layer_id)
         self._attribution.pop(layer_id, None)
+        self._render_group.pop(layer_id, None)
+        self._options.pop(layer_id, None)
         self._sync_canvas()
+        if layer_id == self._hovered:
+            self._set_hovered(None, None)
         self._project.removeMapLayer(layer_id)
         self.layers_changed.emit()
 
@@ -176,6 +221,7 @@ class QgisMapView(MapView):
         self._draw_tool.start()
         self._canvas.setMapTool(self._draw_tool)
         self._canvas.setFocus()       # so Esc and Backspace reach the tool
+        self.drawing_started.emit()
 
     def cancel_drawing(self):
         self._draw_tool.cancel()
@@ -203,20 +249,108 @@ class QgisMapView(MapView):
 
     # another tool replaced the draw tool (e.g. set_click_mode): drop the drawing
     def _on_map_tool_set(self, new_tool, old_tool):
+        if new_tool is not self._pan_tool:
+            self._set_hovered(None, None)         # drawing or clicking: no hover
         if old_tool is self._draw_tool and new_tool is not self._draw_tool:
             self._draw_tool.cancel()
 
     # ()
     # pushes the visible layers, in order, to the canvas
     def _sync_canvas(self):
-        visible = [self._project.mapLayer(i) for i in self._order if i not in self._hidden]
-        self._canvas.setLayers([layer for layer in visible if layer is not None])
+        visible = [(i, self._project.mapLayer(i)) for i in self._order if i not in self._hidden]
+        layers, members = [], {}
+        for layer_id, layer in visible:
+            if layer is None:
+                continue
+            group = self._render_group.get(layer_id)
+            if group is None:
+                layers.append(layer)
+                continue
+            if group not in members:               # the group takes the place of its top layer
+                members[group] = []
+                layers.append(group)
+            members[group].append(layer_id)
+        layers = [self._merged_layer(item, members[item]) if isinstance(item, str) else item
+                  for item in layers]
+        self._canvas.setLayers(layers)
+        # groups with no visible member: removed only now that the canvas no
+        # longer draws them (the project owns them, so nothing is freed early)
+        for group in [g for g in self._group_layers if g not in members]:
+            self._project.removeMapLayer(self._group_layers.pop(group).id())
         self._canvas.refresh()
+
+    # (str group, list member_ids top first)
+    # the in-memory layer that draws a render group (created once, owned by
+    # the project but not listed by the API), refilled with a copy of the
+    # members' features, each with its layer's colours and label text
+    def _merged_layer(self, group, member_ids):
+        merged = self._group_layers.get(group)
+        if merged is None:
+            merged = QgsVectorLayer("MultiPolygon?crs=EPSG:4326", f"render group {group}",
+                                    "memory")
+            merged.dataProvider().addAttributes([
+                QgsField("fill", QtCore.QMetaType.Type.QString),
+                QgsField("stroke", QtCore.QMetaType.Type.QString),
+                QgsField("label", QtCore.QMetaType.Type.QString)])
+            merged.updateFields()
+            symbol_layer = merged.renderer().symbol().symbolLayer(0)
+            symbol_layer.setDataDefinedProperty(QgsSymbolLayer.Property.FillColor,
+                                                QgsProperty.fromField("fill"))
+            symbol_layer.setDataDefinedProperty(QgsSymbolLayer.Property.StrokeColor,
+                                                QgsProperty.fromField("stroke"))
+            self._project.addMapLayer(merged, False)
+            self._group_layers[group] = merged
+        features, to_merged = [], {}
+        for layer_id in reversed(member_ids):      # bottom first: later features draw on top
+            layer, options = self._project.mapLayer(layer_id), self._options[layer_id]
+            crs = layer.crs().authid()
+            if crs not in to_merged:
+                to_merged[crs] = QgsCoordinateTransform(layer.crs(), merged.crs(), self._project)
+            label_field = options.get("label_field")
+            fill = _qgis_color(options.get("fill_color", "#55888888"))
+            stroke = _qgis_color(options.get("stroke_color", "#444444"))
+            iterator = layer.getFeatures()
+            try:
+                for source in iterator:
+                    geometry = QgsGeometry(source.geometry())
+                    if geometry.isEmpty():
+                        continue
+                    geometry.transform(to_merged[crs])
+                    feature = QgsFeature(merged.fields())
+                    feature.setGeometry(geometry)
+                    label = source[label_field] if label_field and label_field in \
+                        source.fields().names() else ""
+                    feature.setAttributes([fill, stroke, "" if label is None else str(label)])
+                    features.append(feature)
+            finally:
+                iterator.close()   # an open iterator crashes QGIS when the layer is removed
+        provider = merged.dataProvider()
+        provider.truncate()
+        provider.addFeatures(features)
+        merged.updateExtents()
+        first = self._options[member_ids[0]]
+        if first.get("stroke_width"):
+            merged.renderer().symbol().symbolLayer(0).setStrokeWidth(float(first["stroke_width"]))
+        if first.get("label_field"):
+            _apply_labels(merged, {**first, "label_field": "label"})
+        merged.triggerRepaint()
+        return merged
 
     # (QgsPointXY point)
     # double click while panning: reports the topmost visible, unlocked
     # vector feature under point (canvas CRS). True when there was one
     def _on_double_click(self, point):
+        layer_id = self._layer_at(point)
+        if layer_id is None:
+            return False
+        p = self._to_wgs.transform(point)
+        self.layer_double_clicked.emit(layer_id, p.x(), p.y())
+        return True
+
+    # (QgsPointXY point)
+    # id of the topmost visible, unlocked vector layer with a feature under
+    # point (canvas CRS), within PICK_TOLERANCE_PX; None when there is none
+    def _layer_at(self, point):
         tolerance = self._canvas.mapUnitsPerPixel() * PICK_TOLERANCE_PX
         box = QgsRectangle(point.x() - tolerance, point.y() - tolerance,
                            point.x() + tolerance, point.y() + tolerance)
@@ -227,12 +361,84 @@ class QgisMapView(MapView):
                 continue
             to_layer = QgsCoordinateTransform(WEB_MERCATOR, layer.crs(), self._project)
             area = QgsGeometry.fromRect(to_layer.transformBoundingBox(box))
-            request = QgsFeatureRequest().setFilterRect(area.boundingBox())
-            if any(f.geometry().intersects(area) for f in layer.getFeatures(request)):
-                p = self._to_wgs.transform(point)
-                self.layer_double_clicked.emit(layer_id, p.x(), p.y())
-                return True
-        return False
+            features = layer.getFeatures(QgsFeatureRequest().setFilterRect(area.boundingBox()))
+            try:
+                hit = any(f.geometry().intersects(area) for f in features)
+            finally:
+                features.close()  # any() may stop early and leave the iterator open
+            if hit:
+                return layer_id
+        return None
+
+    # right click while panning: reports the feature's layer, if any
+    def _on_right_click(self, point):
+        layer_id = self._layer_at(point)
+        if layer_id is not None:
+            p = self._to_wgs.transform(point)
+            self.layer_right_clicked.emit(layer_id, p.x(), p.y())
+
+    # mouse moved while panning (point None: dragging)
+    def _on_hover(self, point):
+        self._set_hovered(self._layer_at(point) if point is not None else None, point)
+
+    # emits layer_hovered when the layer under the mouse changes
+    def _set_hovered(self, layer_id, point):
+        if layer_id == self._hovered:
+            return
+        self._hovered = layer_id
+        p = self._to_wgs.transform(point) if point is not None else QgsPointXY(0, 0)
+        self.layer_hovered.emit(layer_id, p.x(), p.y())
+
+    def set_highlight(self, vertices):
+        # built from the vertices, not from the layer's features: reading a
+        # layer's features for this and then removing the layer crashed QGIS
+        # when the program exits
+        self._highlight_band.reset(Qgis.GeometryType.Polygon)
+        self._highlight_vertices = [tuple(v) for v in vertices] if vertices else None
+        if not self._highlight_vertices:
+            return
+        last = len(self._highlight_vertices) - 1
+        for i, (lon, lat) in enumerate(self._highlight_vertices):
+            self._highlight_band.addPoint(self._to_map.transform(QgsPointXY(lon, lat)), i == last)
+
+    def highlighted(self):
+        return self._highlight_vertices
+
+    def set_marked(self, polygons):
+        self._marked = [[tuple(v) for v in polygon] for polygon in polygons or []]
+        self._marked_band.reset(Qgis.GeometryType.Polygon)
+        for polygon in self._marked:
+            # built from the vertices, never from layer features (see set_highlight)
+            ring = [self._to_map.transform(QgsPointXY(lon, lat)) for lon, lat in polygon]
+            self._marked_band.addGeometry(QgsGeometry.fromPolygonXY([ring + ring[:1]]))
+
+    def marked(self):
+        return [list(polygon) for polygon in self._marked]
+
+    def zoom_by(self, factor):
+        self._canvas.zoomByFactor(factor)
+        self._canvas.refresh()
+
+    def show_pin(self, lon, lat):
+        self._pin = (float(lon), float(lat))
+        self._pin_band.reset(Qgis.GeometryType.Point)
+        self._pin_band.addPoint(self._to_map.transform(QgsPointXY(lon, lat)))
+
+    def clear_pin(self):
+        self._pin = None
+        self._pin_band.reset(Qgis.GeometryType.Point)
+
+    def pin(self):
+        return self._pin
+
+    def center(self):
+        try:
+            p = self._to_wgs.transform(self._canvas.center())
+        except Exception:                 # outside Web Mercator
+            return None
+        if math.isnan(p.x()) or math.isnan(p.y()):
+            return None
+        return (p.x(), p.y())
 
     def meters_per_pixel(self):
         width = self._canvas.width()
@@ -256,6 +462,20 @@ class QgisMapView(MapView):
     def _on_click(self, point, _button):
         p = self._to_wgs.transform(point)
         self.clicked.emit(p.x(), p.y())
+
+
+# Qt event filter that calls on_leave when the mouse leaves the widget. it
+# belongs to that widget (parent), so Qt deletes it together with the map
+class _LeaveWatcher(QtCore.QObject):
+
+    def __init__(self, on_leave, parent):
+        super().__init__(parent)
+        self._on_leave = on_leave
+
+    def eventFilter(self, watched, event):
+        if event.type() == QtCore.QEvent.Type.Leave:
+            self._on_leave()
+        return False
 
 
 # (float lat1, float lon1, float lat2, float lon2)
@@ -306,6 +526,14 @@ def _apply_style(layer, options):
         if hasattr(symbol_layer, "setStrokeWidth"):
             symbol_layer.setStrokeWidth(float(width))
     layer.triggerRepaint()
+
+
+# (str css)
+# "r,g,b,a" text of a CSS colour ("#rrggbb" or "#AARRGGBB"), the form QGIS
+# data-defined colours read
+def _qgis_color(css):
+    c = QtGui.QColor(css)
+    return f"{c.red()},{c.green()},{c.blue()},{c.alpha()}"
 
 
 # (QgsMapLayer layer, dict options)

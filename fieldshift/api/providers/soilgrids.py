@@ -28,6 +28,11 @@ PROPERTIES = {
 
 
 # SoilGrids provider: fills site.soil (type and all depth-dependent properties)
+# properties asked for in one request, and how long each request may take (s)
+CHUNK = 3
+REQUEST_TIMEOUT_S = 35
+
+
 class SoilGridsProvider(Provider):
     name = "soilgrids"
     title = "ISRIC SoilGrids 2.0 (250 m)"
@@ -41,16 +46,32 @@ class SoilGridsProvider(Provider):
         self.properties = tuple(properties)
 
     def fetch(self, area, period, site):
-        # the two requests are independent: run them at the same time
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            props_job = pool.submit(get_json, f"{BASE_URL}/properties/query", params={
-                "lon": area.lon, "lat": area.lat, "property": list(self.properties),
-                "depth": list(self.depths), "value": "mean"})
+        # one big properties request often never answers; small ones do. so:
+        # CHUNK properties per request, all at the same time. with the
+        # classification request that is at most 4 calls for the default 9
+        # properties (the service allows 5 per minute). a chunk that fails
+        # is skipped: the other values are still used
+        chunks = [self.properties[i:i + CHUNK] for i in range(0, len(self.properties), CHUNK)]
+        with ThreadPoolExecutor(max_workers=len(chunks) + 1) as pool:
+            jobs = [pool.submit(get_json, f"{BASE_URL}/properties/query", params={
+                "lon": area.lon, "lat": area.lat, "property": list(chunk),
+                "depth": list(self.depths), "value": "mean"}, timeout=REQUEST_TIMEOUT_S)
+                for chunk in chunks]
             cls_job = pool.submit(get_json, f"{BASE_URL}/classification/query",
                                   params={"lon": area.lon, "lat": area.lat,
-                                          "number_classes": 3})
-            props, cls = props_job.result(), cls_job.result()
-        found = parse_properties(props, site.soil, self.name)
+                                          "number_classes": 3}, timeout=REQUEST_TIMEOUT_S)
+            found, errors, cls = 0, [], {}
+            for job in jobs:
+                try:
+                    found += parse_properties(job.result(), site.soil, self.name)
+                except Exception as exc:
+                    errors.append(exc)
+            try:
+                cls = cls_job.result()
+            except Exception as exc:
+                errors.append(exc)
+        if not found and not cls and errors:
+            raise errors[0]                 # nothing answered: report the failure
 
         if cls.get("wrb_class_name"):
             site.soil.type = Measurement(cls["wrb_class_name"], "WRB", self.name)

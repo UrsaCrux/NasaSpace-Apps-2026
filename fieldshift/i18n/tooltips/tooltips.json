@@ -1,0 +1,119 @@
+{
+  "_comment": "Tooltips of the app, per language. Change the texts freely; keys are used by the code (fieldshift.i18n.tip). A missing language falls back to English. PLACEHOLDER texts for now.",
+  "field_dialog.name": {
+    "en": "Name used to identify the field.",
+    "es": "Nombre usado para identificar al terreno."
+  },
+  "field_dialog.crop": {
+    "en": "Crop being sowed in the field.",
+    "es": "Cultivo a plantarse en todo el terreno."
+  },
+  "field_dialog.color": {
+    "en": "Color used to identify the field in the map.",
+    "es": "Color usado para identificar el campo en el mapa."
+  },
+  "field_dialog.color_button": {
+    "en": "Click to deploy a color picker to change the field color.",
+    "es": "Haz clic para desplegar un selector de color y cambiar el color del campo."
+  },
+  "field_dialog.data_box": {
+    "en": "Data used to describe the field. The data is fetched from satelite data, but can be edited if you have better information.",
+    "es": "Datos usados para describir el campo. Los datos se obtienen de datos de satélite, pero pueden ser editados si tienes información mejor."
+  },
+  "field_dialog.group.soil": {
+    "en": "Satellite data about the soil of the field. It considers the top layer of the soil, which is the most relevant for crops.",
+    "es": "Datos de satélite sobre el suelo del campo. Considera la capa superior del suelo, que es la más relevante para los cultivos."
+  },
+  "field_dialog.group.relief": {
+    "en": "Geometric description of the field, including elevation above sea level and slope in degrees.",
+    "es": "Descripción geométrica del campo, incluyendo la elevación sobre el nivel del mar y la pendiente en grados."
+  },
+  "field_dialog.group.vegetation": {
+    "en": "Vegetation indexes derived from satellite data. These are used to estimate the productivity of the field, and are also used to estimate the water needs of the crops.",
+    "es": "Índices de vegetación derivados de datos de satélite. Estos se usan para estimar la productividad del campo, y también para estimar las necesidades de agua de los cultivos."
+  },
+  "field_dialog.group.farm": {
+    "en": "Basic properties of the farm management.",
+    "es": "Propiedades básicas de la gestión de la granja."
+  },
+  "field_dialog.data.soil_texture": {
+    "en": "Sandy: Chemically inert, lacking colloidal properties and nutrient supply. Physically poorly structured, well-aerated, highly permeable, and with zero water retention.\nClayey: Chemically active, adsorbing ions and molecules, and rich in nutrients. Physically well-structured and retains high volumes of water, but is impermeable and root-asphyxiating.\nSilty: Lacks structural aggregation and colloidal properties. Physically impermeable with poor aeration.\nLoamy: Texturally balanced and agriculturally optimal, with compensated physical and chemical properties.\nSelect the mixture that mostly represents your soil, or the one that is closest to the top layer of your field.",
+    "es": "Arenoso: Químicamente inerte, carece de propiedades coloidales y de aporte de nutrientes. Físicamente mal estructurado, bien aireado, altamente permeable y con retención de agua nula.\nArcilloso: Químicamente activo, adsorbe iones y moléculas, y es rico en nutrientes. Físicamente bien estructurado y retiene altos volúmenes de agua, pero es impermeable y asfixiante para las raíces.\nLimoso: Carece de agregación estructural y propiedades coloidales. Físicamente impermeable con pobre aireación.\nFranco: Texturalmente equilibrado y óptimo para la agricultura, con propiedades físicas y químicas compensadas.\nSelecciona la mezcla que más represente a tu suelo, o la que esté más cercana a la capa superior de tu terreno."
+  },
+  "field_dialog.data.soil_group": {
+    "en": "Consult with https://wrb.isric.org/soilgroups/ for better understanding of the soil groups. Select the one that mostly represents your soil, or the one that is closest to the top layer of your field.",
+    "es": "Puedes consultar en https://wrb.isric.org/soilgroups/ para entender mejor los grupos de suelos. Selecciona el que más represente a tu suelo, o el que esté más cercano a la capa superior de tu terreno."
+  },
+  "field_dialog.data.ph": {
+    "en": "A measure of the acidity or alkalinity of the soil. It is a logarithmic scale, where 7 is neutral, below 7 is acidic, and above 7 is alkaline. The pH affects the availability of nutrients to plants and the activity of soil microorganisms.",
+    "es": "Una medida de la acidez o alcalinidad del suelo. Es una escala logarítmica, donde 7 es neutro, por debajo de 7 es ácido y por encima de 7 es alcalino. El pH afecta la disponibilidad de nutrientes para las plantas y la actividad de los microorganismos del suelo."
+  },
+  "field_dialog.data.organic_carbon": {
+    "en": "The amount of organic carbon in the soil. It is a key indicator of soil fertility and health. Higher levels of organic carbon generally indicate better soil quality.",
+    "es": "La cantidad de carbono orgánico en el suelo. Es un indicador clave de la fertilidad y salud del suelo. Niveles más altos de carbono orgánico generalmente indican una mejor calidad del suelo."
+  },
+  "field_dialog.data.nitrogen": {
+    "en": "A measure of the nitrogen content in the soil. Nitrogen is an essential nutrient for plant growth and development. It is a major component of chlorophyll, amino acids, and proteins.",
+    "es": "Una medida de la cantidad de nitrógeno en el suelo. El nitrógeno es un nutriente esencial para el crecimiento y desarrollo de las plantas. Es un componente principal del clorofilo, los aminoácidos y las proteínas."
+  },
+  "field_dialog.data.cec": {
+    "en": "The Cation Exchange Capacity (CEC) of the soil. It is a measure of the soil's ability to hold and exchange cations (positively charged ions). Higher CEC values generally indicate better nutrient retention and availability for plants. It is an important measure of how frequently the soil can be fertilized, and how much fertilizer is needed.",
+    "es": "La Capacidad de Intercambio Catiónico (CIC) del suelo. Es una medida de la capacidad del suelo para retener y intercambiar cationes (iones con carga positiva). Valores más altos de CIC generalmente indican una mejor retención y disponibilidad de nutrientes para las plantas. Es una medida importante de la frecuencia con la que se puede fertilizar el suelo y de la cantidad de fertilizante necesaria."
+  },
+  "field_dialog.data.available_water": {
+    "en": "It is measured in % of the total volume of the soil. It is a measure of the water that is available for plants to use. Higher values indicate that the soil can hold more water, which is beneficial for plant growth. It can be measured in the field using a soil moisture sensor.",
+    "es": "Se mide en % del volumen total del suelo. Es una medida del agua que está disponible para que las plantas la utilicen. Valores más altos indican que el suelo puede retener más agua, lo cual es beneficioso para el crecimiento de las plantas. Se puede medir en el campo usando un sensor de humedad del suelo."
+  },
+  "field_dialog.data.elevation": {
+    "en": "Height above sea level, measured in meters. It can affect the climate, temperature, and precipitation of the field, which in turn can affect the growth and development of crops.",
+    "es": "Altura sobre el nivel del mar, medida en metros. Puede afectar el clima, la temperatura y la precipitación del campo, lo cual a su vez puede afectar el crecimiento y desarrollo de los cultivos."
+  },
+  "field_dialog.data.slope": {
+    "en": "The gradient of the land, measured in degrees. It can affect the amount of water that runs off the field and the amount of soil that is lost to erosion. It can be measured in the field using a clinometer or a digital level.",
+    "es": "El gradiente del terreno, medido en grados. Puede afectar la cantidad de agua que se escurre del campo y la cantidad de suelo que se pierde por erosión. Se puede medir en el campo usando un clinómetro o un nivel digital."
+  },
+  "field_dialog.data.ndvi": {
+    "en": "The Normalized Difference Vegetation Index (NDVI) is a measure of the health and vigor of vegetation. It is calculated using satellite imagery and ranges from -1 to 1, where higher values indicate healthier vegetation. NDVI can be used to monitor crop growth, assess drought stress, and estimate yield potential.",
+    "es": "El Índice de Diferencia Normalizada de Vegetación (NDVI) es una medida de la salud y el vigor de la vegetación. Se calcula utilizando imágenes satelitales y oscila entre -1 y 1, donde valores más altos indican vegetación más saludable. El NDVI se puede usar para monitorear el crecimiento de los cultivos, evaluar el estrés por sequía y estimar el potencial de rendimiento."
+  },
+  "field_dialog.data.npp": {
+    "en": "Net Primary Productivity (NPP) is the rate at which organic matter is produced by plants in a given area. It is a measure of the amount of carbon that is fixed by photosynthesis and can be used to assess the productivity of an ecosystem.",
+    "es": "La Productividad Primaria Neta (NPP) es la tasa a la que se produce materia orgánica por las plantas en un área determinada. Es una medida de la cantidad de carbono que se fija por fotosíntesis y se puede usar para evaluar la productividad de un ecosistema."
+  },
+  "field_dialog.data.actual_et": {
+    "en": "Actual Evapotranspiration (ET) is the amount of water that is lost from the soil and plants due to evaporation and transpiration. It is a measure of the water that is actually used by the plants and evaporated from the soil.",
+    "es": "La Evapotranspiración Real (ET) es la cantidad de agua que se pierde del suelo y las plantas debido a la evaporación y la transpiración. Es una medida del agua que es realmente utilizada por las plantas y evaporada del suelo."
+  },
+  "field_dialog.data.irrigated": {
+    "en": "Irrigated fields are those that receive water from artificial sources, such as irrigation systems, to supplement natural rainfall. This can help to maintain crop productivity during periods of drought or low rainfall.",
+    "es": "Los campos irrigados son aquellos que reciben agua de fuentes artificiales, como sistemas de riego, para complementar la lluvia natural. Esto puede ayudar a mantener la productividad de los cultivos durante períodos de sequía o baja lluvia."
+  },
+  "field_dialog.reset_button": {
+    "en": "Resets to preloaded values. This will discard any changes made to the field properties and restore the original values.",
+    "es": "Restablece los valores precargados. Esto descartará cualquier cambio realizado en las propiedades del campo y restaurará los valores originales."
+  },
+  "field_dialog.reload_button": {
+    "en": "[tooltip field_dialog.reload_button] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.reload_button] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.save": {
+    "en": "Save the properties of the field. The data will be saved in the database and will be used to generate recommendations for the field.",
+    "es": "Guarda las propiedades del campo. Los datos se guardarán en la base de datos y se utilizarán para generar recomendaciones para el campo."
+  },
+  "field_dialog.cancel": {
+    "en": "Cancel the creation or edition of the field. The data will not be saved and the field will not be created or modified.",
+    "es": "Cancela la creación o edición del campo. Los datos no se guardarán y el campo no se modificará."
+  },
+  "field_dialog.data.clay": {
+    "en": "[tooltip field_dialog.data.clay] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.clay] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.data.sand": {
+    "en": "[tooltip field_dialog.data.sand] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.sand] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.data.silt": {
+    "en": "[tooltip field_dialog.data.silt] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.silt] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  }
+}

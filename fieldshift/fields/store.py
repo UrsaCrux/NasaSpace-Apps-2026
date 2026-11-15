@@ -10,6 +10,7 @@ from dataclasses import dataclass, field as dataclass_field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
+from fieldshift.fields.model_inputs import with_model_inputs
 from fieldshift.fields.schema import DEFAULT_COLOR, normalize_color, normalize_data
 
 # root of the repository
@@ -119,7 +120,7 @@ class FieldStore:
         self.folder.mkdir(parents=True, exist_ok=True)
         field = Field(name, tuple(ring), round(polygon_area_ha(ring), 4), created,
                       self._free_path(name), normalize_color(color),
-                      normalize_data(data, ring))
+                      with_model_inputs(normalize_data(data, ring)))
         collection = {"type": "FeatureCollection", "features": [to_feature(field)]}
         field.path.write_text(json.dumps(collection, ensure_ascii=False, indent=2),
                               encoding="utf-8")
@@ -143,7 +144,8 @@ class FieldStore:
         updated = replace(
             field, name=new_name, path=path,
             color=field.color if color is None else normalize_color(color),
-            data=field.data if data is None else normalize_data(data, field.vertices))
+            data=field.data if data is None else with_model_inputs(
+                normalize_data(data, field.vertices)))
         collection = {"type": "FeatureCollection", "features": [to_feature(updated)]}
         temp = path.with_name(path.name + ".tmp")          # never a half-written file
         temp.write_text(json.dumps(collection, ensure_ascii=False, indent=2), encoding="utf-8")

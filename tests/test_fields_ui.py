@@ -129,6 +129,19 @@ class FieldsManagerTest(_TempFields):
         self.assertEqual(self.fields.selected(), [b])
         self.assertEqual(len(changes), 3)
 
+    def test_checked_fields_are_outlined_on_the_map(self):
+        a = self.fields.add("A", SQUARE)
+        b = self.fields.add("B", [(-71.0, -33.7), (-70.99, -33.7), (-70.99, -33.71)])
+        self.assertEqual(self.view.marked(), [])
+        self.fields.set_selected(b, True)
+        self.assertEqual(self.view.marked(), [list(self.fields.field(b).vertices)])
+        self.fields.set_selected(a, True)
+        self.assertEqual(len(self.view.marked()), 2)
+        self.fields.remove(b)                       # deleted: no longer outlined
+        self.assertEqual(self.view.marked(), [list(self.fields.field(a).vertices)])
+        self.fields.set_selected(a, False)
+        self.assertEqual(self.view.marked(), [])
+
     def test_export_only_some(self):
         self.fields.add("A", SQUARE)
         b = self.fields.add("B", SQUARE)
@@ -336,7 +349,8 @@ class FieldsWindowTest(_WindowCase):
         self.window.fields.set_selected(layer_id, True)
         node = self.panel.data_box.tree.topLevelItem(0)
         self.assertEqual(node.child(1).text(1), "Peach – variety 1")
-        soil, _, ph = node.child(2), node.child(3), node.child(4)
+        rows = {node.child(i).text(0): node.child(i) for i in range(node.childCount())}
+        soil, ph = rows["Soil texture"], rows["pH"]
         self.assertEqual((soil.text(1), soil.toolTip(1)), ("Sand", "edited"))
         self.assertEqual((ph.text(1), ph.toolTip(1)), ("6.4", "preloaded"))
         gray = self.draw("Plain")
@@ -506,7 +520,8 @@ class EditFieldTest(_WindowCase):
 # values a data source would give, per zone_data group
 FAKE_VALUES = {"copernicus_dem": {"elevation": 512.0, "slope": 3.5},
                "wapor": {"npp": 4.2, "actual_et": 3.1},
-               "soilgrids": {"soil_texture": "loam", "soil_group": "luvisols", "ph": 6.4,
+               "soilgrids": {"soil_texture": "loam", "soil_group": "luvisols",
+                             "clay": 21.0, "sand": 42.0, "silt": 37.0, "ph": 6.4,
                              "organic_carbon": 18.5, "nitrogen": 1.6, "cec": 17.0,
                              "available_water": 14.2},
                "modis_ndvi": {"ndvi": 0.71}}

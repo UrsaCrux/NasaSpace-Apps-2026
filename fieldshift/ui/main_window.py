@@ -9,23 +9,33 @@ from fieldshift.ui.analysis_tab import AnalysisTab
 from fieldshift.ui.analyze_dialog import AnalysisProgress, AnalyzeDialog
 from fieldshift.ui.field_list import LAYER_ID_ROLE
 from fieldshift.ui.fields_bar import FieldsBar
+from fieldshift.ui.field_menu import FieldMenu
+from fieldshift.ui.hover_card import HoverCard
+from fieldshift.ui.map_controls import MapControls
+from fieldshift.ui.map_search import MapSearch
 from fieldshift.ui.scale_bar import ScaleBar
 from fieldshift.ui.side_panel import SidePanel
+from fieldshift.ui.status_panel import StatusPanel
+from fieldshift.ui.weather_card import WeatherCard
 
 # relative widths of the map and the panel inside the splitter
 MAP_STRETCH = 3
 PANEL_STRETCH = 1
+# share of the map tab the right column takes while it shows Status
+STATUS_SHARE = 0.45
 
 
 # top-level window, made of tabs. The first tab ("Map", always there) holds
 # the MapView with the FieldsBar under it (left) and the SidePanel (right),
-# which share one FieldsManager. "Analyze…" adds one closable tab per
+# which share one FieldsManager. The bar switches the right column between
+# "My fields" and "Status". "Analyze…" adds one closable tab per
 # analysis result
 class MainWindow(QtWidgets.QMainWindow):
 
-    # (MapView view, QWidget parent = None)
-    # builds the splitter layout around an already created map view
-    def __init__(self, view, parent=None):
+    # (MapView view, QWidget parent = None, dict basemaps = None)
+    # builds the splitter layout around an already created map view.
+    # basemaps maps "satellite" / "streets" to layer ids for the background switch
+    def __init__(self, view, parent=None, basemaps=None):
         super().__init__(parent)
         self.view = view
         self.fields = FieldsManager(view)
@@ -40,10 +50,28 @@ class MainWindow(QtWidgets.QMainWindow):
         column.addWidget(self.fields_bar)
         # scale bar over the bottom-left corner of the map
         self.scale_bar = ScaleBar(view)
+        # zoom, "my fields" and background buttons over the top-left corner
+        self.map_controls = MapControls(view, self.fields, basemaps)
+        # place search: opens from the magnifier of the controls
+        self.map_search = MapSearch(view, self.map_controls)
+        # card with the field under the mouse, and its outline highlighted
+        self.hover_card = HoverCard(view, self.fields)
+        # right click on a field: edit, analyze, zoom, check, delete
+        self.field_menu = FieldMenu(self)
+        # weather of the zone (now and 7 days) over the top-right corner
+        self.weather_card = WeatherCard(view)
+        # Status of one field over the right part of the map (hidden at start)
+        self.status_panel = StatusPanel(view, self.fields)
+        # right column: "My fields" (SidePanel) or "Status", as the bar says
+        self.right_stack = QtWidgets.QStackedWidget()
+        self.right_stack.addWidget(self.panel)
+        self.right_stack.addWidget(self.status_panel)
+        self.status_panel.suggestion_requested.connect(
+            lambda layer_id: QtCore.QTimer.singleShot(0, lambda: self.analyze(layer_id)))
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         splitter.addWidget(map_area)
-        splitter.addWidget(self.panel)
+        splitter.addWidget(self.right_stack)
         splitter.setStretchFactor(0, MAP_STRETCH)
         splitter.setStretchFactor(1, PANEL_STRETCH)
         splitter.setCollapsible(0, False)
@@ -61,6 +89,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tabs.tabCloseRequested.connect(self._close_tab)
         self.setCentralWidget(self.tabs)
         self.fields_bar.analyze_requested.connect(self.analyze)
+        self.fields_bar.status_requested.connect(lambda: self.open_status())
+        self.fields_bar.fields_requested.connect(self.show_fields)
+        self.fields_bar.trends_requested.connect(lambda: self.open_mode("trends"))
         self.setWindowTitle(f"Field Shift {__version__}")
         self.resize(1280, 800)
         self.statusBar().showMessage(tr("status.ready"))
@@ -72,13 +103,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self._show_attribution()
         view.cursor_moved.connect(self._show_cursor)
 
-    # ()
-    # asks for a field and analyses, runs them with a progress window and
-    # opens one tab per result. returns the new tabs (empty if cancelled)
-    def analyze(self):
+    # (str layer_id = None)
+    # asks for a field (layer_id first, if given) and analyses, runs them
+    # with a progress window and opens one tab per result. returns the new
+    # tabs (empty if cancelled)
+    def analyze(self, layer_id=None):
         if self.fields.count() == 0 or self.view.is_drawing():
             return []
-        dialog = AnalyzeDialog(self.fields, self._field_to_preselect(), parent=self)
+        dialog = AnalyzeDialog(self.fields, layer_id or self._field_to_preselect(), parent=self)
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
             return []
         field = self.fields.field(dialog.layer_id())
@@ -100,6 +132,53 @@ class MainWindow(QtWidgets.QMainWindow):
         if tabs:
             self.tabs.setCurrentWidget(tabs[0])
         return tabs
+
+    # (str layer_id = None)
+    # shows the map with the Status panel of a field (layer_id, else the one
+    # the Analyze dialog would start with). returns True when it opened
+    def open_status(self, layer_id=None):
+        if self.view.is_drawing():
+            return False
+        self.tabs.setCurrentIndex(0)
+        if not self.status_panel.open(layer_id or self._field_to_preselect()):
+            self.fields_bar.set_mode(self.fields_bar.mode)
+            return False
+        if self.right_stack.currentWidget() is not self.status_panel:
+            sizes = self.map_splitter.sizes()
+            self._fields_sizes = sizes
+            total = sum(sizes)
+            right = max(self.status_panel.minimumWidth(), int(total * STATUS_SHARE))
+            self.right_stack.setCurrentWidget(self.status_panel)
+            self.map_splitter.setSizes([max(1, total - right), right])
+        self.fields_bar.set_mode("status")
+        return True
+
+    # ()
+    # shows the map with the "My fields" list in the right column
+    def show_fields(self):
+        self.tabs.setCurrentIndex(0)
+        if self.right_stack.currentWidget() is not self.panel:
+            self.right_stack.setCurrentWidget(self.panel)
+            if getattr(self, "_fields_sizes", None):
+                self.map_splitter.setSizes(self._fields_sizes)
+        self.fields_bar.set_mode("fields")
+
+    # (str mode)
+    # shows the tab of a mode ("trends"), opening it the first
+    # time. for now the tab only says the mode is coming soon. returns the tab
+    def open_mode(self, mode):
+        for index in range(1, self.tabs.count()):
+            widget = self.tabs.widget(index)
+            if widget.objectName() == f"mode_{mode}":
+                self.tabs.setCurrentIndex(index)
+                return widget
+        tab = QtWidgets.QLabel(tr(f"modes.{mode}_soon"))
+        tab.setObjectName(f"mode_{mode}")
+        tab.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        tab.setWordWrap(True)
+        tab.setStyleSheet("color: #555; font-size: 15px; padding: 40px;")
+        self.tabs.setCurrentIndex(self.tabs.addTab(tab, tr(f"modes.{mode}")))
+        return tab
 
     # the field the Analyze dialog starts with: the first checked one, else
     # the highlighted row, else none (the dialog picks the first)

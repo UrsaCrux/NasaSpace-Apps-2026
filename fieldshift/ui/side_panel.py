@@ -1,6 +1,5 @@
 """Right-hand panel. Uses the map only through the MapView abstraction."""
 
-from fieldshift import native
 from fieldshift.fields.manager import FieldsManager
 from fieldshift.i18n import tr
 from fieldshift.qt import QtCore, QtWidgets
@@ -10,9 +9,8 @@ from fieldshift.ui.field_list import EDITABLE_ROLE, LAYER_ID_ROLE, FieldList
 from fieldshift.ui.fields_data import FieldsDataBox
 
 
-# panel with the user's fields (and any other non-base layer), the data of
-# the checked fields, cursor position and an empty "Tools" box where new
-# features are meant to be added. a field's checkbox chooses it (for data,
+# panel with the user's fields (and any other non-base layer) and the data
+# of the checked fields. new boxes go in __init__, before the stretch. a field's checkbox chooses it (for data,
 # export, delete); for other layers it shows / hides them. base layers
 # (LayerInfo.locked) stay on the map but are not listed
 class SidePanel(QtWidgets.QWidget):
@@ -32,17 +30,12 @@ class SidePanel(QtWidgets.QWidget):
         # data of the checked fields (see fields_data.py)
         self.data_box = FieldsDataBox(self.fields)
         layout.addWidget(self.data_box)
-        layout.addWidget(self._build_position_box())
-        # contributors: put new feature widgets inside this box
-        self.tools_box = self._build_tools_box()
-        layout.addWidget(self.tools_box)
+        # contributors: add new boxes here
         layout.addStretch(1)
 
         view.layers_changed.connect(self.refresh_layers)
         self.fields.fields_changed.connect(self.refresh_layers)
         self.fields.selection_changed.connect(self._sync_checks)
-        view.cursor_moved.connect(self._on_cursor)
-        view.clicked.connect(self._on_click)
         view.layer_double_clicked.connect(self._on_map_double_click)
         self.refresh_layers()
 
@@ -98,23 +91,6 @@ class SidePanel(QtWidgets.QWidget):
         self.delete_button.clicked.connect(self._remove_selected)
         row.addWidget(self.delete_button)
         v.addLayout(row)
-        return box
-
-    def _build_position_box(self):
-        box = QtWidgets.QGroupBox(tr("position.title"))
-        form = QtWidgets.QFormLayout(box)
-        self.cursor_label = QtWidgets.QLabel("–")
-        self.click_label = QtWidgets.QLabel("–")
-        form.addRow(tr("position.cursor"), self.cursor_label)
-        form.addRow(tr("position.last_click"), self.click_label)
-        return box
-
-    def _build_tools_box(self):
-        box = QtWidgets.QGroupBox(tr("tools.title"))
-        v = QtWidgets.QVBoxLayout(box)
-        status = (tr("tools.native_loaded", version=native.version()) if native.is_available()
-                  else tr("tools.native_missing"))
-        v.addWidget(QtWidgets.QLabel(status))
         return box
 
     # -- slots -------------------------------------------------------------
@@ -191,11 +167,20 @@ class SidePanel(QtWidgets.QWidget):
     # the Edit button of a field row was clicked. the dialog opens once Qt has
     # finished handling the click: saving rebuilds the list
     def _on_edit_requested(self, layer_id):
-        QtCore.QTimer.singleShot(0, lambda: self._edit_field(layer_id))
+        QtCore.QTimer.singleShot(0, lambda: self.edit_field(layer_id))
+
+    # (str layer_id)
+    # asks to confirm, then deletes one field (map menu)
+    def delete_field(self, layer_id):
+        field = self.fields.field(layer_id)
+        if field is not None and dialogs.confirm(
+                self, tr("fields.remove_title"), tr("fields.remove_confirm", name=field.name),
+                tr("common.delete"), danger=True):
+            self.fields.remove(layer_id)
 
     # (str layer_id)
     # asks for the new details of a field and applies them
-    def _edit_field(self, layer_id):
+    def edit_field(self, layer_id):
         field = self.fields.field(layer_id)
         if field is None or self.view.is_drawing():
             return
@@ -227,9 +212,3 @@ class SidePanel(QtWidgets.QWidget):
             return
         self.fields.set_selected(layer_id, not self.fields.is_selected(layer_id))
         self._highlight(layer_id)
-
-    def _on_cursor(self, lon, lat):
-        self.cursor_label.setText(f"{lon:.5f}, {lat:.5f}")
-
-    def _on_click(self, lon, lat):
-        self.click_label.setText(f"{lon:.5f}, {lat:.5f}")

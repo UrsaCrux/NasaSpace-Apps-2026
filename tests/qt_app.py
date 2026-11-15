@@ -18,9 +18,13 @@ def get_app():
     global _app
     if _app is None:
         if HAS_QGIS:
+            import atexit
             from qgis.core import QgsApplication
             _app = QgsApplication([], False)
             _app.initQgis()
+            # like the app does on close: without it QGIS can crash while the
+            # interpreter exits (its OGR connection pool outlives GDAL)
+            atexit.register(_app.exitQgis)
         else:
             _app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     return _app

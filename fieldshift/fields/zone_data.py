@@ -18,7 +18,7 @@ TOPSOIL = ("0-5cm", "5-15cm", "15-30cm")
 TOPSOIL_CM = {"0-5cm": 5, "5-15cm": 10, "15-30cm": 15}
 # longest the dialog waits for any source, seconds (each group also has its
 # own, shorter, timeout_s)
-DEADLINE_S = 60
+DEADLINE_S = 80
 
 _cache = {}
 _cache_lock = threading.Lock()
@@ -85,6 +85,7 @@ def _soil(site):
     return {
         "soil_texture": usda_texture(sand, silt, clay) if None not in (sand, silt, clay) else None,
         "soil_group": group if group in WRB_GROUPS else None,
+        "clay": clay, "sand": sand, "silt": silt,
         "ph": topsoil_mean(soil.ph),
         "organic_carbon": topsoil_mean(soil.organic_carbon),
         "nitrogen": topsoil_mean(soil.nitrogen),
@@ -141,30 +142,38 @@ SOURCE_GROUPS = (
                 lambda s: {"npp": _value(s.vegetation.npp),
                            "actual_et": _value(s.water.actual_et)}, timeout_s=30,
                 title="FAO WaPOR"),
-    SourceGroup("soilgrids", ("soil_texture", "soil_group", "ph", "organic_carbon",
-                              "nitrogen", "cec", "available_water"), _soilgrids, _soil,
+    SourceGroup("soilgrids", ("soil_texture", "soil_group", "clay", "sand", "silt", "ph",
+                              "organic_carbon", "nitrogen", "cec", "available_water"),
+                _soilgrids, _soil,
                 timeout_s=40, title="SoilGrids"),
     # the ORNL service answers in ~30 s, or fails after 60 s when overloaded
     SourceGroup("modis_ndvi", ("ndvi",), _ndvi, lambda s: {"ndvi": _value(s.vegetation.ndvi)},
-                timeout_s=40, title="MODIS NDVI"),
+                timeout_s=75, title="MODIS NDVI"),
 )
 
 # DATA_FIELDS keys that some group fills (the rest are typed by the farmer)
 FETCHED_KEYS = tuple(k for g in SOURCE_GROUPS for k in g.keys)
 
+
+# (str key)
+# the SourceGroup that fills a DATA_FIELDS key, or None
+def group_of(key):
+    return next((g for g in SOURCE_GROUPS if key in g.keys), None)
+
 _SPECS = {spec.key: spec for spec in DATA_FIELDS}
 
 
-# (SourceGroup group, Area area, Period period = None)
+# (SourceGroup group, Area area, Period period = None, bool refresh = False)
 # runs one source for the area and returns {key: valid value or None} for
-# the group's keys; raises when the source fails. cached per place
-def fetch_group(group, area, period=None):
+# the group's keys; raises when the source fails. cached per place;
+# refresh=True downloads again (and updates the cache)
+def fetch_group(group, area, period=None, refresh=False):
     from fieldshift.api import Period, SiteData
     period = period or Period.make()
     key = (group.name, round(area.lon, 4), round(area.lat, 4), round(area.radius_m, -1),
            period.start, period.end)
     with _cache_lock:
-        if key in _cache:
+        if key in _cache and not refresh:
             return dict(_cache[key])
     provider = group.make_provider()
     provider.check()

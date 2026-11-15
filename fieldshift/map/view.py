@@ -24,6 +24,8 @@ class MapView(ABC):
         self.polygon_drawn = Event()
         # emitted with no arguments when a drawing ends without a polygon
         self.drawing_cancelled = Event()
+        # emitted with no arguments when start_polygon_drawing begins a drawing
+        self.drawing_started = Event()
         # emitted with (str layer_id, float lon, float lat) when the user
         # double-clicks a feature of a layer that is not locked (topmost
         # layer first). never while drawing a polygon. a double click on a
@@ -32,6 +34,14 @@ class MapView(ABC):
         # emitted with no arguments after the visible area changes (pan, zoom,
         # resize); read meters_per_pixel() to draw a scale bar
         self.view_changed = Event()
+        # emitted with (str layer_id or None, float lon, float lat) when the
+        # mouse moves onto a feature of another visible, unlocked layer, or off
+        # every feature (None). not while dragging or drawing
+        self.layer_hovered = Event()
+        # emitted with (str layer_id, float lon, float lat) when the user
+        # right-clicks a feature of a visible, unlocked layer (topmost first);
+        # not while drawing. the UI opens its menu there
+        self.layer_right_clicked = Event()
 
     # ()
     # the QWidget to put in a window; created once and reused
@@ -115,4 +125,61 @@ class MapView(ABC):
     # None when the backend cannot tell
     @abstractmethod
     def meters_per_pixel(self):
+        ...
+
+    # (float factor)
+    # zooms around the centre of the view: the visible width is multiplied by
+    # factor (0.5 zooms in twice as close, 2 zooms out)
+    @abstractmethod
+    def zoom_by(self, factor):
+        ...
+
+    # (list vertices)
+    # draws a bright outline around this (lon, lat) polygon, on top of every
+    # layer; None removes it. only one polygon is highlighted at a time
+    @abstractmethod
+    def set_highlight(self, vertices):
+        ...
+
+    # ()
+    # the highlighted (lon, lat) vertices, or None
+    @abstractmethod
+    def highlighted(self):
+        ...
+
+    # (list polygons)
+    # draws a thick outline around each (lon, lat) polygon of the list (the
+    # fields the user checked), under the hover highlight; [] removes them
+    @abstractmethod
+    def set_marked(self, polygons):
+        ...
+
+    # ()
+    # the polygons given to set_marked, as lists of (lon, lat) tuples
+    @abstractmethod
+    def marked(self):
+        ...
+
+    # ()
+    # (lon, lat) of the centre of the view, or None when the backend cannot tell
+    @abstractmethod
+    def center(self):
+        ...
+
+    # (float lon, float lat)
+    # puts a temporary pin on the map (a found place); replaces the last one
+    @abstractmethod
+    def show_pin(self, lon, lat):
+        ...
+
+    # ()
+    # removes the pin
+    @abstractmethod
+    def clear_pin(self):
+        ...
+
+    # ()
+    # (lon, lat) of the pin, or None
+    @abstractmethod
+    def pin(self):
         ...

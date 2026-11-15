@@ -19,12 +19,23 @@ Each file is a FeatureCollection with one Feature (EPSG:4326). Properties:
 | `area_ha` | Area in hectares |
 | `created` | Creation date (ISO 8601, UTC) |
 | `color` | `"#rrggbb"`; grey `#9e9e9e` if never chosen |
-| `data` | Zone data and crop: `{key: {"value": ..., "source": "prefilled" \| "user" \| "missing"[, "prefilled": <loaded value>]}}`; the crop is `data.crop = {"value": "<variety id>", "source": "user"}` |
+| `data` | Zone data and crop: `{key: {"value": ..., "source": "prefilled" \| "user" \| "missing"[, "prefilled": <loaded value>]}}`; the crop is `data.crop = {"value": "<variety id>" or "ecocrop:<id>", "source": "user"[, "name": "Vitis labrusca"]}` |
+
+`data` also holds two hidden keys written on save, `wofost` (crop model and
+parameters) and `pcse_site` (soil / site parameters) — see
+[simulation.md](simulation.md).
 
 Files without `color` or `data` (older versions) open with grey, no crop and
 every datum `missing` (the dialog then loads them). Data keys of older
 versions (`soil_type`, `annual_rain_mm`) are dropped. "Export" writes the same
 properties.
+
+## On the map
+
+Each field is its own map layer (id used by the list, hover, double click,
+edit, remove), but all fields are **drawn together as one picture**
+(`render_group="fields"`, see [map-abstraction.md](map-abstraction.md#memory-drawing-many-layers-render_group)):
+one picture per field used ~60 MB of RAM each on a HiDPI screen.
 
 ## Editing a field
 
@@ -40,18 +51,39 @@ the field stays as it was. The code is `FieldStore.update` and
 Opened after drawing a field (and by **Edit**). It asks for:
 
 - **Name** — required, unique.
-- **Crop** — required. A search box: typing "peach", "durazno" or
-  "melocotón" (any language, accents and case ignored) opens a dropdown with
-  the matching varieties ("Peach – variety 1", "Durazno – variedad 1"...).
-  Only a variety picked from the list (or typed exactly) counts. The list is
-  `fieldshift/crops/crops.json` — **placeholder varieties** for now (46 real
-  crop names, 3 made-up varieties each); search code in
-  `fieldshift/crops/__init__.py`.
+- **Crop** — required. A search box: typing "peach", "durazno", "melocotón"
+  or "Prunus persica" (any language, accents and case ignored) opens a
+  dropdown with:
+  - the varieties of the local catalogue ("Peach – variety 1",
+    "Durazno – variedad 1"...) — `fieldshift/crops/crops.json`, **placeholder
+    varieties** for now (46 real crops, 3 made-up varieties each);
+  - any other plant of **FAO EcoCrop** (~2 600) that matches by scientific
+    name, variety/synonym or common name, e.g. "Vitis labrusca — fox grape,
+    Isabella grape (EcoCrop)". Stored as `ecocrop:<id>`. A catalogue crop
+    found by its scientific name offers its varieties instead.
+
+  Only an entry picked from the list (or typed exactly) counts. Below the
+  search, a panel shows the chosen crop's **EcoCrop picture** (cropped to a
+  rectangle), **scientific and common names** and **description**, cut at
+  260 characters with "..." (the whole text in the tooltip). The EcoCrop list
+  loads in the background when the dialog opens (cached for 30 days); the
+  crop page and picture load when chosen (cached). Without connection only
+  the catalogue is searched and the panel says the information is not
+  available. EcoCrop texts are in English. Code: `fieldshift/crops/`
+  (`ecocrop.py`, see [data-api.md](data-api.md#fao-ecocrop-crop-data)) and
+  `fieldshift/ui/crop_widgets.py`.
 - **Colour** — optional.
 - **Zone data** — loaded from the data sources (below), editable.
 
 Save stays disabled until the name and crop are valid **and** every data
-source has answered or run out of time.
+source has answered or run out of time. **Editing an existing field** does
+not wait: Save works while the empty rows load, and saving stops the
+loading (rows not loaded yet stay "not available"; values already there are
+kept).
+
+The dialog opens as tall as the main window minus a margin
+(`WINDOW_MARGIN_PX`, never taller than the screen); everything but Save /
+Cancel scrolls.
 
 ## Zone data: one list
 
@@ -60,7 +92,7 @@ The data of the zone are described by `DATA_FIELDS` in
 
 | Group | Data | Source (`fieldshift/fields/zone_data.py`) |
 |-------|------|-------------------------------------------|
-| Soil (top 30 cm) | texture (USDA class from clay/sand/silt), soil group (WRB), pH, organic carbon, nitrogen, CEC, available water (field capacity − wilting point) | SoilGrids, depth-weighted 0–30 cm |
+| Soil (top 30 cm) | texture (USDA class from clay/sand/silt), soil group (WRB), clay / sand / silt %, pH, organic carbon, nitrogen, CEC, available water (field capacity − wilting point) | SoilGrids, depth-weighted 0–30 cm |
 | Relief | elevation, slope | Copernicus DEM GLO-30 |
 | Vegetation | NDVI | MODIS MOD13Q1 (ORNL) |
 | Vegetation | biomass production (NPP), actual evapotranspiration | FAO WaPOR v3 |
@@ -79,6 +111,12 @@ tooltip), and they can be typed in. Results are cached per place for the
 session. When editing a field, only sources with an empty row are asked
 again, and rows with a value keep it. `FIELDSHIFT_OFFLINE=1` never contacts
 the sources (the tests set it).
+
+**Reload one datum.** The ⬇ button at the right of each datum that comes
+from a data source downloads it again (skipping the cache) and replaces the
+row's value, even an edited one; if the download fails the value is kept and
+the reason is in the tooltip. Data typed only by the farmer (irrigated) has
+no button.
 
 **States of a datum.** `prefilled` (from a source, grey) · `user` (edited,
 green bold; a ↺ button restores the loaded value, kept in `"prefilled"`) ·

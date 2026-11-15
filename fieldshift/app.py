@@ -33,6 +33,16 @@ DEFAULT_BASEMAP = LayerSpec.xyz(
 )
 
 
+# street map (roads, towns, names) the user can switch to from the map
+# controls; hidden at start. OpenStreetMap requires the credit below
+STREET_BASEMAP = LayerSpec.xyz(
+    "OpenStreetMap",
+    "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    locked=True,
+    attribution="© OpenStreetMap contributors",
+)
+
+
 # (list argv)
 # reads the command line: returns (str language or None, list of the
 # arguments left for Qt). --lang must be one of i18n.available_languages();
@@ -58,14 +68,19 @@ def main(argv=None):
     app = _create_application(argv)
 
     view = create_map_view()
-    for spec in (COUNTRIES, DEFAULT_BASEMAP):   # bottom layer first
+    basemaps = {}
+    for key, spec in (("countries", COUNTRIES), ("streets", STREET_BASEMAP),
+                      ("satellite", DEFAULT_BASEMAP)):   # bottom layer first
         try:
-            view.add_layer(spec)
+            basemaps[key] = view.add_layer(spec)
         except ValueError as exc:
             print(f"warning: {exc}", file=sys.stderr)
+    if "streets" in basemaps:
+        view.set_layer_visible(basemaps["streets"], False)  # satellite first
     view.set_center(-70.64831, -33.45974, scale=400_000)  # Santiago, Chile
 
-    window = MainWindow(view)
+    window = MainWindow(view, basemaps={k: v for k, v in basemaps.items()
+                                        if k in ("satellite", "streets")})
     window.show()
     code = app.exec()
 

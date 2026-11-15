@@ -9,8 +9,8 @@
 
 ## Adding a feature to the side panel
 
-The panel has an empty **Tools** box (`SidePanel.tools_box`) meant for new
-features. Typical pattern, e.g. a "distance between two clicks" tool:
+Add a box (a `QGroupBox` or any widget) to the panel layout in
+`SidePanel.__init__`, before the stretch. Typical pattern, e.g. a "distance between two clicks" tool:
 
 ```python
 # fieldshift/ui/tools/distance.py
@@ -37,7 +37,7 @@ class DistanceTool(QtWidgets.QWidget):
             self.label.setText(f"{km:.1f} km")
 ```
 
-and in `SidePanel.__init__`: `self.tools_box.layout().addWidget(DistanceTool(view))`.
+and in `SidePanel.__init__`: `layout.addWidget(DistanceTool(view))` before `layout.addStretch(1)`.
 
 Texts the user reads go in `fieldshift/i18n/*.json` and are read with
 `tr("key")` ([i18n.md](i18n.md)); the example above writes them inline only

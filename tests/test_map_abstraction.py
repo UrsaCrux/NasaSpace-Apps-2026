@@ -99,6 +99,14 @@ class _ViewContract:
             self.assertAlmostEqual(lon, elon, places=6)
             self.assertAlmostEqual(lat, elat, places=6)
 
+    def test_drawing_started_event(self):
+        started = []
+        self.view.drawing_started.connect(lambda: started.append(1))
+        self.view.start_polygon_drawing()
+        self.view.start_polygon_drawing()           # already drawing: no second event
+        self.assertEqual(started, [1])
+        self.view.cancel_drawing()
+
     def test_cancel_drawing(self):
         cancelled = []
         self.view.drawing_cancelled.connect(lambda: cancelled.append(True))
@@ -116,6 +124,45 @@ class _ViewContract:
         self.assertEqual([c[0] for c in clicked], [layer_id])
         lon, lat = clicked[0][1:]
         self.assertTrue(-70.70 <= lon <= -70.69 and -33.41 <= lat <= -33.40)
+
+    def test_marked_outlines(self):
+        layer_id = self.add_square_layer("field")
+        self.assertEqual(self.view.marked(), [])
+        other = [(-70.68, -33.40), (-70.67, -33.40), (-70.67, -33.41)]
+        self.view.set_marked([SQUARE, other])
+        self.assertEqual(self.view.marked(), [[tuple(v) for v in SQUARE], other])
+        self.view.set_marked([])
+        self.assertEqual(self.view.marked(), [])
+        self.view.set_marked([SQUARE])
+        self.view.remove_layer(layer_id)          # must not crash at exit
+
+    def test_highlight(self):
+        layer_id = self.add_square_layer("field")
+        self.assertIsNone(self.view.highlighted())
+        self.view.set_highlight(SQUARE)
+        self.assertEqual(self.view.highlighted(), [tuple(v) for v in SQUARE])
+        self.view.set_highlight(None)
+        self.assertIsNone(self.view.highlighted())
+        self.view.set_highlight(SQUARE)
+        self.view.remove_layer(layer_id)          # must not crash at exit
+
+    def test_right_click_on_a_layer(self):
+        seen = []
+        self.view.layer_right_clicked.connect(lambda lid, lon, lat: seen.append(lid))
+        self.add_square_layer("base", locked=True)
+        self.right_click_square()
+        self.assertEqual(seen, [])                          # locked: nothing
+        layer_id = self.add_square_layer("field")
+        self.right_click_square()
+        self.assertEqual(seen, [layer_id])
+
+    def test_hover_enters_and_leaves_a_layer(self):
+        seen = []
+        self.view.layer_hovered.connect(lambda lid, lon, lat: seen.append(lid))
+        layer_id = self.add_square_layer("field")
+        self.hover_square(True)
+        self.hover_square(False)
+        self.assertEqual(seen, [layer_id, None])
 
     def test_double_click_ignores_locked_hidden_and_drawing(self):
         clicked = []
@@ -143,6 +190,31 @@ class _ViewContract:
         self.view.set_center(-70.70, -33.40)
         self.assertGreaterEqual(len(changes), 2)
 
+    def test_pin(self):
+        self.assertIsNone(self.view.pin())
+        self.view.show_pin(-70.70, -33.40)
+        self.assertEqual(self.view.pin(), (-70.70, -33.40))
+        self.view.show_pin(-71.0, -33.7)                  # replaces the last one
+        self.assertEqual(self.view.pin(), (-71.0, -33.7))
+        self.view.clear_pin()
+        self.assertIsNone(self.view.pin())
+
+    def test_center(self):
+        self.view.set_center(-70.70, -33.40)
+        lon, lat = self.view.center()
+        self.assertAlmostEqual(lon, -70.70, places=4)
+        self.assertAlmostEqual(lat, -33.40, places=4)
+
+    def test_zoom_by(self):
+        changes = []
+        self.view.view_changed.connect(lambda: changes.append(1))
+        self.view.zoom_to_extent(-70.72, -33.42, -70.67, -33.39)
+        before = self.view.meters_per_pixel()
+        self.view.zoom_by(0.5)
+        self.assertGreaterEqual(len(changes), 2)
+        if before is not None:                       # real map: twice as close
+            self.assertAlmostEqual(before / self.view.meters_per_pixel(), 2, delta=0.05)
+
     def test_meters_per_pixel_is_none_or_positive(self):
         value = self.view.meters_per_pixel()
         self.assertTrue(value is None or value > 0)
@@ -165,6 +237,16 @@ class _ViewContract:
     def double_click_square(self):
         raise NotImplementedError
 
+    # (bool inside)
+    # moves the mouse onto the middle of SQUARE (inside) or off it
+    def hover_square(self, inside):
+        raise NotImplementedError
+
+    # ()
+    # right-clicks the middle of SQUARE
+    def right_click_square(self):
+        raise NotImplementedError
+
 
 class PlaceholderViewTest(_ViewContract, unittest.TestCase):
     backend = "placeholder"
@@ -178,6 +260,12 @@ class PlaceholderViewTest(_ViewContract, unittest.TestCase):
 
     def double_click_square(self):
         self.view.simulate_double_click(self._square_id, -70.695, -33.405)
+
+    def hover_square(self, inside):
+        self.view.simulate_hover(self._square_id if inside else None)
+
+    def right_click_square(self):
+        self.view.simulate_right_click(self._square_id)
 
     def close_polygon(self, vertices):
         self.view.simulate_polygon(vertices)
@@ -214,6 +302,32 @@ class QgisViewTest(_ViewContract, unittest.TestCase):
     def test_invalid_source_raises(self):
         with self.assertRaises(ValueError):
             self.view.add_layer(LayerSpec.vector("bad", "/does/not/exist.geojson"))
+
+    def test_render_group_is_drawn_as_one_layer(self):
+        # regression: one map-sized picture per field layer used gigabytes of RAM
+        style = dict(render_group="fields", fill_color="#55ff0000", stroke_color="#990000",
+                     stroke_width=0.8, label_field="name")
+        a = self.add_square_layer("A", **style)
+        b = self.add_square_layer("B", **{**style, "fill_color": "#5500ff00"})
+        plain = self.add_square_layer("Plain")
+        canvas_layers = self.view.canvas().layers()
+        self.assertEqual(len(canvas_layers), 2)                    # Plain (added last) + group
+        self.assertEqual(canvas_layers[0].id(), plain)
+        merged = canvas_layers[1]                                  # where its top member was
+        self.assertEqual(merged.name(), "render group fields")
+        self.assertEqual(merged.featureCount(), 2)
+        rows = [f.attributes() for f in merged.getFeatures()]     # bottom (A) first
+        self.assertEqual(rows, [["255,0,0,85", "153,0,0,255", "A"],
+                                ["0,255,0,85", "153,0,0,255", "B"]])
+        self.assertTrue(merged.labelsEnabled())
+        self.assertEqual(merged.labeling().settings().fieldName, "label")
+        # the members are still the layers the API knows (and picks)
+        self.assertLessEqual({a, b, plain}, {i.id for i in self.view.layers()})
+        self.view.set_layer_visible(a, False)
+        merged = self.view.canvas().layers()[1]
+        self.assertEqual([f["label"] for f in merged.getFeatures()], ["B"])
+        self.view.remove_layer(b)
+        self.assertEqual([l.id() for l in self.view.canvas().layers()], [plain])
 
     def test_label_option_turns_labels_on(self):
         spec = self.make_spec("labelled")
@@ -268,6 +382,30 @@ class QgisViewTest(_ViewContract, unittest.TestCase):
         tool.canvasMoveEvent(self._mouse(Type.MouseMove, end, NoButton, Left))
         tool.canvasReleaseEvent(self._mouse(Type.MouseButtonRelease, end, Left, NoButton))
         self.assertGreater(abs(canvas.center().x() - before.x()), 1)         # drag
+
+    def hover_square(self, inside):
+        from fieldshift.qt import QtCore
+        lon = sum(v[0] for v in SQUARE) / len(SQUARE)
+        lat = sum(v[1] for v in SQUARE) / len(SQUARE)
+        target = (lon, lat) if inside else (-70.719, -33.419)
+        pos = self._pixels([target])[0]
+        self.view.canvas().mapTool().canvasMoveEvent(self._mouse(
+            QtCore.QEvent.Type.MouseMove, pos, QtCore.Qt.MouseButton.NoButton))
+
+    def right_click_square(self):
+        from fieldshift.qt import QtCore
+        lon = sum(v[0] for v in SQUARE) / len(SQUARE)
+        lat = sum(v[1] for v in SQUARE) / len(SQUARE)
+        pos = self._pixels([(lon, lat)])[0]
+        self.view.canvas().mapTool().canvasReleaseEvent(self._mouse(
+            QtCore.QEvent.Type.MouseButtonRelease, pos, QtCore.Qt.MouseButton.RightButton))
+
+    def test_no_builtin_context_menu(self):
+        # regression: QGIS showed its own "Copy Coordinate" menu on right click
+        # and our field menu never opened
+        from qgis.gui import QgsMapTool
+        flags = self.view.canvas().mapTool().flags()
+        self.assertFalse(flags & QgsMapTool.Flag.ShowContextMenu)
 
     def test_double_click_on_empty_map_still_zooms_in(self):
         from fieldshift.qt import QtCore
@@ -415,7 +553,7 @@ class MainWindowTest(unittest.TestCase):
         self.assertIs(window.tabs.widget(0), splitter)          # the map is the first tab
         self.assertTrue(splitter.widget(0).isAncestorOf(view.widget()))
         self.assertTrue(splitter.widget(0).isAncestorOf(window.fields_bar))
-        self.assertIsInstance(splitter.widget(1), SidePanel)
+        self.assertIsInstance(splitter.widget(1).currentWidget(), SidePanel)
         view.add_layer(LayerSpec.xyz("osm", "https://example/{z}/{x}/{y}.png"))
         self.assertEqual(window.panel.layer_list.count(), 1)
 

@@ -14,8 +14,9 @@ MAMBA_ROOT  ?= $(HOME)/micromamba
 ENV_NAME    ?= fieldshift
 CONDA       ?= 1
 ENV_DIR     := $(MAMBA_ROOT)/envs/$(ENV_NAME)
-# packages used by fieldshift.api (data sources)
-DATA_PKGS   := requests rasterio xarray h5py h5netcdf netcdf4 earthaccess cdsapi
+# packages used by fieldshift.api (data sources), and pip-only ones (PCSE crop model)
+DATA_PKGS   := requests rasterio xarray h5py h5netcdf netcdf4 earthaccess cdsapi pyyaml
+PIP_PKGS    := pcse
 
 ifeq ($(CONDA)$(if $(MAMBA),y)$(if $(wildcard $(ENV_DIR)/bin/python),y),1yy)
   RUN := $(MAMBA) run -r $(MAMBA_ROOT) -n $(ENV_NAME) python
@@ -56,10 +57,12 @@ which:
 env:
 	@test -n "$(MAMBA)" || { echo "micromamba not found: see docs/README.md"; exit 1; }
 	$(MAMBA) create -y -r $(MAMBA_ROOT) -n $(ENV_NAME) -c conda-forge "qgis>=4" python=3.12 $(DATA_PKGS)
+	$(MAMBA) run -r $(MAMBA_ROOT) -n $(ENV_NAME) python -m pip install $(PIP_PKGS)
 
 env-data:
 	@test -n "$(MAMBA)" || { echo "micromamba not found: see docs/README.md"; exit 1; }
 	$(MAMBA) install -y -r $(MAMBA_ROOT) -n $(ENV_NAME) -c conda-forge $(DATA_PKGS)
+	$(MAMBA) run -r $(MAMBA_ROOT) -n $(ENV_NAME) python -m pip install $(PIP_PKGS)
 
 LON    ?= -71.0
 LAT    ?= -34.5

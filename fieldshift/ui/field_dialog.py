@@ -30,8 +30,9 @@ from fieldshift.fields.schema import (
     normalize_color,
     normalize_data,
 )
-from fieldshift.i18n import tr
+from fieldshift.i18n import tip, tr
 from fieldshift.qt import QtCore, QtGui, QtWidgets
+from fieldshift.ui.crop_widgets import CropInfoPanel, CropSearch  # noqa: F401  (re-exported)
 from fieldshift.ui.dialogs import CenteredDialog
 
 # frames of the loading animation, and ms between frames
@@ -47,6 +48,10 @@ STATUS_STYLE = {
     "missing": "color: #c06000; font-weight: bold;",
     "farmer": "color: #777; font-style: italic;",
 }
+# the dialog opens this many pixels shorter than the main window (and never
+# taller than the screen); its content scrolls when it does not fit
+WINDOW_MARGIN_PX = 60
+
 # set to "1" to never contact the data sources (tests, no internet)
 OFFLINE_ENV = "FIELDSHIFT_OFFLINE"
 
@@ -108,88 +113,28 @@ class ZoneDataLoader(QtCore.QObject):
             pass
 
 
-# line edit with a dropdown of crop varieties that match what is typed (in
-# any language, ignoring accents). a value only counts once a variety is
-# picked from the list; selection_changed fires when that changes
-class CropSearch(QtWidgets.QLineEdit):
-    selection_changed = QtCore.pyqtSignal()
-
-    # (str variety_id = None, QWidget parent = None)
-    def __init__(self, variety_id=None, parent=None):
-        super().__init__(parent)
-        self.setPlaceholderText(tr("fields.crop_placeholder"))
-        self.setClearButtonEnabled(True)
-        self._results = []
-        self._selected = None
-        self._model = QtCore.QStringListModel(self)
-        self.completer_ = QtWidgets.QCompleter(self._model, self)
-        self.completer_.setCompletionMode(
-            QtWidgets.QCompleter.CompletionMode.UnfilteredPopupCompletion)
-        self.completer_.setCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
-        self.completer_.setMaxVisibleItems(crops.MAX_RESULTS)
-        self.completer_.setWidget(self)
-        self.completer_.activated.connect(self._on_activated)
-        self.textEdited.connect(self._on_edited)
-        if crops.is_variety(variety_id):
-            self.choose(variety_id)
-
-    # ()
-    # id of the chosen variety ("peach.v1"), or None
-    def selected(self):
-        return self._selected
-
-    # ()
-    # labels currently offered in the dropdown
-    def suggestions(self):
-        return self._model.stringList()
-
-    # (str variety_id)
-    # picks a variety as if chosen from the list
-    def choose(self, variety_id):
-        self.setText(crops.label(variety_id))
-        self._set_selected(variety_id)
-
-    def _on_edited(self, text):
-        self._results = crops.search(text)
-        labels = [crops.label(v.id) for v in self._results]
-        self._model.setStringList(labels)
-        # typing the exact label of a variety also chooses it
-        exact = next((v.id for v in self._results
-                      if crops.fold(crops.label(v.id)) == crops.fold(text)), None)
-        self._set_selected(exact)
-        if labels and exact is None:
-            self.completer_.complete()
-        else:
-            self.completer_.popup().hide()
-
-    def _on_activated(self, text):
-        if not isinstance(text, str):              # QModelIndex overload
-            text = text.data()
-        match = next((v.id for v in self._results if crops.label(v.id) == text), None)
-        if match is not None:
-            self.choose(match)
-
-    def _set_selected(self, variety_id):
-        if variety_id != self._selected:
-            self._selected = variety_id
-            self.selection_changed.emit()
-
-
 # dialog with the details of a field. needs a name (required, unique) and a
-# crop (required, from the catalogue); colour and zone data are optional.
+# crop (required: a catalogue variety or an EcoCrop plant, whose picture and
+# description appear under the search); colour and zone data are optional.
 # with field= it edits that saved field (its own name is not a duplicate),
 # otherwise it asks for a new one drawn with vertices=. zone data that has no
-# value yet is loaded from the data sources (fetch= replaces
-# zone_data.fetch_group, e.g. in tests)
+# value yet is loaded from the data sources. For tests: fetch= replaces
+# zone_data.fetch_group, crop_info_fetch= the EcoCrop crop download and
+# load_ecocrop= the EcoCrop list download
 class FieldDialog(CenteredDialog):
 
     # (FieldStore store, list vertices = None, Field field = None,
-    #  QWidget parent = None, callable fetch = None)
+    #  QWidget parent = None, callable fetch = None, callable crop_info_fetch = None,
+    #  callable load_ecocrop = None)
     # builds the dialog and starts loading the zone data
-    def __init__(self, store, vertices=None, field=None, parent=None, fetch=None):
+    def __init__(self, store, vertices=None, field=None, parent=None, fetch=None,
+                 crop_info_fetch=None, load_ecocrop=None):
         super().__init__(parent)
         self.store = store
         self._own_name = field.name if field is not None else None
+        # an existing field already has its data saved: it can be saved while
+        # the empty rows still load (saving stops the loading)
+        self.editing = field is not None
         vertices = list(field.vertices) if field is not None else list(vertices)
         current = normalize_data(field.data if field is not None else None)
         self._color = normalize_color(field.color if field is not None else DEFAULT_COLOR)
@@ -202,8 +147,9 @@ class FieldDialog(CenteredDialog):
         self.name_edit.selectAll()
         self.error_label = self._error_label()
 
-        self.crop_search = CropSearch(current[CROP_KEY]["value"])
+        self.crop_search = CropSearch(current[CROP_KEY]["value"], load_index=load_ecocrop)
         self.crop_error = self._error_label()
+        self.crop_info = CropInfoPanel(fetch=crop_info_fetch)
 
         self.color_button = QtWidgets.QPushButton(tr("fields.color_choose"))
         self.color_button.setSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed,
@@ -215,27 +161,32 @@ class FieldDialog(CenteredDialog):
         top = QtWidgets.QFormLayout()
         # macOS keeps form fields at their natural (short) width by default
         top.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
-        top.addRow(tr("fields.name_label"), self.name_edit)
+        # every title and button has a tooltip from i18n/tooltips/tooltips.json
+        self.tooltip_widgets = {}
+        top.addRow(self._titled("field_dialog.name", tr("fields.name_label")), self.name_edit)
         top.addRow(self.error_label)
-        top.addRow(tr("fields.crop_label"), self.crop_search)
+        top.addRow(self._titled("field_dialog.crop", tr("fields.crop_label")), self.crop_search)
         top.addRow(self.crop_error)
-        top.addRow(tr("fields.color_label"), self.color_button)
+        top.addRow(self.crop_info)
+        top.addRow(self._titled("field_dialog.color", tr("fields.color_label")), self.color_button)
+        self._tip(self.color_button, "field_dialog.color_button")
 
         self._rows = {}
         data_box = QtWidgets.QGroupBox(tr("fields.data_title"))
+        self._tip(data_box, "field_dialog.data_box")
         grid = QtWidgets.QGridLayout(data_box)
         hint = QtWidgets.QLabel(tr("fields.data_hint"))
         hint.setWordWrap(True)
         hint.setStyleSheet("color: #555;")
-        grid.addWidget(hint, 0, 0, 1, 4)
+        grid.addWidget(hint, 0, 0, 1, 5)
         row = 1
         for group in GROUPS:
             specs = [s for s in DATA_FIELDS if s.group == group]
             if not specs:
                 continue
-            title = QtWidgets.QLabel(tr(f"fields.group.{group}"))
+            title = self._titled(f"field_dialog.group.{group}", tr(f"fields.group.{group}"))
             title.setStyleSheet("font-weight: bold; margin-top: 6px;")
-            grid.addWidget(title, row, 0, 1, 4)
+            grid.addWidget(title, row, 0, 1, 5)
             row += 1
             for spec in specs:
                 self._add_data_row(grid, row, spec, current[spec.key])
@@ -244,23 +195,42 @@ class FieldDialog(CenteredDialog):
         self.load_label = QtWidgets.QLabel()
         self.load_label.setWordWrap(True)
         self.load_label.setStyleSheet("color: #555;")
-        grid.addWidget(self.load_label, row, 0, 1, 4)
+        grid.addWidget(self.load_label, row, 0, 1, 5)
 
         Buttons = QtWidgets.QDialogButtonBox.StandardButton
         buttons = QtWidgets.QDialogButtonBox(Buttons.Save | Buttons.Cancel)
         self.save_button = buttons.button(Buttons.Save)
         self.save_button.setText(tr("common.save"))
+        self._tip(self.save_button, "field_dialog.save")
         buttons.button(Buttons.Cancel).setText(tr("common.cancel"))
+        self._tip(buttons.button(Buttons.Cancel), "field_dialog.cancel")
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
 
+        # everything but the buttons scrolls; Save / Cancel stay visible
+        content = QtWidgets.QWidget()
+        inner = QtWidgets.QVBoxLayout(content)
+        inner.addLayout(top)
+        inner.addWidget(data_box)
+        inner.addStretch(1)
+        self.scroll_area = QtWidgets.QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        self.scroll_area.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll_area.setWidget(content)
         layout = QtWidgets.QVBoxLayout(self)
-        layout.addLayout(top)
-        layout.addWidget(data_box)
+        layout.addWidget(self.scroll_area, 1)
         layout.addWidget(buttons)
+        content_width = content.sizeHint().width() + \
+            self.scroll_area.verticalScrollBar().sizeHint().width() + 24
+        self.resize(max(self.minimumWidth(), content_width), self.default_height())
 
         self.name_edit.textChanged.connect(self._validate)
         self.crop_search.selection_changed.connect(self._validate)
+        self.crop_search.selection_changed.connect(
+            lambda: self.crop_info.show_crop(self.crop_search.selected()))
+        self.crop_info.show_crop(self.crop_search.selected())
         self.crop_search.textEdited.connect(lambda *_: self._validate())
 
         self._spinner_step = 0
@@ -269,8 +239,26 @@ class FieldDialog(CenteredDialog):
         self._spinner.timeout.connect(self._animate)
         self._pending, self._failed = {}, []
         self._started = 0.0
+        self._fetch = fetch
+        self._area = zone_data.area_of(vertices)
+        self._reloading = {}          # key -> (loader, started, value before, state before)
         self._start_loading(vertices, fetch)
         self._validate()
+
+    # ()
+    # height the dialog opens with: the main window's height minus
+    # WINDOW_MARGIN_PX, never more than the screen's free height (the
+    # screen's when there is no main window)
+    def default_height(self):
+        parent = self.parentWidget()
+        screen = (parent.screen() if parent is not None else None) or \
+            QtWidgets.QApplication.primaryScreen()
+        available = screen.availableGeometry().height() if screen is not None else 800
+        if parent is not None:
+            wanted = parent.window().height() - WINDOW_MARGIN_PX
+        else:
+            wanted = available - WINDOW_MARGIN_PX
+        return max(300, min(wanted, available - WINDOW_MARGIN_PX // 2))
 
     # ()
     # the name typed, without surrounding spaces
@@ -290,7 +278,7 @@ class FieldDialog(CenteredDialog):
     # ()
     # True while some data source has not answered yet
     def is_loading(self):
-        return bool(self._pending)
+        return bool(self._pending) or bool(self._reloading)
 
     # ()
     # the data: {key: {"value", "source"[, "prefilled"]}} for DATA_FIELDS,
@@ -311,6 +299,8 @@ class FieldDialog(CenteredDialog):
             result[key] = item
         crop = self.crop()
         result[CROP_KEY] = {"value": crop, "source": SOURCE_USER if crop else SOURCE_MISSING}
+        if crops.ecocrop_number(crop) is not None:
+            result[CROP_KEY]["name"] = self.crop_search.selected_name()
         return result
 
     # (str key)
@@ -331,6 +321,57 @@ class FieldDialog(CenteredDialog):
         self._set_state(row, "edited")
 
     # (str key)
+    # downloads this datum again from its data source (the cache is skipped)
+    # and replaces the row's value with it; a failure keeps the value there
+    def reload_value(self, key):
+        row, group = self._rows[key], zone_data.group_of(key)
+        if group is None or key in self._reloading or row["state"] == "loading":
+            return
+        before = (self._value(row), row["state"])
+        if os.environ.get(OFFLINE_ENV) == "1" and self._fetch is None:
+            self._finish_reload_failed(row, before, tr("fields.data_missing_hint"))
+            return
+        fetch = self._fetch or (lambda g, a: zone_data.fetch_group(g, a, refresh=True))
+        loader = ZoneDataLoader(self._area, fetch, self)
+        loader.group_done.connect(lambda _name, values, error, key=key:
+                                  self._finish_reload(key, values, error))
+        self._reloading[key] = (loader, time.monotonic(), before, group)
+        self._set_state(row, "loading")
+        self._spinner.start()
+        self._animate()
+        loader.start([group])
+        self._update_load_label()
+        self._validate()
+
+    # (str key)
+    # True while that datum is being downloaded again
+    def is_reloading(self, key):
+        return key in self._reloading
+
+    def _finish_reload(self, key, values, error):
+        entry = self._reloading.pop(key, None)
+        if entry is None:                          # stopped or timed out before
+            return
+        loader, _started, before, _group = entry
+        loader.cancel()
+        row = self._rows[key]
+        value = (values or {}).get(key)
+        if value is not None:
+            row["prefilled"] = value
+            self._write(row, value)
+            self._set_state(row, "prefilled")
+            row["status"].setToolTip(tr("fields.data_reloaded"))
+        else:
+            self._finish_reload_failed(row, before, error or tr("fields.data_missing_hint"))
+        self._after_answer()
+
+    def _finish_reload_failed(self, row, before, error):
+        value, state = before
+        self._write(row, value)
+        self._set_state(row, state if value is not None else "missing")
+        row["status"].setToolTip(tr("fields.data_reload_failed", error=error))
+
+    # (str key)
     # puts the loaded value back and marks the datum as not edited
     def reset_value(self, key):
         row = self._rows[key]
@@ -341,12 +382,32 @@ class FieldDialog(CenteredDialog):
     def accept(self):
         if self._problems():
             return
+        if self.is_loading():                       # editing: stop and keep what there is
+            self.stop_loading()
         super().accept()
+
+    # ()
+    # stops waiting for the data sources: rows still loading become "not
+    # available" (their late answers are ignored)
+    def stop_loading(self):
+        for key in list(self._reloading):
+            self._finish_reload(key, None, "")
+        for group in self._pending.values():
+            for key in group.keys:
+                row = self._rows[key]
+                if row["state"] == "loading":
+                    self._set_state(row, "missing")
+        self._pending.clear()
+        self._loader_cancel()
+        self._spinner.stop()
+        self._update_load_label()
+        self._validate()
 
     # stops the threads' results from reaching a closed dialog
     def done(self, result):
         self._loader_cancel()
         self._spinner.stop()
+        self.crop_info.cancel()
         super().done(result)
 
     # -- loading -----------------------------------------------------------
@@ -426,16 +487,18 @@ class FieldDialog(CenteredDialog):
             self._after_answer()
 
     def _after_answer(self):
-        if not self._pending:
-            self._spinner.stop()
+        if not self._pending and self._loader is not None:
             self._loader_cancel()
+        if not self._pending and not self._reloading:
+            self._spinner.stop()
         self._update_load_label()
         self._validate()
 
     def _update_load_label(self):
         if self._pending:
             done = self._total - len(self._pending)
-            self.load_label.setText(tr("fields.data_status_loading", done=done, total=self._total))
+            key = "fields.data_status_loading_edit" if self.editing else "fields.data_status_loading"
+            self.load_label.setText(tr(key, done=done, total=self._total))
         elif self._failed:
             self.load_label.setText(tr("fields.data_status_partial",
                                        names=", ".join(self._failed)))
@@ -446,6 +509,9 @@ class FieldDialog(CenteredDialog):
     def _animate(self):
         if self._pending:
             self._check_timeouts()
+        for key, (_loader, started, _before, group) in list(self._reloading.items()):
+            if time.monotonic() - started >= min(group.timeout_s, zone_data.DEADLINE_S):
+                self._finish_reload(key, None, tr("fields.data_missing_hint"))
         frame = SPINNER_FRAMES[self._spinner_step % len(SPINNER_FRAMES)]
         self._spinner_step += 1
         text = f"{frame}  {tr('fields.data_loading')}"
@@ -475,8 +541,15 @@ class FieldDialog(CenteredDialog):
         status = QtWidgets.QLabel()
         reset = QtWidgets.QToolButton()
         reset.setText("↺")
-        reset.setToolTip(tr("fields.data_reset"))
+        self._tip(reset, "field_dialog.reset_button", unique=False)
+        # downloads this datum again (only data that comes from a source)
+        reload = QtWidgets.QToolButton()
+        reload.setText("⬇")
+        self._tip(reload, "field_dialog.reload_button", unique=False)
+        reload.setVisible(zone_data.group_of(spec.key) is not None)
+        reload.clicked.connect(lambda: self.reload_value(spec.key))
         row = {"spec": spec, "editor": editor, "status": status, "reset": reset,
+               "reload": reload,
                "state": None, "writing": False, "prefilled": item.get("prefilled")}
         self._rows[spec.key] = row
         self._write(row, item["value"])
@@ -490,10 +563,12 @@ class FieldDialog(CenteredDialog):
             editor.textEdited.connect(lambda *_: self._on_user_edit(spec.key))
         else:
             editor.activated.connect(lambda *_: self._on_user_edit(spec.key))
-        grid.addWidget(QtWidgets.QLabel(data_label(spec.key)), row_index, 0)
+        grid.addWidget(self._titled(f"field_dialog.data.{spec.key}", data_label(spec.key)),
+                       row_index, 0)
         grid.addWidget(widget, row_index, 1)
         grid.addWidget(status, row_index, 2)
         grid.addWidget(reset, row_index, 3)
+        grid.addWidget(reload, row_index, 4)
 
     # the editor of a datum and the widget to put in the grid (the editor
     # plus its unit, for numbers)
@@ -570,6 +645,8 @@ class FieldDialog(CenteredDialog):
         status.setStyleSheet(STATUS_STYLE[state])
         status.setToolTip(tr("fields.data_missing_hint") if state == "missing" else "")
         editor.setEnabled(state != "loading")
+        if "reload" in row:
+            row["reload"].setEnabled(state != "loading")
         if state == "loading":
             editor.setStyleSheet(STYLE_LOADING)
         elif state == "missing" and self._value(row) is None:
@@ -589,6 +666,21 @@ class FieldDialog(CenteredDialog):
         else:
             editor.setItemText(0, text)
 
+    # -- tooltips ----------------------------------------------------------
+
+    # (str key, str text)
+    # a QLabel with text and the tooltip of key
+    def _titled(self, key, text):
+        return self._tip(QtWidgets.QLabel(text), key)
+
+    # (QWidget widget, str key, bool unique = True)
+    # gives widget the tooltip of key (fieldshift.i18n.tip) and returns it
+    def _tip(self, widget, key, unique=True):
+        widget.setToolTip(tip(key))
+        if unique:
+            self.tooltip_widgets[key] = widget
+        return widget
+
     # -- validation --------------------------------------------------------
 
     def _error_label(self):
@@ -605,7 +697,7 @@ class FieldDialog(CenteredDialog):
             problems.append("name")
         if self.crop() is None:
             problems.append("crop")
-        if self.is_loading():
+        if self.is_loading() and not self.editing:
             problems.append("loading")
         return problems
 
