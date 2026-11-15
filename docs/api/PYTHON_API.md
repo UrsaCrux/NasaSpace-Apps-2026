@@ -2050,7 +2050,7 @@ def available_languages()
 ```
 
 - **Arguments:** `()`
-- **Line:** 33
+- **Line:** 38
 
 language codes that have a JSON file, sorted ("en", "es", ...)
 
@@ -2061,7 +2061,7 @@ def language()
 ```
 
 - **Arguments:** `()`
-- **Line:** 39
+- **Line:** 44
 
 code of the language in use
 
@@ -2072,7 +2072,7 @@ def set_language(code)
 ```
 
 - **Arguments:** `(str code)`
-- **Line:** 46
+- **Line:** 51
 
 switches the language of the texts asked for from now on; widgets already built keep their text. raises ValueError for a language without a file
 
@@ -2083,16 +2083,39 @@ def tr(key, **values)
 ```
 
 - **Arguments:** `(str key, **values)`
-- **Line:** 55
+- **Line:** 60
 
 text for key in the current language, with {placeholders} filled from values
+
+#### `tip`
+
+```python
+def tip(key)
+```
+
+- **Arguments:** `(str key)`
+- **Line:** 75
+
+tooltip text for key in the current language ("" when the file has none)
+
+#### `reload_tooltips`
+
+```python
+def reload_tooltips()
+```
+
+- **Arguments:** `()`
+- **Line:** 91
+
+forgets the tooltips read so far (the next tip() reads the file again)
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
-| `LOCALES_DIR` | folder with one <language code>.json file per language | 22 |
-| `DEFAULT_LANGUAGE` | language used when no other is chosen, and as fallback for missing keys | 25 |
+| `LOCALES_DIR` | folder with one <language code>.json file per language | 27 |
+| `DEFAULT_LANGUAGE` | language used when no other is chosen, and as fallback for missing keys | 30 |
+| `TOOLTIPS_PATH` | file with the tooltips: {key: {language code: text}}. Edit it to change a tooltip; a key missing for the current language falls back to English | 69 |
 
 ## `fieldshift/map/events.py`
 
@@ -3548,7 +3571,7 @@ def name(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 220
+- **Line:** 226
 
 the name typed, without surrounding spaces
 
@@ -3559,7 +3582,7 @@ def color(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 225
+- **Line:** 231
 
 the chosen colour as "#rrggbb" (grey when none was chosen)
 
@@ -3570,7 +3593,7 @@ def crop(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 230
+- **Line:** 236
 
 id of the chosen crop variety, or None
 
@@ -3581,7 +3604,7 @@ def is_loading(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 235
+- **Line:** 241
 
 True while some data source has not answered yet
 
@@ -3592,7 +3615,7 @@ def data(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 241
+- **Line:** 247
 
 the data: {key: {"value", "source"[, "prefilled"]}} for DATA_FIELDS, plus CROP_KEY
 
@@ -3603,7 +3626,7 @@ def is_modified(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 263
+- **Line:** 269
 
 True when the user changed this datum (it is not the loaded one)
 
@@ -3614,7 +3637,7 @@ def row_state(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 268
+- **Line:** 274
 
 state of a row: loading, prefilled, edited, missing or farmer
 
@@ -3625,7 +3648,7 @@ def set_value(self, key, value)
 ```
 
 - **Arguments:** `(str key, any value)`
-- **Line:** 273
+- **Line:** 279
 
 sets a datum as if the user had typed it (marks it edited)
 
@@ -3636,7 +3659,7 @@ def reset_value(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 280
+- **Line:** 286
 
 puts the loaded value back and marks the datum as not edited
 
@@ -3646,7 +3669,7 @@ puts the loaded value back and marks the datum as not edited
 def accept(self)
 ```
 
-- **Line:** 286
+- **Line:** 292
 
 refuses to close with Save while something is invalid or loading
 
@@ -3656,7 +3679,7 @@ refuses to close with Save while something is invalid or loading
 def done(self, result)
 ```
 
-- **Line:** 292
+- **Line:** 298
 
 stops the threads' results from reaching a closed dialog
 
@@ -3667,6 +3690,7 @@ stops the threads' results from reaching a closed dialog
 | `SPINNER_FRAMES` | frames of the loading animation, and ms between frames | 39 |
 | `STYLE_LOADING` | looks of a row in each state | 42 |
 | `OFFLINE_ENV` | set to "1" to never contact the data sources (tests, no internet) | 52 |
+| `FieldDialog.tooltip_widgets` | every title and button has a tooltip from i18n/tooltips/tooltips.json | 158 |
 
 ## `fieldshift/ui/field_list.py`
 
@@ -4011,7 +4035,7 @@ def show_basemap(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 90
+- **Line:** 85
 
 shows the "satellite" or the "streets" background and hides the other
 
@@ -4022,7 +4046,7 @@ def basemap(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 99
+- **Line:** 94
 
 "satellite" or "streets": the background shown now
 
@@ -4032,7 +4056,7 @@ def basemap(self)
 |------|-------------|------|
 | `MARGIN_PX` | distance (pixels) from the top-left corner of the map | 12 |
 | `ZOOM_STEP` | how much one click on + / - zooms (visible width multiplied by this) | 14 |
-| `MapControls.search_button` | the magnifier opens the place search panel (ui/map_search.py), which listens to this button's toggled signal | 51 |
+| `MapControls.search_button` | the magnifier opens the place search panel (ui/map_search.py), which listens to this button's toggled signal | 49 |
 
 ## `fieldshift/ui/map_search.py`
 

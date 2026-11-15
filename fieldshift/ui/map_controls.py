@@ -1,6 +1,6 @@
 """Buttons floating over the top-left corner of the map, top to bottom: switch
-the background between satellite and street map, fit all the fields, search a
-place, zoom in / out.
+the background between satellite and street map, search a place, zoom in /
+out.
 
 Uses the map only through MapView and the fields through FieldsManager.
 """
@@ -44,15 +44,13 @@ class MapControls(QtWidgets.QFrame):
                                             lambda: view.zoom_by(1 / ZOOM_STEP))
         for button in (self.zoom_in_button, self.zoom_out_button):
             button.setObjectName("zoomButton")
-        self.fit_button = self._button(tr("map.fit_fields"), tr("map.fit_fields_tooltip"),
-                                       fields.zoom_to_all)
         # the magnifier opens the place search panel (ui/map_search.py), which
         # listens to this button's toggled signal
         self.search_button = self._button("🔍", tr("map.search_tooltip"), lambda: None)
         self.search_button.setObjectName("zoomButton")
         self.search_button.setCheckable(True)
 
-        # top to bottom: background switch, "My fields", search, then + / -
+        # top to bottom: background switch, search, then + / -
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
@@ -73,14 +71,11 @@ class MapControls(QtWidgets.QFrame):
             layout.addSpacing(6)
             self.show_basemap("satellite")
 
-        layout.addWidget(self.fit_button, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(self.search_button, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
         layout.addSpacing(6)
         layout.addWidget(self.zoom_in_button, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(self.zoom_out_button, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
 
-        fields.fields_changed.connect(self._update_buttons)
-        self._update_buttons()
         self.adjustSize()
         self.move(MARGIN_PX, MARGIN_PX)
         self.raise_()
@@ -107,6 +102,3 @@ class MapControls(QtWidgets.QFrame):
         button.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)    # Esc stays with the map
         button.clicked.connect(lambda *_: slot())
         return button
-
-    def _update_buttons(self):
-        self.fit_button.setEnabled(self.fields.count() > 0)

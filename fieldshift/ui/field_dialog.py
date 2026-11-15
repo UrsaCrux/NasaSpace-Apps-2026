@@ -30,7 +30,7 @@ from fieldshift.fields.schema import (
     normalize_color,
     normalize_data,
 )
-from fieldshift.i18n import tr
+from fieldshift.i18n import tip, tr
 from fieldshift.qt import QtCore, QtGui, QtWidgets
 from fieldshift.ui.crop_widgets import CropInfoPanel, CropSearch  # noqa: F401  (re-exported)
 from fieldshift.ui.dialogs import CenteredDialog
@@ -154,15 +154,19 @@ class FieldDialog(CenteredDialog):
         top = QtWidgets.QFormLayout()
         # macOS keeps form fields at their natural (short) width by default
         top.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
-        top.addRow(tr("fields.name_label"), self.name_edit)
+        # every title and button has a tooltip from i18n/tooltips/tooltips.json
+        self.tooltip_widgets = {}
+        top.addRow(self._titled("field_dialog.name", tr("fields.name_label")), self.name_edit)
         top.addRow(self.error_label)
-        top.addRow(tr("fields.crop_label"), self.crop_search)
+        top.addRow(self._titled("field_dialog.crop", tr("fields.crop_label")), self.crop_search)
         top.addRow(self.crop_error)
         top.addRow(self.crop_info)
-        top.addRow(tr("fields.color_label"), self.color_button)
+        top.addRow(self._titled("field_dialog.color", tr("fields.color_label")), self.color_button)
+        self._tip(self.color_button, "field_dialog.color_button")
 
         self._rows = {}
         data_box = QtWidgets.QGroupBox(tr("fields.data_title"))
+        self._tip(data_box, "field_dialog.data_box")
         grid = QtWidgets.QGridLayout(data_box)
         hint = QtWidgets.QLabel(tr("fields.data_hint"))
         hint.setWordWrap(True)
@@ -173,7 +177,7 @@ class FieldDialog(CenteredDialog):
             specs = [s for s in DATA_FIELDS if s.group == group]
             if not specs:
                 continue
-            title = QtWidgets.QLabel(tr(f"fields.group.{group}"))
+            title = self._titled(f"field_dialog.group.{group}", tr(f"fields.group.{group}"))
             title.setStyleSheet("font-weight: bold; margin-top: 6px;")
             grid.addWidget(title, row, 0, 1, 4)
             row += 1
@@ -190,7 +194,9 @@ class FieldDialog(CenteredDialog):
         buttons = QtWidgets.QDialogButtonBox(Buttons.Save | Buttons.Cancel)
         self.save_button = buttons.button(Buttons.Save)
         self.save_button.setText(tr("common.save"))
+        self._tip(self.save_button, "field_dialog.save")
         buttons.button(Buttons.Cancel).setText(tr("common.cancel"))
+        self._tip(buttons.button(Buttons.Cancel), "field_dialog.cancel")
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
 
@@ -421,7 +427,7 @@ class FieldDialog(CenteredDialog):
         status = QtWidgets.QLabel()
         reset = QtWidgets.QToolButton()
         reset.setText("↺")
-        reset.setToolTip(tr("fields.data_reset"))
+        self._tip(reset, "field_dialog.reset_button", unique=False)
         row = {"spec": spec, "editor": editor, "status": status, "reset": reset,
                "state": None, "writing": False, "prefilled": item.get("prefilled")}
         self._rows[spec.key] = row
@@ -436,7 +442,8 @@ class FieldDialog(CenteredDialog):
             editor.textEdited.connect(lambda *_: self._on_user_edit(spec.key))
         else:
             editor.activated.connect(lambda *_: self._on_user_edit(spec.key))
-        grid.addWidget(QtWidgets.QLabel(data_label(spec.key)), row_index, 0)
+        grid.addWidget(self._titled(f"field_dialog.data.{spec.key}", data_label(spec.key)),
+                       row_index, 0)
         grid.addWidget(widget, row_index, 1)
         grid.addWidget(status, row_index, 2)
         grid.addWidget(reset, row_index, 3)
@@ -534,6 +541,21 @@ class FieldDialog(CenteredDialog):
             editor.setPlaceholderText(text)
         else:
             editor.setItemText(0, text)
+
+    # -- tooltips ----------------------------------------------------------
+
+    # (str key, str text)
+    # a QLabel with text and the tooltip of key
+    def _titled(self, key, text):
+        return self._tip(QtWidgets.QLabel(text), key)
+
+    # (QWidget widget, str key, bool unique = True)
+    # gives widget the tooltip of key (fieldshift.i18n.tip) and returns it
+    def _tip(self, widget, key, unique=True):
+        widget.setToolTip(tip(key))
+        if unique:
+            self.tooltip_widgets[key] = widget
+        return widget
 
     # -- validation --------------------------------------------------------
 

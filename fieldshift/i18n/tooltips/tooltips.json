@@ -1,0 +1,103 @@
+{
+  "_comment": "Tooltips of the app, per language. Change the texts freely; keys are used by the code (fieldshift.i18n.tip). A missing language falls back to English. PLACEHOLDER texts for now.",
+  "field_dialog.name": {
+    "en": "[tooltip field_dialog.name] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.name] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.crop": {
+    "en": "[tooltip field_dialog.crop] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.crop] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.color": {
+    "en": "[tooltip field_dialog.color] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.color] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.color_button": {
+    "en": "[tooltip field_dialog.color_button] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.color_button] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.data_box": {
+    "en": "[tooltip field_dialog.data_box] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data_box] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.group.soil": {
+    "en": "[tooltip field_dialog.group.soil] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.group.soil] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.group.relief": {
+    "en": "[tooltip field_dialog.group.relief] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.group.relief] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.group.vegetation": {
+    "en": "[tooltip field_dialog.group.vegetation] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.group.vegetation] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.group.farm": {
+    "en": "[tooltip field_dialog.group.farm] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.group.farm] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.data.soil_texture": {
+    "en": "[tooltip field_dialog.data.soil_texture] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.soil_texture] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.data.soil_group": {
+    "en": "[tooltip field_dialog.data.soil_group] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.soil_group] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.data.ph": {
+    "en": "[tooltip field_dialog.data.ph] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.ph] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.data.organic_carbon": {
+    "en": "[tooltip field_dialog.data.organic_carbon] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.organic_carbon] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.data.nitrogen": {
+    "en": "[tooltip field_dialog.data.nitrogen] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.nitrogen] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.data.cec": {
+    "en": "[tooltip field_dialog.data.cec] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.cec] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.data.available_water": {
+    "en": "[tooltip field_dialog.data.available_water] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.available_water] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.data.elevation": {
+    "en": "[tooltip field_dialog.data.elevation] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.elevation] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.data.slope": {
+    "en": "[tooltip field_dialog.data.slope] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.slope] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.data.ndvi": {
+    "en": "[tooltip field_dialog.data.ndvi] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.ndvi] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.data.npp": {
+    "en": "[tooltip field_dialog.data.npp] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.npp] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.data.actual_et": {
+    "en": "[tooltip field_dialog.data.actual_et] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.actual_et] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.data.irrigated": {
+    "en": "[tooltip field_dialog.data.irrigated] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.irrigated] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.reset_button": {
+    "en": "[tooltip field_dialog.reset_button] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.reset_button] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.save": {
+    "en": "[tooltip field_dialog.save] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.save] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.cancel": {
+    "en": "[tooltip field_dialog.cancel] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.cancel] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  }
+}
