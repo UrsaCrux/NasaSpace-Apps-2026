@@ -36,6 +36,10 @@ class MapView(ABC):
         # mouse moves onto a feature of another visible, unlocked layer, or off
         # every feature (None). not while dragging or drawing
         self.layer_hovered = Event()
+        # emitted with (str layer_id, float lon, float lat) when the user
+        # right-clicks a feature of a visible, unlocked layer (topmost first);
+        # not while drawing. the UI opens its menu there
+        self.layer_right_clicked = Event()
 
     # ()
     # the QWidget to put in a window; created once and reused

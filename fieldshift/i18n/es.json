@@ -33,12 +33,6 @@
   "data.total": "{count} terreno(s) · {area} ha en total",
   "header.title": "farmer-shit",
   "header.subtitle": "Programa para adaptar agricultores con datos de la NASA",
-  "position.title": "Posición",
-  "position.cursor": "Cursor:",
-  "position.last_click": "Último clic:",
-  "tools.title": "Herramientas",
-  "tools.native_loaded": "Núcleo C++ {version} cargado",
-  "tools.native_missing": "Núcleo C++ sin compilar (ver cpp/README.md)",
   "status.ready": "Listo",
   "status.cursor": "lon {lon}   lat {lat}",
   "common.yes": "Sí",
@@ -251,5 +245,11 @@
   "hover.area": "{area} ha",
   "hover.crop": "Cultivo",
   "hover.no_crop": "sin elegir",
-  "hover.hint": "Doble clic para marcarlo"
+  "hover.hint": "Doble clic para marcarlo · clic derecho para más",
+  "menu.edit": "Editar…",
+  "menu.analyze": "Analizar…",
+  "menu.zoom": "Acercar",
+  "menu.check": "Marcar",
+  "menu.uncheck": "Desmarcar",
+  "menu.delete": "Eliminar…"
 }

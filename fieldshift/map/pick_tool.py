@@ -12,14 +12,17 @@ from fieldshift.qt import QtCore, QtGui
 # would jump away under the cursor while the user double-clicks a field
 class PickPanTool(QgsMapToolPan):
 
-    # (QgsMapCanvas canvas, callable on_double_click, callable on_hover = None)
+    # (QgsMapCanvas canvas, callable on_double_click, callable on_hover = None,
+    #  callable on_right_click = None)
     # on_double_click gets the clicked QgsPointXY (canvas CRS) and returns True
     # when it used the click; on_hover gets the point under the mouse, or
-    # None while the map is being dragged
-    def __init__(self, canvas, on_double_click, on_hover=None):
+    # None while the map is being dragged; on_right_click gets the
+    # right-clicked point
+    def __init__(self, canvas, on_double_click, on_hover=None, on_right_click=None):
         super().__init__(canvas)
         self._on_double_click = on_double_click
         self._on_hover = on_hover
+        self._on_right_click = on_right_click
         self._moved = False         # the mouse moved with the button held
 
     def canvasPressEvent(self, event):
@@ -35,6 +38,10 @@ class PickPanTool(QgsMapToolPan):
         super().canvasMoveEvent(event)
 
     def canvasReleaseEvent(self, event):
+        if event.button() == QtCore.Qt.MouseButton.RightButton:
+            if self._on_right_click is not None:
+                self._on_right_click(event.mapPoint())
+            return
         if event.button() == QtCore.Qt.MouseButton.LeftButton and not self._moved:
             # plain click: the base class would recentre here; only undo the
             # closed-hand cursor it set on press

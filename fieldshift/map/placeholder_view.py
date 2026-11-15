@@ -76,6 +76,14 @@ class PlaceholderMapView(MapView):
     def highlighted(self):
         return self._highlight
 
+    # (str layer_id, float lon = 0, float lat = 0)
+    # reports a right click on a feature of this layer, as the real map would;
+    # ignored for unknown, locked or hidden layers and while drawing
+    def simulate_right_click(self, layer_id, lon=0.0, lat=0.0):
+        info = self._layers.get(layer_id)
+        if info is not None and info.visible and not info.locked and not self._drawing:
+            self.layer_right_clicked.emit(layer_id, lon, lat)
+
     # (str layer_id or None, float lon = 0, float lat = 0)
     # reports the mouse entering a feature of this layer (None: leaving), as
     # the real map would; ignored for locked or hidden layers and while drawing

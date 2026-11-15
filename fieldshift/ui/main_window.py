@@ -9,6 +9,7 @@ from fieldshift.ui.analysis_tab import AnalysisTab
 from fieldshift.ui.analyze_dialog import AnalysisProgress, AnalyzeDialog
 from fieldshift.ui.field_list import LAYER_ID_ROLE
 from fieldshift.ui.fields_bar import FieldsBar
+from fieldshift.ui.field_menu import FieldMenu
 from fieldshift.ui.hover_card import HoverCard
 from fieldshift.ui.map_controls import MapControls
 from fieldshift.ui.scale_bar import ScaleBar
@@ -47,6 +48,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.map_controls = MapControls(view, self.fields, basemaps)
         # card with the field under the mouse, and its outline highlighted
         self.hover_card = HoverCard(view, self.fields)
+        # right click on a field: edit, analyze, zoom, check, delete
+        self.field_menu = FieldMenu(self)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         splitter.addWidget(map_area)
@@ -79,13 +82,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self._show_attribution()
         view.cursor_moved.connect(self._show_cursor)
 
-    # ()
-    # asks for a field and analyses, runs them with a progress window and
-    # opens one tab per result. returns the new tabs (empty if cancelled)
-    def analyze(self):
+    # (str layer_id = None)
+    # asks for a field (layer_id first, if given) and analyses, runs them
+    # with a progress window and opens one tab per result. returns the new
+    # tabs (empty if cancelled)
+    def analyze(self, layer_id=None):
         if self.fields.count() == 0 or self.view.is_drawing():
             return []
-        dialog = AnalyzeDialog(self.fields, self._field_to_preselect(), parent=self)
+        dialog = AnalyzeDialog(self.fields, layer_id or self._field_to_preselect(), parent=self)
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
             return []
         field = self.fields.field(dialog.layer_id())

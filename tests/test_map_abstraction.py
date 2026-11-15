@@ -127,6 +127,16 @@ class _ViewContract:
         self.view.set_highlight(SQUARE)
         self.view.remove_layer(layer_id)          # must not crash at exit
 
+    def test_right_click_on_a_layer(self):
+        seen = []
+        self.view.layer_right_clicked.connect(lambda lid, lon, lat: seen.append(lid))
+        self.add_square_layer("base", locked=True)
+        self.right_click_square()
+        self.assertEqual(seen, [])                          # locked: nothing
+        layer_id = self.add_square_layer("field")
+        self.right_click_square()
+        self.assertEqual(seen, [layer_id])
+
     def test_hover_enters_and_leaves_a_layer(self):
         seen = []
         self.view.layer_hovered.connect(lambda lid, lon, lat: seen.append(lid))
@@ -198,6 +208,11 @@ class _ViewContract:
     def hover_square(self, inside):
         raise NotImplementedError
 
+    # ()
+    # right-clicks the middle of SQUARE
+    def right_click_square(self):
+        raise NotImplementedError
+
 
 class PlaceholderViewTest(_ViewContract, unittest.TestCase):
     backend = "placeholder"
@@ -214,6 +229,9 @@ class PlaceholderViewTest(_ViewContract, unittest.TestCase):
 
     def hover_square(self, inside):
         self.view.simulate_hover(self._square_id if inside else None)
+
+    def right_click_square(self):
+        self.view.simulate_right_click(self._square_id)
 
     def close_polygon(self, vertices):
         self.view.simulate_polygon(vertices)
@@ -313,6 +331,14 @@ class QgisViewTest(_ViewContract, unittest.TestCase):
         pos = self._pixels([target])[0]
         self.view.canvas().mapTool().canvasMoveEvent(self._mouse(
             QtCore.QEvent.Type.MouseMove, pos, QtCore.Qt.MouseButton.NoButton))
+
+    def right_click_square(self):
+        from fieldshift.qt import QtCore
+        lon = sum(v[0] for v in SQUARE) / len(SQUARE)
+        lat = sum(v[1] for v in SQUARE) / len(SQUARE)
+        pos = self._pixels([(lon, lat)])[0]
+        self.view.canvas().mapTool().canvasReleaseEvent(self._mouse(
+            QtCore.QEvent.Type.MouseButtonRelease, pos, QtCore.Qt.MouseButton.RightButton))
 
     def test_double_click_on_empty_map_still_zooms_in(self):
         from fieldshift.qt import QtCore

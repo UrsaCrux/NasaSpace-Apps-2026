@@ -73,7 +73,8 @@ class QgisMapView(MapView):
         self._to_map = QgsCoordinateTransform(WGS84, WEB_MERCATOR, self._project)
         self._to_wgs = QgsCoordinateTransform(WEB_MERCATOR, WGS84, self._project)
 
-        self._pan_tool = PickPanTool(canvas, self._on_double_click, self._on_hover)
+        self._pan_tool = PickPanTool(canvas, self._on_double_click, self._on_hover,
+                                     self._on_right_click)
         self._hovered = None              # layer id under the mouse
         self._highlight_vertices = None
         self._highlight_band = QgsRubberBand(canvas, Qgis.GeometryType.Polygon)
@@ -259,6 +260,13 @@ class QgisMapView(MapView):
             if hit:
                 return layer_id
         return None
+
+    # right click while panning: reports the feature's layer, if any
+    def _on_right_click(self, point):
+        layer_id = self._layer_at(point)
+        if layer_id is not None:
+            p = self._to_wgs.transform(point)
+            self.layer_right_clicked.emit(layer_id, p.x(), p.y())
 
     # mouse moved while panning (point None: dragging)
     def _on_hover(self, point):
