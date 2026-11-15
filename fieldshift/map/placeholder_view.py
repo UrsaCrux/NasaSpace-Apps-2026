@@ -24,6 +24,7 @@ class PlaceholderMapView(MapView):
         self._drawing = False
         self._highlight = None
         self._marked = []
+        self._pin = None
         self._center = None        # last set_center, so the UI can be tested
 
     def widget(self):
@@ -105,6 +106,15 @@ class PlaceholderMapView(MapView):
 
     def zoom_by(self, factor):
         self.view_changed.emit()
+
+    def show_pin(self, lon, lat):
+        self._pin = (float(lon), float(lat))
+
+    def clear_pin(self):
+        self._pin = None
+
+    def pin(self):
+        return self._pin
 
     def center(self):
         return self._center

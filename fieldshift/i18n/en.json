@@ -265,5 +265,11 @@
   "weekday.3": "Thu",
   "weekday.4": "Fri",
   "weekday.5": "Sat",
-  "weekday.6": "Sun"
+  "weekday.6": "Sun",
+  "map.search_tooltip": "Search a place or address",
+  "search.placeholder": "Search a place or address…",
+  "search.searching": "Searching…",
+  "search.none": "Nothing found for “{text}”",
+  "search.failed": "Could not search (check your connection)",
+  "search.offline": "Search not available"
 }

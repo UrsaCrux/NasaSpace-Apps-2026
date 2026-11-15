@@ -79,6 +79,13 @@ class QgisMapView(MapView):
         self._highlight_vertices = None
         # outline of the checked fields; created first so the hover highlight
         # is drawn on top of it
+        self._pin = None
+        self._pin_band = QgsRubberBand(canvas, Qgis.GeometryType.Point)
+        self._pin_band.setIcon(QgsRubberBand.IconType.ICON_CIRCLE)
+        self._pin_band.setIconSize(16)
+        self._pin_band.setColor(QtGui.QColor("#e53935"))
+        self._pin_band.setSecondaryStrokeColor(QtGui.QColor("white"))
+        self._pin_band.setWidth(3)
         self._marked = []
         self._marked_band = QgsRubberBand(canvas, Qgis.GeometryType.Polygon)
         self._marked_band.setFillColor(QtGui.QColor(0, 229, 255, 30))
@@ -316,6 +323,18 @@ class QgisMapView(MapView):
     def zoom_by(self, factor):
         self._canvas.zoomByFactor(factor)
         self._canvas.refresh()
+
+    def show_pin(self, lon, lat):
+        self._pin = (float(lon), float(lat))
+        self._pin_band.reset(Qgis.GeometryType.Point)
+        self._pin_band.addPoint(self._to_map.transform(QgsPointXY(lon, lat)))
+
+    def clear_pin(self):
+        self._pin = None
+        self._pin_band.reset(Qgis.GeometryType.Point)
+
+    def pin(self):
+        return self._pin
 
     def center(self):
         try:

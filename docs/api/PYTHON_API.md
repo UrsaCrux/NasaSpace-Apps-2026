@@ -412,6 +412,65 @@ list of every date in the period
 | `EARTH_RADIUS_M` | mean Earth radius in metres (same value as the C++ core) | 8 |
 | `M_PER_DEG` | metres per degree of latitude | 10 |
 
+## `fieldshift/api/geocode.py`
+
+### Classes
+
+#### `Place`
+
+```python
+class Place
+```
+
+- **Line:** 44
+
+a result: name as the service writes it ("Melipilla, Región Metropolitana…"), position in degrees, bounding box (xmin, ymin, xmax, ymax) to fit the map to it, and the kind of place ("city", "house", "road"...)
+
+### Functions
+
+#### `parse_places`
+
+```python
+def parse_places(items)
+```
+
+- **Arguments:** `(list items)`
+- **Line:** 54
+
+Places from a Nominatim jsonv2 answer; items it cannot read are skipped
+
+#### `search`
+
+```python
+def search(text)
+```
+
+- **Arguments:** `(str text)`
+- **Line:** 87
+
+up to LIMIT places matching text, Chile first; [] when nothing is found. raises when the service cannot be reached
+
+#### `clear_cache`
+
+```python
+def clear_cache()
+```
+
+- **Arguments:** `()`
+- **Line:** 105
+
+forgets the cached searches (tests)
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `ATTRIBUTION` | credit required by the ODbL licence of the data | 25 |
+| `USER_AGENT` | identifies this application to the service (no personal data) | 27 |
+| `LIMIT` | most results asked for | 29 |
+| `HOME_COUNTRY` | country searched first (ISO code); None searches the whole world at once | 31 |
+| `MIN_INTERVAL_S` | shortest time between two requests, seconds (the service allows one per second) | 33 |
+
 ## `fieldshift/api/models.py`
 
 ### Classes
@@ -1990,7 +2049,7 @@ def simulate_right_click(self, layer_id, lon=0.0, lat=0.0)
 ```
 
 - **Arguments:** `(str layer_id, float lon = 0, float lat = 0)`
-- **Line:** 91
+- **Line:** 92
 
 reports a right click on a feature of this layer, as the real map would; ignored for unknown, locked or hidden layers and while drawing
 
@@ -2001,7 +2060,7 @@ def simulate_hover(self, layer_id, lon=0.0, lat=0.0)
 ```
 
 - **Arguments:** `(str layer_id or None, float lon = 0, float lat = 0)`
-- **Line:** 99
+- **Line:** 100
 
 reports the mouse entering a feature of this layer (None: leaving), as the real map would; ignored for locked or hidden layers and while drawing
 
@@ -2012,7 +2071,7 @@ def simulate_double_click(self, layer_id, lon=0.0, lat=0.0)
 ```
 
 - **Arguments:** `(str layer_id, float lon = 0, float lat = 0)`
-- **Line:** 134
+- **Line:** 144
 
 reports a double click on a feature of this layer, as the real map would; nothing happens for unknown, locked or hidden layers, or while drawing
 
@@ -2023,7 +2082,7 @@ def simulate_polygon(self, vertices)
 ```
 
 - **Arguments:** `(list vertices)`
-- **Line:** 142
+- **Line:** 152
 
 ends the current drawing as if the user had closed this polygon of (lon, lat) vertices; there is no map to click on, so tests use this
 
@@ -2185,7 +2244,7 @@ def canvas(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 109
+- **Line:** 116
 
 the underlying QgsMapCanvas, for code that needs QGIS-specific features
 
@@ -2196,7 +2255,7 @@ def set_click_mode(self, enabled)
 ```
 
 - **Arguments:** `(bool enabled)`
-- **Line:** 114
+- **Line:** 121
 
 switches between the pan tool and the click tool (emits `clicked`)
 
@@ -2446,6 +2505,39 @@ def center(self)
 - **Line:** 164
 
 (lon, lat) of the centre of the view, or None when the backend cannot tell
+
+#### `MapView.show_pin`
+
+```python
+def show_pin(self, lon, lat)
+```
+
+- **Arguments:** `(float lon, float lat)`
+- **Line:** 170
+
+puts a temporary pin on the map (a found place); replaces the last one
+
+#### `MapView.clear_pin`
+
+```python
+def clear_pin(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 176
+
+removes the pin
+
+#### `MapView.pin`
+
+```python
+def pin(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 182
+
+(lon, lat) of the pin, or None
 
 ### Variables
 
@@ -3403,7 +3495,7 @@ shows the card for this field (None or a non-field layer hides it)
 class MainWindow(QtWidgets.QMainWindow)
 ```
 
-- **Line:** 28
+- **Line:** 29
 
 top-level window, made of tabs. The first tab ("Map", always there) holds the MapView with the FieldsBar under it (left) and the SidePanel (right), which share one FieldsManager. "Analyze…" adds one closable tab per analysis result
 
@@ -3416,7 +3508,7 @@ def __init__(self, view, parent=None, basemaps=None)
 ```
 
 - **Arguments:** `(MapView view, QWidget parent = None, dict basemaps = None)`
-- **Line:** 33
+- **Line:** 34
 
 builds the splitter layout around an already created map view. basemaps maps "satellite" / "streets" to layer ids for the background switch
 
@@ -3427,7 +3519,7 @@ def analyze(self, layer_id=None)
 ```
 
 - **Arguments:** `(str layer_id = None)`
-- **Line:** 92
+- **Line:** 95
 
 asks for a field (layer_id first, if given) and analyses, runs them with a progress window and opens one tab per result. returns the new tabs (empty if cancelled)
 
@@ -3438,7 +3530,7 @@ def open_results(self, field, results)
 ```
 
 - **Arguments:** `(Field field, list results)`
-- **Line:** 107
+- **Line:** 110
 
 adds a tab for each AnalysisResult and shows the first one; returns the tabs
 
@@ -3446,14 +3538,15 @@ adds a tab for each AnalysisResult and shows the first one; returns the tabs
 
 | Name | Description | Line |
 |------|-------------|------|
-| `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 20 |
-| `MainWindow.scale_bar` | scale bar over the bottom-left corner of the map | 47 |
-| `MainWindow.map_controls` | zoom, "my fields" and background buttons over the top-left corner | 49 |
-| `MainWindow.hover_card` | card with the field under the mouse, and its outline highlighted | 51 |
-| `MainWindow.field_menu` | right click on a field: edit, analyze, zoom, check, delete | 53 |
-| `MainWindow.weather_card` | weather of the zone (now and 7 days) over the top-right corner | 55 |
-| `MainWindow.map_splitter` | the map tab; analysis results open as more tabs next to it | 66 |
-| `MainWindow.attribution_label` | credit of the visible layers (basemap licences require it) | 81 |
+| `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 21 |
+| `MainWindow.scale_bar` | scale bar over the bottom-left corner of the map | 48 |
+| `MainWindow.map_controls` | zoom, "my fields" and background buttons over the top-left corner | 50 |
+| `MainWindow.map_search` | place search: opens from the magnifier of the controls | 52 |
+| `MainWindow.hover_card` | card with the field under the mouse, and its outline highlighted | 54 |
+| `MainWindow.field_menu` | right click on a field: edit, analyze, zoom, check, delete | 56 |
+| `MainWindow.weather_card` | weather of the zone (now and 7 days) over the top-right corner | 58 |
+| `MainWindow.map_splitter` | the map tab; analysis results open as more tabs next to it | 69 |
+| `MainWindow.attribution_label` | credit of the visible layers (basemap licences require it) | 84 |
 
 ## `fieldshift/ui/map_controls.py`
 
@@ -3465,7 +3558,7 @@ adds a tab for each AnalysisResult and shows the first one; returns the tabs
 class MapControls(QtWidgets.QFrame)
 ```
 
-- **Line:** 29
+- **Line:** 30
 
 the floating buttons. basemaps maps "satellite" / "streets" to their layer ids; without both, the background switch is not shown
 
@@ -3478,7 +3571,7 @@ def __init__(self, view, fields, basemaps=None)
 ```
 
 - **Arguments:** `(MapView view, FieldsManager fields, dict basemaps = None)`
-- **Line:** 33
+- **Line:** 34
 
 puts the buttons over view.widget()
 
@@ -3489,7 +3582,7 @@ def show_basemap(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 83
+- **Line:** 90
 
 shows the "satellite" or the "streets" background and hides the other
 
@@ -3500,7 +3593,7 @@ def basemap(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 92
+- **Line:** 99
 
 "satellite" or "streets": the background shown now
 
@@ -3508,8 +3601,89 @@ def basemap(self)
 
 | Name | Description | Line |
 |------|-------------|------|
-| `MARGIN_PX` | distance (pixels) from the top-left corner of the map | 11 |
-| `ZOOM_STEP` | how much one click on + / - zooms (visible width multiplied by this) | 13 |
+| `MARGIN_PX` | distance (pixels) from the top-left corner of the map | 12 |
+| `ZOOM_STEP` | how much one click on + / - zooms (visible width multiplied by this) | 14 |
+| `MapControls.search_button` | the magnifier opens the place search panel (ui/map_search.py), which listens to this button's toggled signal | 51 |
+
+## `fieldshift/ui/map_search.py`
+
+### Classes
+
+#### `MapSearch`
+
+```python
+class MapSearch(QtWidgets.QFrame)
+```
+
+- **Line:** 48
+
+the search panel. controls is the MapControls (the panel sits to the right of its search button). search(text) -> [Place] replaces the real service (tests); without it and with FIELDSHIFT_OFFLINE=1 the search says it is not available
+
+### Functions
+
+#### `padded_bbox`
+
+```python
+def padded_bbox(bbox)
+```
+
+- **Arguments:** `(list bbox)`
+- **Line:** 36
+
+(xmin, ymin, xmax, ymax) grown to at least 2 * MIN_HALF_SPAN_DEG on each side, so a house is shown with its surroundings
+
+#### `MapSearch.__init__`
+
+```python
+def __init__(self, view, controls, search=None)
+```
+
+- **Arguments:** `(MapView view, MapControls controls, callable search = None)`
+- **Line:** 55
+
+builds the (closed) panel over view.widget()
+
+#### `MapSearch.set_open`
+
+```python
+def set_open(self, opened)
+```
+
+- **Arguments:** `(bool opened)`
+- **Line:** 98
+
+opens the panel (focus in the text box) or closes it and removes the pin
+
+#### `MapSearch.search`
+
+```python
+def search(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 119
+
+searches the text of the box (Enter). returns True when a search started
+
+#### `MapSearch.go_to`
+
+```python
+def go_to(self, index)
+```
+
+- **Arguments:** `(int index)`
+- **Line:** 138
+
+takes the map to result number index, drops the pin and closes the list
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `OFFLINE_ENV` | when set to "1" the search never contacts the service (tests) | 17 |
+| `MIN_HALF_SPAN_DEG` | a found place is never zoomed closer than this half-width (degrees, ~150 m) | 19 |
+| `GAP_PX` | distance (pixels) between the controls column and the panel | 21 |
+| `WIDTH_PX` | width (pixels) of the panel, and tallest the result list may be | 23 |
 
 ## `fieldshift/ui/scale_bar.py`
 

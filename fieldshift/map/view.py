@@ -163,3 +163,21 @@ class MapView(ABC):
     @abstractmethod
     def center(self):
         ...
+
+    # (float lon, float lat)
+    # puts a temporary pin on the map (a found place); replaces the last one
+    @abstractmethod
+    def show_pin(self, lon, lat):
+        ...
+
+    # ()
+    # removes the pin
+    @abstractmethod
+    def clear_pin(self):
+        ...
+
+    # ()
+    # (lon, lat) of the pin, or None
+    @abstractmethod
+    def pin(self):
+        ...

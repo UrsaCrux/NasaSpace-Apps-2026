@@ -12,6 +12,7 @@ from fieldshift.ui.fields_bar import FieldsBar
 from fieldshift.ui.field_menu import FieldMenu
 from fieldshift.ui.hover_card import HoverCard
 from fieldshift.ui.map_controls import MapControls
+from fieldshift.ui.map_search import MapSearch
 from fieldshift.ui.scale_bar import ScaleBar
 from fieldshift.ui.side_panel import SidePanel
 from fieldshift.ui.weather_card import WeatherCard
@@ -47,6 +48,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.scale_bar = ScaleBar(view)
         # zoom, "my fields" and background buttons over the top-left corner
         self.map_controls = MapControls(view, self.fields, basemaps)
+        # place search: opens from the magnifier of the controls
+        self.map_search = MapSearch(view, self.map_controls)
         # card with the field under the mouse, and its outline highlighted
         self.hover_card = HoverCard(view, self.fields)
         # right click on a field: edit, analyze, zoom, check, delete

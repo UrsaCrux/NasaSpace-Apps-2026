@@ -182,6 +182,15 @@ class _ViewContract:
         self.view.set_center(-70.70, -33.40)
         self.assertGreaterEqual(len(changes), 2)
 
+    def test_pin(self):
+        self.assertIsNone(self.view.pin())
+        self.view.show_pin(-70.70, -33.40)
+        self.assertEqual(self.view.pin(), (-70.70, -33.40))
+        self.view.show_pin(-71.0, -33.7)                  # replaces the last one
+        self.assertEqual(self.view.pin(), (-71.0, -33.7))
+        self.view.clear_pin()
+        self.assertIsNone(self.view.pin())
+
     def test_center(self):
         self.view.set_center(-70.70, -33.40)
         lon, lat = self.view.center()

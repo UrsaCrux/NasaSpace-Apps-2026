@@ -1,5 +1,6 @@
 """Buttons floating over the top-left corner of the map, top to bottom: switch
-the background between satellite and street map, fit all the fields, zoom in / out.
+the background between satellite and street map, fit all the fields, search a
+place, zoom in / out.
 
 Uses the map only through MapView and the fields through FieldsManager.
 """
@@ -45,8 +46,13 @@ class MapControls(QtWidgets.QFrame):
             button.setObjectName("zoomButton")
         self.fit_button = self._button(tr("map.fit_fields"), tr("map.fit_fields_tooltip"),
                                        fields.zoom_to_all)
+        # the magnifier opens the place search panel (ui/map_search.py), which
+        # listens to this button's toggled signal
+        self.search_button = self._button("🔍", tr("map.search_tooltip"), lambda: None)
+        self.search_button.setObjectName("zoomButton")
+        self.search_button.setCheckable(True)
 
-        # top to bottom: background switch, "My fields", then + / -
+        # top to bottom: background switch, "My fields", search, then + / -
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
@@ -68,6 +74,7 @@ class MapControls(QtWidgets.QFrame):
             self.show_basemap("satellite")
 
         layout.addWidget(self.fit_button, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
+        layout.addWidget(self.search_button, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
         layout.addSpacing(6)
         layout.addWidget(self.zoom_in_button, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(self.zoom_out_button, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
