@@ -120,8 +120,12 @@ class ForecastChart(QtWidgets.QWidget):
 
     def _plot(self):
         metrics = self.fontMetrics()
-        return QtCore.QRectF(40, metrics.height() + 6, self.width() - 50,
-                             self.height() - 2 * metrics.height() - 14)
+        left = metrics.horizontalAdvance("-00 km/h") + 10
+        return QtCore.QRectF(left, 2 * metrics.height() + 6, self.width() - left - 12,
+                             self.height() - 3 * metrics.height() - 14)
+
+    def _variable(self):
+        return next(v for v in FORECAST_VARIABLES if v[0] == self.variable)
 
     def _x(self, plot, i):
         return plot.left() + plot.width() * (i + 0.5) / len(self.days)
@@ -143,7 +147,9 @@ class ForecastChart(QtWidgets.QWidget):
                              tr("status.no_data"))
             return
         bars = self.variable == "rain"
-        low, high = (0.0 if bars else min(known)), max(known)
+        _, label_key, unit, decimals = self._variable()
+        data_low, data_high = min(known), max(known)
+        low, high = (0.0 if bars else data_low), data_high
         if high - low < 1:
             high = low + 1
         pad = (high - low) * 0.15
@@ -161,12 +167,34 @@ class ForecastChart(QtWidgets.QWidget):
         painter.setPen(QtGui.QPen(_GRID, 1))
         painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
         painter.drawRect(plot)
+        # title with the unit, and the legend of the two temperature lines
         painter.setPen(_INK)
-        for v in (low, high):
+        bold = painter.font()
+        bold.setBold(True)
+        painter.setFont(bold)
+        painter.drawText(QtCore.QPointF(2, metrics.ascent() + 2), f"{tr(label_key)} ({unit})")
+        bold.setBold(False)
+        painter.setFont(bold)
+        if self.variable == "temp":
+            x = plot.right()
+            for text, color in ((tr("status.fc.min"), _COLD), (tr("status.fc.max"), _HOT)):
+                x -= metrics.horizontalAdvance(text) + 26
+                painter.setPen(QtGui.QPen(color, 2.2))
+                painter.drawLine(QtCore.QPointF(x, metrics.height() / 2 + 3),
+                                 QtCore.QPointF(x + 16, metrics.height() / 2 + 3))
+                painter.setPen(_INK)
+                painter.drawText(QtCore.QPointF(x + 20, metrics.ascent() + 2), text)
+        # the lowest and highest value of the days, with the unit, on the left
+        # edge and as dashed guide lines
+        for v in (data_high, 0.0 if bars else data_low):
+            painter.setPen(QtGui.QPen(_MEAN, 1, QtCore.Qt.PenStyle.DashLine))
+            painter.drawLine(QtCore.QPointF(plot.left(), y(v)), QtCore.QPointF(plot.right(), y(v)))
+            painter.setPen(_INK)
             painter.drawText(QtCore.QRectF(0, y(v) - metrics.height() / 2, plot.left() - 6,
                                            metrics.height()),
                              QtCore.Qt.AlignmentFlag.AlignRight
-                             | QtCore.Qt.AlignmentFlag.AlignVCenter, f"{v:.0f}")
+                             | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                             f"{v:.{decimals}f} {unit}")
         step = max(1, round(len(self.days) * (metrics.horizontalAdvance("Mmm 00") + 6)
                             / max(1.0, plot.width())))
         for i, day in enumerate(self.days):
@@ -196,7 +224,7 @@ class ForecastChart(QtWidgets.QWidget):
                 chance = self.days[i].rain_chance
                 if chance is not None and len(self.days) <= 7:
                     painter.setPen(_MEAN)
-                    label = f"{chance:.0f}%"
+                    label = f"{v:.0f} mm · {chance:.0f}%"
                     painter.drawText(QtCore.QPointF(
                         self._x(plot, i) - metrics.horizontalAdvance(label) / 2,
                         y(v) - 3), label)
@@ -215,16 +243,18 @@ class ForecastChart(QtWidgets.QWidget):
                     painter.setBrush(color if i == self.selected else QtGui.QColor("white"))
                     painter.drawEllipse(QtCore.QPointF(self._x(plot, i), y(v)), 4, 4)
                     if i == self.selected:
+                        painter.setPen(_INK)
                         painter.drawText(QtCore.QPointF(self._x(plot, i) + 6, y(v) - 6),
-                                         f"{v:.0f}")
+                                         f"{v:.0f} {unit}")
+                        painter.setPen(QtGui.QPen(color, 2.2))
         painter.end()
 
 
-# the next 7 days: a chart of the chosen variable, a slider (and play button)
+# the next 7 days: a chart of the chosen variable, a slider
 # to move through the days, the details of the chosen day, and the warnings
 
 # the coming days: how many (7 / 14), a chart of the chosen variable, a
-# slider (and play button) through the days, the chosen day's details, the
+# slider through the days, the chosen day's details, the
 # light warnings and a link to Analyze for more
 class ForecastCard(QtWidgets.QFrame):
 
@@ -287,17 +317,12 @@ class ForecastCard(QtWidgets.QFrame):
         self.chart.day_clicked.connect(lambda i: self.slider.setValue(i))
         layout.addWidget(self.chart)
         controls = QtWidgets.QHBoxLayout()
-        self.play_button = QtWidgets.QPushButton("▶")
-        self.play_button.setFixedWidth(34)
-        self.play_button.setToolTip(tr("status.fc.play"))
-        self.play_button.clicked.connect(self.toggle_play)
         self.slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.slider.setPageStep(1)
         self.slider.setTickPosition(QtWidgets.QSlider.TickPosition.TicksBelow)
         self.slider.setTickInterval(1)
         self.slider.setToolTip(tr("status.fc.slider"))
         self.slider.valueChanged.connect(self.show_day)
-        controls.addWidget(self.play_button)
         controls.addWidget(self.slider, 1)
         layout.addLayout(controls)
         self.detail = QtWidgets.QLabel()
@@ -318,9 +343,6 @@ class ForecastCard(QtWidgets.QFrame):
         more.clicked.connect(lambda: self.analyze_requested.emit())
         layout.addWidget(more)
 
-        self._timer = QtCore.QTimer(self)
-        self._timer.setInterval(800)
-        self._timer.timeout.connect(self._step)
         self.set_horizon(horizon)
 
     # ()
@@ -370,24 +392,6 @@ class ForecastCard(QtWidgets.QFrame):
                 text += (f"<br><span style='color:{color}'>"
                          f"{tr(alert.text_key, **alert.params)}</span>")
         self.detail.setText(text)
-
-    # ()
-    # starts or stops moving through the days by itself
-    def toggle_play(self):
-        if self._timer.isActive():
-            self._timer.stop()
-            self.play_button.setText("▶")
-            return
-        if self.slider.value() == self.slider.maximum():
-            self.slider.setValue(0)
-        self._timer.start()
-        self.play_button.setText("⏸")
-
-    def _step(self):
-        if self.slider.value() >= self.slider.maximum():
-            self.toggle_play()
-            return
-        self.slider.setValue(self.slider.value() + 1)
 
     def _fill_alerts(self):
         while self.alerts_box.count():
