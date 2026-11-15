@@ -1,5 +1,6 @@
 """Card over the top-right corner of the map with the weather of the zone at
-the centre of the view: now, and the next 7 days (fieldshift.api.forecast).
+the centre of the view: now and over the day, hour by hour
+(fieldshift.api.forecast). The coming days are in the Status panel.
 
 It reloads a moment after the map stops moving, in a background thread, and
 only when the centre moved to another forecast cell (about 10 km). Uses the
@@ -19,6 +20,9 @@ from fieldshift.qt import QtCore, QtWidgets
 MARGIN_PX = 12
 # wait this long (ms) after the last map movement before loading
 SETTLE_MS = 700
+# hours shown in the strip, and the step between them
+HOUR_COUNT = 8
+HOUR_STEP = 3
 # when set to "1" the card never contacts the service (tests)
 OFFLINE_ENV = "FIELDSHIFT_OFFLINE"
 
@@ -65,8 +69,8 @@ class WeatherCard(QtWidgets.QFrame):
 
         self.title_label = QtWidgets.QLabel(f"<b>{tr('weather.title')}</b>")
         self.now_label = QtWidgets.QLabel()
-        self.days_label = QtWidgets.QLabel()
-        self.days_label.setTextFormat(QtCore.Qt.TextFormat.RichText)
+        self.hours_label = QtWidgets.QLabel()
+        self.hours_label.setTextFormat(QtCore.Qt.TextFormat.RichText)
         self.summary_label = QtWidgets.QLabel()
         self.summary_label.setTextFormat(QtCore.Qt.TextFormat.RichText)
         self.credit_label = QtWidgets.QLabel(forecast_api.ATTRIBUTION)
@@ -74,7 +78,7 @@ class WeatherCard(QtWidgets.QFrame):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(10, 8, 10, 8)
         layout.setSpacing(4)
-        for label in (self.title_label, self.now_label, self.days_label, self.summary_label,
+        for label in (self.title_label, self.now_label, self.hours_label, self.summary_label,
                       self.credit_label):
             layout.addWidget(label)
         self.hide()
@@ -134,28 +138,39 @@ class WeatherCard(QtWidgets.QFrame):
         self.now_label.setText(tr("weather.now", icon=SKY_ICONS.get(result.sky, ""),
                                   temp=f"{result.temperature:.0f}",
                                   wind=f"{result.wind_kmh:.0f}"))
+        hours = self._hours(result)
+
+        def chance(h):
+            return "" if h.rain_chance is None else f"{h.rain_chance:.0f}%"
         cells = "".join(
-            f"<td align='center' style='padding: 0 4px;'>{weekday_name(d.date)}<br>"
-            f"<span style='font-size:15px'>{SKY_ICONS.get(d.sky, '')}</span><br>"
-            f"<b>{d.tmax:.0f}°</b><br>"
-            f"<span style='color:{'#c62828' if d.tmin <= forecast_api.FROST_C else '#555'}'>"
-            f"{d.tmin:.0f}°</span></td>" for d in result.days)
-        self.days_label.setText(f"<table cellspacing='0'><tr>{cells}</tr></table>")
-        lines = [tr("weather.rain", mm=f"{result.total_rain_mm():.0f}", days=len(result.days))
+            f"<td align='center' style='padding: 0 4px;'>{h.time[11:13]}h<br>"
+            f"<span style='font-size:15px'>{SKY_ICONS.get(h.sky, '')}</span><br>"
+            f"<b>{h.temp:.0f}°</b><br>"
+            f"<span style='color:#1e88e5'>{chance(h)}</span></td>" for h in hours)
+        self.hours_label.setText(f"<table cellspacing='0'><tr>{cells}</tr></table>")
+        self.hours_label.setVisible(bool(hours))
+        today = result.days[0]
+        lines = [tr("weather.today", tmax=f"{today.tmax:.0f}", tmin=f"{today.tmin:.0f}",
+                    mm=f"{today.rain_mm:.1f}")
                  + " · " + tr("weather.elevation", m=f"{result.elevation:.0f}")]
-        frost = result.frost_days()
-        if frost:
-            names = ", ".join(weekday_name(d.date) for d in frost)
-            lines.append(f"<b style='color:#c62828'>❄ {tr('weather.frost', days=names)}</b>")
+        if today.tmin <= forecast_api.FROST_C:
+            lines.append(f"<b style='color:#c62828'>❄ {tr('weather.frost_tonight')}</b>")
         self.summary_label.setText("<br>".join(lines))
-        for label in (self.now_label, self.days_label, self.summary_label, self.credit_label):
+        for label in (self.now_label, self.summary_label, self.credit_label):
             label.show()
         self._place()
+
+    # the hours of the strip: from the current hour on, every HOUR_STEP
+    def _hours(self, result):
+        hours = list(result.hours)
+        now = result.now[:13]
+        start = next((i for i, h in enumerate(hours) if h.time[:13] >= now), 0) if now else 0
+        return hours[start:start + HOUR_COUNT * HOUR_STEP:HOUR_STEP]
 
     def _show_message(self, text):
         self.now_label.setText(text)
         self.now_label.show()
-        for label in (self.days_label, self.summary_label, self.credit_label):
+        for label in (self.hours_label, self.summary_label, self.credit_label):
             label.hide()
         self._place()
 

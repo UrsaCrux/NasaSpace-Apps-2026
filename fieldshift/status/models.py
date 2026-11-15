@@ -1,4 +1,5 @@
-"""What the Status panel shows for one field. Plain data, no Qt.
+"""What the Status panel shows for one field: today and the coming days.
+Plain data, no Qt. (The past is in Trends.)
 
 Texts the user reads are i18n keys (``*_key``) plus values to fill them,
 so the same report can be shown in every language.
@@ -6,108 +7,80 @@ so the same report can be shown in every language.
 
 from dataclasses import dataclass, field
 
-# how a value or an alert looks: decides its colour in the UI
+# how a value or a warning looks: decides its colour in the UI
 LEVEL_OK = "ok"
 LEVEL_WATCH = "watch"
 LEVEL_ALERT = "alert"
 
-# how a row is drawn in the chart
+# how a series is drawn in a chart (Trends)
 CHART_LINE = "line"
 CHART_BARS = "bars"
 
-# periods (days back) the user can choose; longer periods belong to Trends
-PERIODS = (7, 14, 30)
+# how many coming days the user can choose to see (the forecast service
+# gives at most 16)
+HORIZONS = (7, 14)
+FORECAST_DAYS = 16
 
 
-# one variable of a section ("Rain", mm): one value per day in dates
-# ("2026-11-14"), oldest first. fixed rows (pH from a soil map) have a single
-# value and no chart. source names the product ("GPM IMERG"), not translated
+# one value of today: label_key + value in unit, and a short note under it
+# (note_key filled with note_params). value None: not available
 @dataclass(frozen=True)
-class StatusRow:
+class TodayTile:
     key: str
+    icon: str
     label_key: str
-    unit: str
-    dates: tuple
-    values: tuple
-    chart: str = CHART_LINE
-    source: str = ""
-    fixed: bool = False
+    value: float
+    unit: str = ""
+    decimals: int = 0
+    note_key: str = ""
+    note_params: dict = field(default_factory=dict)
     level: str = LEVEL_OK
-    decimals: int = 1
-
-    # ()
-    # the newest value
-    def latest(self):
-        return self.values[-1]
-
-    # ()
-    # mean of the values
-    def mean(self):
-        return sum(self.values) / len(self.values)
-
-    # ()
-    # change of the newest value against the mean of the period (0 when fixed)
-    def change(self):
-        return 0.0 if self.fixed else self.latest() - self.mean()
 
 
-# a warning of a section: text_key filled with params. upcoming alerts are
-# about the next days (short forecast), on date; suggestion True links to
-# Analyze
+# a light warning about a coming day (date "YYYY-MM-DD"): text_key filled
+# with params
 @dataclass(frozen=True)
 class StatusAlert:
     text_key: str
     params: dict = field(default_factory=dict)
     level: str = LEVEL_WATCH
-    upcoming: bool = False
-    suggestion: bool = False
     date: str = ""
 
 
-# one tile of the "today" summary: the row it comes from and its value
+# follow-up of the crop: its name and the two newest NDVI images (value and
+# date "YYYY-MM-DD"; previous None when there is only one)
 @dataclass(frozen=True)
-class SummaryTile:
-    section: str
-    row: StatusRow
-    icon: str
+class Tracking:
+    crop: str
+    ndvi: float
+    date: str
+    previous: float = None
+    previous_date: str = ""
+
+    # ()
+    # change of the NDVI against the image before, %, or None
+    def change_pct(self):
+        if self.previous in (None, 0):
+            return None
+        return (self.ndvi - self.previous) / abs(self.previous) * 100
 
 
-# a section of the report: "weather", "growth" or "soil". note_key / params
-# is a line shown under the title (crop stage); texture holds the
-# analysis.models.TextureFigure of the soil section
-@dataclass(frozen=True)
-class StatusSection:
-    id: str
-    title_key: str
-    icon: str
-    rows: tuple
-    alerts: tuple = ()
-    note_key: str = ""
-    note_params: dict = field(default_factory=dict)
-    texture: object = None
-
-
-# everything shown for one field and period. example True when the numbers
-# are made up; notice_key explains why (no connection, ...) or names the
-# sources that did not answer (missing, a tuple of source names)
+# everything shown for one field: today's tiles, the forecast
+# (api.forecast.Forecast: days, today first, and hours) and the warnings of
+# the coming days. example True when the numbers are made up; notice_key
+# says why
 @dataclass(frozen=True)
 class StatusReport:
     field_name: str
-    days: int
-    last_date: str
-    sections: tuple
-    summary: tuple
-    example: bool = True
+    tiles: tuple
+    forecast: object
+    alerts: tuple
+    example: bool = False
     notice_key: str = ""
     missing: tuple = ()
-    forecast: tuple = ()          # api.forecast.DayForecast, today first
 
-    # (str section_id)
-    # the section with that id, or None
-    def section(self, section_id):
-        return next((s for s in self.sections if s.id == section_id), None)
-
-    # ()
-    # every alert of every section, in section order
-    def alerts(self):
-        return [a for s in self.sections for a in s.alerts]
+    # (int days)
+    # the warnings of the first days of the forecast
+    def alerts_within(self, days):
+        dates = {d.date for d in self.forecast.days[:days]}
+        return [a for a in self.alerts if a.date in dates]

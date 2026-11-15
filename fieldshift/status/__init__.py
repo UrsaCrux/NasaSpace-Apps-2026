@@ -1,17 +1,22 @@
-"""Status of a field: how it is now (the last days, plus short warnings
-about the next ones). See docs/status.md.
+"""Status of a field: today and the coming days (forecast, light warnings)
+and the follow-up of its crop. See docs/status.md. (The past is in
+fieldshift.trends.)
 
-    from fieldshift.status import status_report
-    report = status_report(field, days=7)
+    from fieldshift.status import status_report, crop_tracking
+    report = status_report(field)
 """
 
 from fieldshift.status.models import (  # noqa: F401
-    CHART_BARS, CHART_LINE, LEVEL_ALERT, LEVEL_OK, LEVEL_WATCH, PERIODS, StatusAlert,
-    StatusReport, StatusRow, StatusSection, SummaryTile)
-
+    CHART_BARS, CHART_LINE, FORECAST_DAYS, HORIZONS, LEVEL_ALERT, LEVEL_OK, LEVEL_WATCH,
+    StatusAlert, StatusReport, TodayTile, Tracking)
 
 # when set to "1" nothing contacts the data services (tests): example data
 OFFLINE_ENV = "FIELDSHIFT_OFFLINE"
+
+
+def _offline():
+    import os
+    return os.environ.get(OFFLINE_ENV) == "1"
 
 
 # (Field field)
@@ -28,20 +33,31 @@ def crop_of(field):
     return name
 
 
-# (Field field, int days = 7)
-# the StatusReport of the field for the last days (one of PERIODS), from the
-# satellite sources. slow (seconds to a minute): call it outside the UI
-# thread. offline, or when NASA POWER fails, made-up example numbers
-# (report.example is True, report.notice_key says why)
-def status_report(field, days=7):
-    import os
+# (Field field)
+# the StatusReport of the field (today and the next FORECAST_DAYS days).
+# a network call: run it outside the UI thread. offline, or when the
+# forecast fails, made-up example numbers (report.example is True,
+# report.notice_key says why)
+def status_report(field):
     from dataclasses import replace
     from fieldshift.status.example import example_report
-    crop = crop_of(field)
-    if os.environ.get(OFFLINE_ENV) == "1":
-        return replace(example_report(field, days, crop=crop), notice_key="status.offline")
+    if _offline():
+        return replace(example_report(field), notice_key="status.offline")
     try:
         from fieldshift.status.live import live_report
-        return live_report(field, days, crop=crop)
+        return live_report(field)
     except Exception:
-        return replace(example_report(field, days, crop=crop), notice_key="status.no_connection")
+        return replace(example_report(field), notice_key="status.no_connection")
+
+
+# (Field field)
+# the crop follow-up (Tracking) of the field, or None when there is no NDVI.
+# slow (MODIS, up to a minute): run it outside the UI thread. raises when
+# MODIS fails (offline: example)
+def crop_tracking(field):
+    crop = crop_of(field)
+    if _offline():
+        from fieldshift.status.example import example_tracking
+        return example_tracking(field, crop)
+    from fieldshift.status.live import live_tracking
+    return live_tracking(field, crop)

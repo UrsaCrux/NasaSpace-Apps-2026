@@ -117,15 +117,21 @@ class _WithFields(unittest.TestCase):
 class AnalyzeDialogTest(_WithFields):
     # Status and Trends show a field in the right column; My fields goes back
     def test_status_panel_and_trends_tab(self):
-        from fieldshift.status import PERIODS
+        from fieldshift.status import FORECAST_DAYS, HORIZONS
         panel = self.window.status_panel
         self.assertTrue(self.window.open_status(self.b))
         self.assertEqual(panel.layer_id, self.b)
         self.assertIs(self.window.right_stack.currentWidget(), panel)
         self.assertTrue(self.window.fields_bar.status_button.isChecked())
-        self.assertEqual(len(panel.tiles), len(panel.report.summary))
-        panel.set_days(PERIODS[-1])
-        self.assertEqual(len(panel.report.section("weather").rows[0].values), PERIODS[-1])
+        self.assertEqual(len(panel.tiles), len(panel.report.tiles))
+        self.assertEqual(len(panel.report.forecast.days), FORECAST_DAYS)
+        card = panel.forecast_card
+        card.set_horizon(HORIZONS[-1])
+        self.assertEqual(card.slider.maximum(), HORIZONS[-1] - 1)
+        card.slider.setValue(1)
+        card.set_variable("rain")
+        self.assertIn(i18n.tr("status.when.tomorrow"), card.detail.text())
+        self.assertIn("NDVI", panel.tracking_card.text.text())
         self.window.fields_bar.fields_button.click()
         self.assertIs(self.window.right_stack.currentWidget(), self.window.panel)
         self.assertTrue(self.window.open_trends(self.a))

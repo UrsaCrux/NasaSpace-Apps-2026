@@ -1,16 +1,22 @@
 """Status panel: the right column of the map tab while "Status" is chosen,
-with how one field is now. Top: field chooser and period (7 / 14 / 30 days).
-Below: the "today" tiles (newest value of each datum and its trend against
-the period mean). See fieldshift.ui.field_panel (field chooser, map clicks,
-loading in the background).
+with how one field is today and in the coming days. Scrolling: today's
+tiles, "Coming days" (7 / 14 days: chart, day slider, light warnings, link to
+Analyze) and the crop follow-up (NDVI, loaded apart because MODIS is slow).
+The past is in Trends. See fieldshift.ui.field_panel.
 """
 
+import os
+import threading
+
 from fieldshift.i18n import tr
-from fieldshift.qt import QtWidgets
-from fieldshift.status import PERIODS, status_report
+from fieldshift.qt import QtCore, QtWidgets
+from fieldshift.status import HORIZONS, crop_tracking, status_report
 from fieldshift.ui.analysis_widgets import format_date
-from fieldshift.ui.field_panel import FieldPanel
-from fieldshift.ui.status_widgets import SummaryTile
+from fieldshift.ui.field_panel import OFFLINE_ENV, FieldPanel
+from fieldshift.ui.status_widgets import ForecastCard, TodayTile, TrackingCard
+
+# tiles per row
+TILE_COLUMNS = 4
 
 
 # the panel. open(layer_id) shows a field
@@ -18,51 +24,66 @@ class StatusPanel(FieldPanel):
 
     title_key = "modes.status"
 
+    # internal: (int request number, Tracking or None, bool failed)
+    _tracked = QtCore.pyqtSignal(int, object, bool)
+
     # (MapView view, FieldsManager fields, QWidget parent = None)
     def __init__(self, view, fields, parent=None):
-        self.days = PERIODS[0]
-        self.tiles = []                # SummaryTile widgets shown
+        self.horizon = HORIZONS[0]
+        self.tiles = []                # TodayTile widgets shown
+        self.forecast_card = None
+        self.tracking_card = None
         super().__init__(view, fields, parent)
-        self.period_buttons = {}
-        periods = QtWidgets.QHBoxLayout()
-        periods.setSpacing(0)
-        group = QtWidgets.QButtonGroup(self)
-        for days in PERIODS:
-            button = QtWidgets.QPushButton(tr("status.days", days=days))
-            button.setObjectName("period")
-            button.setCheckable(True)
-            button.setChecked(days == self.days)
-            button.setToolTip(tr("status.period_tooltip"))
-            button.clicked.connect(lambda _=False, d=days: self.set_days(d))
-            group.addButton(button)
-            periods.addWidget(button)
-            self.period_buttons[days] = button
-        self.header.addSpacing(8)
-        self.header.addLayout(periods)
-
-    # (int days)
-    # shows the last days (one of PERIODS)
-    def set_days(self, days):
-        self.days = days
-        self.period_buttons[days].setChecked(True)
-        if self.layer_id is not None:
-            self.refresh()
+        self._tracked.connect(self._on_tracked)
 
     def make_report(self, field):
-        return status_report(field, self.days)
+        return status_report(field)
 
     def build(self, report):
-        self.info_label.setText(tr("status.info", date=format_date(report.last_date)))
+        day = report.forecast.days[0]
+        self.info_label.setText(tr("status.info_today", date=format_date(day.date),
+                                   time=report.forecast.now[11:16] or "—"))
         today = QtWidgets.QLabel(f"<b>{tr('status.today')}</b>")
+        today.setStyleSheet("font-size: 15px;")
         self.content_layout.addWidget(today)
         grid = QtWidgets.QGridLayout()
         grid.setSpacing(6)
         self.tiles = []
-        for i, tile in enumerate(report.summary):
-            widget = SummaryTile(tile, report.days)
-            grid.addWidget(widget, i // 3, i % 3)
+        for i, tile in enumerate(report.tiles):
+            widget = TodayTile(tile)
+            grid.addWidget(widget, i // TILE_COLUMNS, i % TILE_COLUMNS)
             self.tiles.append(widget)
         holder = QtWidgets.QWidget()
         holder.setLayout(grid)
         self.content_layout.addWidget(holder)
+
+        self.forecast_card = ForecastCard(report, self.horizon)
+        for days, button in self.forecast_card.horizon_buttons.items():
+            button.clicked.connect(lambda _=False, d=days: setattr(self, "horizon", d))
+        self.forecast_card.analyze_requested.connect(
+            lambda: self.suggestion_requested.emit(self.layer_id))
+        self.content_layout.addWidget(self.forecast_card)
+
+        self.tracking_card = TrackingCard()
+        self.content_layout.addWidget(self.tracking_card)
         self.content_layout.addStretch(1)
+        self._start_tracking()
+
+    def _start_tracking(self):
+        field, request = self.fields.field(self.layer_id), self._request
+        if field is None:
+            return
+        if os.environ.get(OFFLINE_ENV) == "1":
+            self._on_tracked(request, crop_tracking(field), False)
+            return
+
+        def run():
+            try:
+                self._tracked.emit(request, crop_tracking(field), False)
+            except Exception:
+                self._tracked.emit(request, None, True)
+        threading.Thread(target=run, daemon=True, name="status-tracking").start()
+
+    def _on_tracked(self, request, tracking, failed):
+        if request == self._request and self.tracking_card is not None:
+            self.tracking_card.set_tracking(tracking, failed)

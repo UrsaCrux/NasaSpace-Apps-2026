@@ -6,43 +6,54 @@ the map shows it; choosing one in the panel's list also moves the map to it.
 
 | Area | Looks at | Example |
 |---|---|---|
-| Status | the present: "today" tiles, each against the mean of the last 7 / 14 / 30 days | max temperature 24 °C, ↑ 2.1 vs 7-day mean |
+| Status | today and the coming 7 / 14 days, light warnings, crop follow-up | "Tomorrow: about 18 mm of rain" |
 | Trends | the past: the last 12 months vs the year before and the normal | wettest month, seasons, NDVI curve |
-| Analyze | the future and decisions | crop rotation, fertiliser plan |
+| Analyze | decisions and suggestions | crop rotation, fertiliser plan |
 
-Status shows only the "today" tiles for now (the per-section tables, charts and
-warnings were taken out as not stable yet); the report (`StatusReport`) still
-carries sections, warnings and the 7-day forecast for later views.
+The weather card over the map shows today hour by hour; the coming days are
+in Status.
+
+## Status
+
+1. **Today** — tiles from the Open-Meteo forecast: temperature now (max/min),
+   rain today (chance), humidity, wind, sun (UV), crop water use (ET0), top-soil
+   water and temperature this hour.
+2. **Coming days** — 7 or 14 days (the service gives up to 16): a chart per
+   variable (temperature, rain, wind, humidity, sun), a day slider with ▶ play,
+   the chosen day's details and light warnings (`status/rules.py`: big
+   temperature change, rain, frost, heat, wind, strong sun). "More in Analyze →"
+   opens Analyze.
+3. **Crop follow-up** — crop name, newest MODIS NDVI and its change against the
+   image before (loaded apart: MODIS takes tens of seconds).
 
 ## Data sources
 
 | What | Source | Notes |
 |---|---|---|
-| Temperature, rain, humidity, sun, wind | NASA POWER daily (`status/sources.py`) | ~0.5°, ~3 days late, no key |
-| Evapotranspiration | computed (Hargreaves) from POWER temperature + sun | |
-| Top-soil wetness, surface temperature | NASA POWER `GWETTOP`, `TS` | % of saturation |
-| NDVI | MODIS MOD13Q1 via ORNL DAAC | 16-day composites, ~1 month late, slow |
-| Nitrogen, pH, organic carbon, CEC, texture | the field's stored data (SoilGrids or typed) | fixed values |
-| Next 7 days | Open-Meteo forecast | kept in the report |
-| Normals (Trends) | NASA POWER climatology | rain, humidity, sun |
+| Today, hours, next 16 days | Open-Meteo forecast (`api/forecast.py`) | no key, CC BY 4.0 |
+| Crop follow-up (NDVI) | MODIS MOD13Q1 via ORNL DAAC | 16-day images, ~1 month late, slow |
+| Trends: weather, top-soil wetness | NASA POWER daily (`status/sources.py`) | ~0.5°, ~3 days late |
+| Trends: normals | NASA POWER climatology | rain, humidity, sun |
+| Trends: NDVI | MODIS | monthly means of the images |
 
-Every series is cached in memory per place and day. A source that fails only
-leaves its rows out (listed as "no answer from" in the info line); when NASA
-POWER fails, or with `FIELDSHIFT_OFFLINE=1` (tests), the panels show example
-data and the info line says so.
+Series are cached in memory. Offline (`FIELDSHIFT_OFFLINE=1`, tests) or when the
+forecast / NASA POWER fails, the panels show example data and the info line
+says so.
 
 ## Code
 
-- `fieldshift/status/` — `models.py` (StatusReport → sections → rows / alerts),
-  `sources.py` (POWER daily + climatology, MODIS NDVI, ET0), `rules.py` (warning
-  thresholds), `live.py` (real report), `example.py` (made-up report),
-  `status_report(field, days)` entry point.
+- `fieldshift/status/` — `models.py` (StatusReport: today tiles, forecast,
+  warnings; Tracking), `build.py` (today tiles), `rules.py` (light warnings),
+  `sources.py` (POWER daily + climatology, MODIS NDVI, ET0; used by Trends and
+  the follow-up), `live.py`, `example.py`; entry points `status_report(field)`
+  and `crop_tracking(field)`.
 - `fieldshift/trends/` — `models.py` (TrendsReport: rows with this year / year
   before / normal, milestones, seasons), `build.py` (monthly series → report),
   `live.py`, `example.py`, `trends_report(field)` entry point.
 - `fieldshift/ui/field_panel.py` — base of both panels: field chooser, map clicks,
   loading in a background thread, info line.
-- `fieldshift/ui/status_panel.py`, `status_widgets.py` — Status view (tiles).
+- `fieldshift/ui/status_panel.py`, `status_widgets.py` — Status view (today
+  tiles, ForecastCard, TrackingCard).
 - `fieldshift/ui/trends_panel.py`, `trends_widgets.py` — Trends view (milestones,
   seasons table, 12-month charts with hover, crop card).
 

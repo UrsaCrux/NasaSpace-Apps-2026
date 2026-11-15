@@ -485,9 +485,19 @@ list of (name, title, status) for every provider: implemented or planned
 class DayForecast
 ```
 
-- **Line:** 43
+- **Line:** 45
 
 forecast of one day: date "YYYY-MM-DD", min / max °C, rain mm, sky kind; and, when the service gives them, max wind km/h, mean air humidity %, sun MJ/m² and chance of rain %
+
+#### `HourForecast`
+
+```python
+class HourForecast
+```
+
+- **Line:** 63
+
+forecast of one hour: time "YYYY-MM-DDTHH:MM", °C, sky kind, chance of rain %, wind km/h, top-soil (0-1 cm) water % vol and surface soil °C (None when the service does not give them)
 
 #### `Forecast`
 
@@ -495,11 +505,33 @@ forecast of one day: date "YYYY-MM-DD", min / max °C, rain mm, sky kind; and, w
 class Forecast
 ```
 
-- **Line:** 58
+- **Line:** 77
 
-weather at a point: now (temperature °C, wind km/h, sky kind), the model's ground elevation (m) and the next days, today first
+weather at a point: now (temperature °C, wind km/h, sky kind, humidity %, time "YYYY-MM-DDTHH:MM" in the place's time zone), the model's ground elevation (m), the next days (today first) and the hours of those days
 
 ### Functions
+
+#### `Forecast.hours_of`
+
+```python
+def hours_of(self, date=None)
+```
+
+- **Arguments:** `(str date = None)`
+- **Line:** 91
+
+the hours of a day ("YYYY-MM-DD", default today: the first day)
+
+#### `Forecast.current_hour`
+
+```python
+def current_hour(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 97
+
+the hour the current time falls in, or None
 
 #### `Forecast.frost_days`
 
@@ -508,7 +540,7 @@ def frost_days(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 69
+- **Line:** 103
 
 the days whose minimum is at or below FROST_C
 
@@ -519,7 +551,7 @@ def total_rain_mm(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 74
+- **Line:** 108
 
 rain of all the days together, mm
 
@@ -530,7 +562,7 @@ def sky_of(code)
 ```
 
 - **Arguments:** `(int code)`
-- **Line:** 80
+- **Line:** 114
 
 sky kind (SKY_*) of a WMO weather code
 
@@ -541,7 +573,7 @@ def cell_of(lon, lat)
 ```
 
 - **Arguments:** `(float lon, float lat)`
-- **Line:** 98
+- **Line:** 132
 
 the cache cell of a point: points in one cell share a forecast
 
@@ -552,20 +584,20 @@ def parse_forecast(response, lon, lat)
 ```
 
 - **Arguments:** `(dict response, float lon, float lat)`
-- **Line:** 105
+- **Line:** 139
 
 Forecast from an Open-Meteo JSON answer; raises KeyError / TypeError / ValueError when the answer is not as expected
 
 #### `get_forecast`
 
 ```python
-def get_forecast(lon, lat, timeout=10)
+def get_forecast(lon, lat, timeout=10, days=DAYS)
 ```
 
-- **Arguments:** `(float lon, float lat, float timeout = 10)`
-- **Line:** 128
+- **Arguments:** `(float lon, float lat, float timeout = 10, int days = DAYS)`
+- **Line:** 178
 
-the forecast for a point (cached per cell); raises when the service fails
+the forecast for a point and the next days (at most MAX_DAYS; cached per cell); raises when the service fails
 
 #### `clear_cache`
 
@@ -574,7 +606,7 @@ def clear_cache()
 ```
 
 - **Arguments:** `()`
-- **Line:** 148
+- **Line:** 200
 
 forgets the cached forecasts (tests, or to force a new download)
 
@@ -584,8 +616,9 @@ forgets the cached forecasts (tests, or to force a new download)
 |------|-------------|------|
 | `ATTRIBUTION` | credit required by the CC BY 4.0 licence of the data | 22 |
 | `DAYS` | days of forecast asked for | 24 |
-| `FROST_C` | a frost is forecast when the daily minimum is at or below this (°C) | 26 |
-| `CACHE_CELL_DEG` | results are reused for points in the same cell of this size (degrees, about 10 km: the resolution of the forecast models) | 29 |
+| `MAX_DAYS` | most days the service forecasts | 26 |
+| `FROST_C` | a frost is forecast when the daily minimum is at or below this (°C) | 28 |
+| `CACHE_CELL_DEG` | results are reused for points in the same cell of this size (degrees, about 10 km: the resolution of the forecast models) | 31 |
 
 ## `fieldshift/api/geo.py`
 
@@ -3480,20 +3513,31 @@ def crop_of(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 19
+- **Line:** 24
 
 name of the field's crop in the current language, or None
 
 #### `status_report`
 
 ```python
-def status_report(field, days=7)
+def status_report(field)
 ```
 
-- **Arguments:** `(Field field, int days = 7)`
-- **Line:** 36
+- **Arguments:** `(Field field)`
+- **Line:** 41
 
-the StatusReport of the field for the last days (one of PERIODS), from the satellite sources. slow (seconds to a minute): call it outside the UI thread. offline, or when NASA POWER fails, made-up example numbers (report.example is True, report.notice_key says why)
+the StatusReport of the field (today and the next FORECAST_DAYS days). a network call: run it outside the UI thread. offline, or when the forecast fails, made-up example numbers (report.example is True, report.notice_key says why)
+
+#### `crop_tracking`
+
+```python
+def crop_tracking(field)
+```
+
+- **Arguments:** `(Field field)`
+- **Line:** 57
+
+the crop follow-up (Tracking) of the field, or None when there is no NDVI. slow (MODIS, up to a minute): run it outside the UI thread. raises when MODIS fails (offline: example)
 
 ### Variables
 
@@ -3501,20 +3545,53 @@ the StatusReport of the field for the last days (one of PERIODS), from the satel
 |------|-------------|------|
 | `OFFLINE_ENV` | when set to "1" nothing contacts the data services (tests): example data | 14 |
 
+## `fieldshift/status/build.py`
+
+### Functions
+
+#### `today_tiles`
+
+```python
+def today_tiles(forecast)
+```
+
+- **Arguments:** `(api.forecast.Forecast forecast)`
+- **Line:** 10
+
+the tiles of today: temperature, rain, humidity, wind, sun, water use and top soil
+
 ## `fieldshift/status/example.py`
 
 ### Functions
 
+#### `example_forecast`
+
+```python
+def example_forecast(field, today=None)
+```
+
+- **Arguments:** `(Field field, date today = None)`
+- **Line:** 17
+
+an example api.forecast.Forecast (days and today's hours)
+
 #### `example_report`
 
 ```python
-def example_report(field, days=7, today=None, crop=None)
+def example_report(field, today=None)
 ```
 
-- **Arguments:** `(Field field, int days = 7, date today = None, str crop = None)`
-- **Line:** 124
+- **Arguments:** `(Field field, date today = None)`
+- **Line:** 46
 
-an example StatusReport of the field for the last days; crop is the crop name shown in the stage line
+#### `example_tracking`
+
+```python
+def example_tracking(field, crop, today=None)
+```
+
+- **Arguments:** `(Field field, str crop, date today = None)`
+- **Line:** 53
 
 ## `fieldshift/status/live.py`
 
@@ -3523,35 +3600,44 @@ an example StatusReport of the field for the last days; crop is the crop name sh
 #### `live_report`
 
 ```python
-def live_report(field, days, forecast=None, crop=None)
+def live_report(field, forecast=None)
 ```
 
-- **Arguments:** `(Field field, int days, callable forecast = None)`
-- **Line:** 61
+- **Arguments:** `(Field field, callable forecast = None)`
+- **Line:** 25
 
-the StatusReport of the field for the last days from the real sources. forecast(lon, lat) -> Forecast (default: Open-Meteo); raises when NASA POWER does not answer
+today and the coming days of the field; forecast(lon, lat, days=) -> Forecast (default: Open-Meteo). raises when the forecast fails
+
+#### `live_tracking`
+
+```python
+def live_tracking(field, crop)
+```
+
+- **Arguments:** `(Field field, str crop)`
+- **Line:** 36
+
+the crop follow-up from the two newest NDVI images, or None when MODIS has none; raises when MODIS fails
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
-| `POWER_LAG_DAYS` | extra days asked to NASA POWER (its newest days are published ~3 days late) | 20 |
-| `NDVI_LOOKBACK_DAYS` | MODIS composites come every 16 days, ~1 month late: look this far back | 22 |
-| `SOIL_FIXED` | stored soil values shown as fixed rows: (data key, row key, unit, decimals) | 24 |
+| `NDVI_LOOKBACK_DAYS` | MODIS composites come every 16 days, ~1 month late: look this far back | 13 |
 
 ## `fieldshift/status/models.py`
 
 ### Classes
 
-#### `StatusRow`
+#### `TodayTile`
 
 ```python
-class StatusRow
+class TodayTile
 ```
 
-- **Line:** 26
+- **Line:** 28
 
-one variable of a section ("Rain", mm): one value per day in dates ("2026-11-14"), oldest first. fixed rows (pH from a soil map) have a single value and no chart. source names the product ("GPM IMERG"), not translated
+one value of today: label_key + value in unit, and a short note under it (note_key filled with note_params). value None: not available
 
 #### `StatusAlert`
 
@@ -3559,29 +3645,19 @@ one variable of a section ("Rain", mm): one value per day in dates ("2026-11-14"
 class StatusAlert
 ```
 
-- **Line:** 58
+- **Line:** 43
 
-a warning of a section: text_key filled with params. upcoming alerts are about the next days (short forecast), on date; suggestion True links to Analyze
+a light warning about a coming day (date "YYYY-MM-DD"): text_key filled with params
 
-#### `SummaryTile`
-
-```python
-class SummaryTile
-```
-
-- **Line:** 69
-
-one tile of the "today" summary: the row it comes from and its value
-
-#### `StatusSection`
+#### `Tracking`
 
 ```python
-class StatusSection
+class Tracking
 ```
 
-- **Line:** 79
+- **Line:** 53
 
-a section of the report: "weather", "growth" or "soil". note_key / params is a line shown under the title (crop stage); texture holds the analysis.models.TextureFigure of the soil section
+follow-up of the crop: its name and the two newest NDVI images (value and date "YYYY-MM-DD"; previous None when there is only one)
 
 #### `StatusReport`
 
@@ -3589,117 +3665,62 @@ a section of the report: "weather", "growth" or "soil". note_key / params is a l
 class StatusReport
 ```
 
-- **Line:** 94
+- **Line:** 73
 
-everything shown for one field and period. example True when the numbers are made up; notice_key explains why (no connection, ...) or names the sources that did not answer (missing, a tuple of source names)
+everything shown for one field: today's tiles, the forecast (api.forecast.Forecast: days, today first, and hours) and the warnings of the coming days. example True when the numbers are made up; notice_key says why
 
 ### Functions
 
-#### `StatusRow.latest`
+#### `Tracking.change_pct`
 
 ```python
-def latest(self)
+def change_pct(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 40
+- **Line:** 62
 
-the newest value
+change of the NDVI against the image before, %, or None
 
-#### `StatusRow.mean`
-
-```python
-def mean(self)
-```
-
-- **Arguments:** `()`
-- **Line:** 45
-
-mean of the values
-
-#### `StatusRow.change`
+#### `StatusReport.alerts_within`
 
 ```python
-def change(self)
+def alerts_within(self, days)
 ```
 
-- **Arguments:** `()`
-- **Line:** 50
+- **Arguments:** `(int days)`
+- **Line:** 84
 
-change of the newest value against the mean of the period (0 when fixed)
-
-#### `StatusReport.section`
-
-```python
-def section(self, section_id)
-```
-
-- **Arguments:** `(str section_id)`
-- **Line:** 107
-
-the section with that id, or None
-
-#### `StatusReport.alerts`
-
-```python
-def alerts(self)
-```
-
-- **Arguments:** `()`
-- **Line:** 112
-
-every alert of every section, in section order
+the warnings of the first days of the forecast
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
-| `LEVEL_OK` | how a value or an alert looks: decides its colour in the UI | 10 |
-| `CHART_LINE` | how a row is drawn in the chart | 15 |
-| `PERIODS` | periods (days back) the user can choose; longer periods belong to Trends | 19 |
+| `LEVEL_OK` | how a value or a warning looks: decides its colour in the UI | 11 |
+| `CHART_LINE` | how a series is drawn in a chart (Trends) | 16 |
+| `HORIZONS` | how many coming days the user can choose to see (the forecast service gives at most 16) | 21 |
 
 ## `fieldshift/status/rules.py`
 
 ### Functions
 
-#### `when`
+#### `forecast_alerts`
 
 ```python
-def when(days)
+def forecast_alerts(days)
 ```
 
-- **Arguments:** `(int days)`
-- **Line:** 22
+- **Arguments:** `(tuple days)`
+- **Line:** 20
 
-"Tomorrow" / "In 3 days" in the current language
-
-#### `observed`
-
-```python
-def observed(series)
-```
-
-- **Arguments:** `(dict series)`
-- **Line:** 29
-
-{row key: level} and the observed alerts, from {row key: [values]} of the period (any key may be missing)
-
-#### `upcoming`
-
-```python
-def upcoming(forecast)
-```
-
-- **Arguments:** `(Forecast forecast)`
-- **Line:** 76
-
-alerts about the next days (the first of each kind), from fieldshift.api.forecast.Forecast
+the first warning of each kind over the forecast days (api.forecast.DayForecast, today first)
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
-| `HEAVY_RAIN_MM` | thresholds | 10 |
+| `TEMP_SWING_C` | thresholds | 9 |
 
 ## `fieldshift/status/sources.py`
 
@@ -5662,7 +5683,7 @@ asks for the new details of a field and applies them
 class StatusPanel(FieldPanel)
 ```
 
-- **Line:** 17
+- **Line:** 23
 
 the panel. open(layer_id) shows a field
 
@@ -5675,56 +5696,70 @@ def __init__(self, view, fields, parent=None)
 ```
 
 - **Arguments:** `(MapView view, FieldsManager fields, QWidget parent = None)`
-- **Line:** 22
+- **Line:** 31
 
-#### `StatusPanel.set_days`
+### Variables
 
-```python
-def set_days(self, days)
-```
-
-- **Arguments:** `(int days)`
-- **Line:** 45
-
-shows the last days (one of PERIODS)
+| Name | Description | Line |
+|------|-------------|------|
+| `TILE_COLUMNS` | tiles per row | 19 |
 
 ## `fieldshift/ui/status_widgets.py`
 
 ### Classes
 
-#### `SummaryTile`
+#### `TodayTile`
 
 ```python
-class SummaryTile(QtWidgets.QFrame)
+class TodayTile(QtWidgets.QFrame)
 ```
 
 - **Line:** 36
 
-a tile of the "today" summary: icon, name, newest value and trend
+a tile of today: icon, name, value and a short note
+
+#### `ForecastChart`
+
+```python
+class ForecastChart(QtWidgets.QWidget)
+```
+
+- **Line:** 100
+
+chart of the next 7 days for one variable (temperature: max and min), with the chosen day marked. click a day to choose it
+
+#### `ForecastCard`
+
+```python
+class ForecastCard(QtWidgets.QFrame)
+```
+
+- **Line:** 229
+
+the coming days: how many (7 / 14), a chart of the chosen variable, a slider (and play button) through the days, the chosen day's details, the light warnings and a link to Analyze for more
+
+#### `TrackingCard`
+
+```python
+class TrackingCard(QtWidgets.QFrame)
+```
+
+- **Line:** 420
+
+the crop follow-up: crop name, newest NDVI and its change against the image before. starts "loading"; set_tracking() fills it
 
 ### Functions
 
-#### `format_value`
+#### `short_date`
 
 ```python
-def format_value(row, value)
+def short_date(iso_date)
 ```
 
-- **Arguments:** `(StatusRow row, float value)`
-- **Line:** 15
+- **Arguments:** `(str iso_date)`
+- **Line:** 25
 
-the value with the row's decimals and unit ("23.4 °C")
-
-#### `trend_text`
-
-```python
-def trend_text(row)
-```
-
-- **Arguments:** `(StatusRow row)`
-- **Line:** 22
-
-"↑ 2.1" / "↓ 0.4" / "=": newest value against the period mean
+short date: "8 Nov" / "8 nov"
 
 #### `source_text`
 
@@ -5737,22 +5772,138 @@ def source_text(source)
 
 a source name, translated when it is an i18n key ("status.source.farmer")
 
-#### `SummaryTile.__init__`
+#### `TodayTile.__init__`
 
 ```python
-def __init__(self, tile, days, parent=None)
+def __init__(self, tile, parent=None)
 ```
 
-- **Arguments:** `(SummaryTile tile, int days)`
-- **Line:** 40
+- **Arguments:** `(status.TodayTile tile)`
+- **Line:** 39
 
-days: length of the period the trend compares with
+#### `day_label`
+
+```python
+def day_label(index, iso_date)
+```
+
+- **Arguments:** `(int index, str iso_date)`
+- **Line:** 80
+
+"Today" / "Tomorrow" / "Mon 17" for the day number index of the forecast
+
+#### `day_values`
+
+```python
+def day_values(day, variable)
+```
+
+- **Arguments:** `(DayForecast day, str variable)`
+- **Line:** 91
+
+(main value, second value or None) of a day for a FORECAST_VARIABLES key
+
+#### `ForecastChart.__init__`
+
+```python
+def __init__(self, days, parent=None)
+```
+
+- **Arguments:** `(tuple days)`
+- **Line:** 103
+
+#### `ForecastChart.show_day`
+
+```python
+def show_day(self, variable, selected, days=None)
+```
+
+- **Arguments:** `(str variable, int selected, tuple days = None)`
+- **Line:** 115
+
+draws a variable with the day number selected marked (and other days)
+
+#### `ForecastCard.__init__`
+
+```python
+def __init__(self, report, horizon=HORIZONS[0], parent=None)
+```
+
+- **Arguments:** `(StatusReport report, int horizon = HORIZONS[0])`
+- **Line:** 232
+
+#### `ForecastCard.days`
+
+```python
+def days(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 328
+
+the days shown (today first)
+
+#### `ForecastCard.set_horizon`
+
+```python
+def set_horizon(self, days)
+```
+
+- **Arguments:** `(int days)`
+- **Line:** 333
+
+shows the next days (one of HORIZONS)
+
+#### `ForecastCard.set_variable`
+
+```python
+def set_variable(self, variable)
+```
+
+- **Arguments:** `(str variable)`
+- **Line:** 345
+
+draws another FORECAST_VARIABLES key in the chart
+
+#### `ForecastCard.show_day`
+
+```python
+def show_day(self, index)
+```
+
+- **Arguments:** `(int index)`
+- **Line:** 352
+
+marks the day number index and shows its details
+
+#### `ForecastCard.toggle_play`
+
+```python
+def toggle_play(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 378
+
+starts or stops moving through the days by itself
+
+#### `TrackingCard.set_tracking`
+
+```python
+def set_tracking(self, tracking, failed=False)
+```
+
+- **Arguments:** `(Tracking tracking or None, bool failed = False)`
+- **Line:** 439
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
-| `LEVEL_COLORS` | colour of each level | 10 |
+| `LEVEL_COLORS` | colour of each level | 12 |
+| `FORECAST_VARIABLES` | variables of the forecast chart: key, icon, i18n label, unit, decimals | 69 |
+| `ForecastChart.day_clicked` | emitted with (int index) when the user clicks a day | 109 |
+| `ForecastCard.analyze_requested` | emitted with no arguments when "More in Analyze" is clicked | 239 |
 
 ## `fieldshift/ui/trends_panel.py`
 
@@ -5978,7 +6129,7 @@ def __init__(self, crop, parent=None)
 class WeatherCard(QtWidgets.QFrame)
 ```
 
-- **Line:** 44
+- **Line:** 48
 
 the floating weather card. fetch(lon, lat) -> Forecast replaces the real service (tests); without it and with FIELDSHIFT_OFFLINE=1 the card stays hidden
 
@@ -5991,7 +6142,7 @@ def weekday_name(iso_date)
 ```
 
 - **Arguments:** `(str iso_date)`
-- **Line:** 38
+- **Line:** 42
 
 short weekday name of "YYYY-MM-DD" in the current language ("Mon")
 
@@ -6002,7 +6153,7 @@ def __init__(self, view, fetch=None, zone_name=None)
 ```
 
 - **Arguments:** `(MapView view, callable fetch = None, callable zone_name = None)`
-- **Line:** 53
+- **Line:** 57
 
 puts the card over view.widget() and follows the view. zone_name(lon, lat) -> str names the zone for the title (default: OpenStreetMap; with a test fetch and no zone_name the title stays generic)
 
@@ -6013,7 +6164,7 @@ def reload(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 95
+- **Line:** 99
 
 loads the forecast of the centre of the map now, unless it is the zone already shown. returns True when a load started
 
@@ -6021,7 +6172,8 @@ loads the forecast of the centre of the map now, unless it is the zone already s
 
 | Name | Description | Line |
 |------|-------------|------|
-| `MARGIN_PX` | distance (pixels) from the top-right corner of the map | 19 |
-| `SETTLE_MS` | wait this long (ms) after the last map movement before loading | 21 |
-| `OFFLINE_ENV` | when set to "1" the card never contacts the service (tests) | 23 |
-| `SKY_ICONS` | icon of each sky kind of the forecast | 26 |
+| `MARGIN_PX` | distance (pixels) from the top-right corner of the map | 20 |
+| `SETTLE_MS` | wait this long (ms) after the last map movement before loading | 22 |
+| `HOUR_COUNT` | hours shown in the strip, and the step between them | 24 |
+| `OFFLINE_ENV` | when set to "1" the card never contacts the service (tests) | 27 |
+| `SKY_ICONS` | icon of each sky kind of the forecast | 30 |
