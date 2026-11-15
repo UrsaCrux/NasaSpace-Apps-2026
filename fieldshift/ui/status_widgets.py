@@ -46,7 +46,7 @@ class TodayTile(QtWidgets.QFrame):
             f" border-left: 4px solid {color}; border-radius: 6px; }}"
             f" QFrame#summaryTile:hover {{ background: #f1f8f1; }}"
             f" QLabel {{ border: none; background: transparent; }}")
-        name = QtWidgets.QLabel(f"{tile.icon} {tr(tile.label_key)}")
+        name = QtWidgets.QLabel(tr(tile.label_key))
         name.setStyleSheet("color: #555; font-size: 11px;")
         if tile.value is None:
             text = "—"
@@ -65,12 +65,12 @@ class TodayTile(QtWidgets.QFrame):
             layout.addWidget(label)
 
 
-# variables of the forecast chart: key, icon, i18n label, unit, decimals
-FORECAST_VARIABLES = (("temp", "🌡️", "status.fc.temp", "°C", 0),
-                      ("rain", "🌧️", "status.fc.rain", "mm", 1),
-                      ("wind", "💨", "status.fc.wind", "km/h", 0),
-                      ("humidity", "💧", "status.fc.humidity", "%", 0),
-                      ("radiation", "☀️", "status.fc.radiation", "MJ/m²", 1))
+# variables of the forecast chart: key, i18n label, unit, decimals
+FORECAST_VARIABLES = (("temp", "status.fc.temp", "°C", 0),
+                      ("rain", "status.fc.rain", "mm", 1),
+                      ("wind", "status.fc.wind", "km/h", 0),
+                      ("humidity", "status.fc.humidity", "%", 0),
+                      ("radiation", "status.fc.radiation", "MJ/m²", 1))
 _HOT = QtGui.QColor("#e53935")
 _COLD = QtGui.QColor("#1e88e5")
 
@@ -238,19 +238,19 @@ class ForecastCard(QtWidgets.QFrame):
         # emitted with no arguments when "More in Analyze" is clicked
         self.analyze_requested = Event()
         self.setObjectName("forecastCard")
-        self.setStyleSheet("QFrame#forecastCard { background: #f3f0fa; border: 1px solid #c9bfe3;"
+        self.setStyleSheet("QFrame#forecastCard { background: white; border: 1px solid #d5dbd5;"
                            " border-radius: 8px; } QLabel { background: transparent;"
                            " border: none; }"
                            " QPushButton#fcVar, QPushButton#horizon { background: white;"
-                           " border: 1px solid #c9bfe3; padding: 3px 8px; }"
+                           " border: 1px solid #c9d1c9; padding: 3px 10px; }"
                            " QPushButton#fcVar:checked, QPushButton#horizon:checked"
-                           " { background: #6a1b9a; color: white; }")
+                           " { background: #00796b; color: white; border-color: #00796b; }")
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(12, 10, 12, 12)
         layout.setSpacing(6)
 
         top = QtWidgets.QHBoxLayout()
-        title = QtWidgets.QLabel(f"🔮 <b>{tr('status.soon_title')}</b>")
+        title = QtWidgets.QLabel(f"<b>{tr('status.soon_title')}</b>")
         title.setStyleSheet("font-size: 15px;")
         top.addWidget(title, 1)
         self.horizon_buttons = {}
@@ -271,8 +271,8 @@ class ForecastCard(QtWidgets.QFrame):
         buttons.setSpacing(0)
         group = QtWidgets.QButtonGroup(self)
         self.variable_buttons = {}
-        for key, icon, label, _, _ in FORECAST_VARIABLES:
-            button = QtWidgets.QPushButton(f"{icon} {tr(label)}")
+        for key, label, _, _ in FORECAST_VARIABLES:
+            button = QtWidgets.QPushButton(tr(label))
             button.setObjectName("fcVar")
             button.setCheckable(True)
             button.setChecked(key == self.variable)
@@ -302,7 +302,7 @@ class ForecastCard(QtWidgets.QFrame):
         layout.addLayout(controls)
         self.detail = QtWidgets.QLabel()
         self.detail.setWordWrap(True)
-        self.detail.setStyleSheet("QLabel { background: white; border: 1px solid #e0d8f0;"
+        self.detail.setStyleSheet("QLabel { background: #f6f8f6; border: 1px solid #e0e5e0;"
                                   " border-radius: 6px; padding: 6px 8px; }")
         layout.addWidget(self.detail)
 
@@ -350,7 +350,6 @@ class ForecastCard(QtWidgets.QFrame):
     # (int index)
     # marks the day number index and shows its details
     def show_day(self, index):
-        from fieldshift.ui.weather_card import SKY_ICONS
         day = self.days()[index]
         self.chart.show_day(self.variable, index, self.days())
 
@@ -363,13 +362,12 @@ class ForecastCard(QtWidgets.QFrame):
                  part("status.fc.d_wind", day.wind_kmh, 0, "km/h"),
                  part("status.fc.d_humidity", day.humidity, 0, "%"),
                  part("status.fc.d_radiation", day.radiation, 1, "MJ/m²")]
-        text = (f"<span style='font-size:18px'>{SKY_ICONS.get(day.sky, '')}</span> "
-                f"<b>{day_label(index, day.date)}</b> · {short_date(day.date)}<br>"
+        text = (f"<b>{day_label(index, day.date)}</b> · {short_date(day.date)}<br>"
                 + " · ".join(p for p in parts if p))
         for alert in self.report.alerts:
             if alert.date == day.date:
                 color = LEVEL_COLORS.get(alert.level, LEVEL_COLORS[LEVEL_WATCH])
-                text += (f"<br><span style='color:{color}'>⚠ "
+                text += (f"<br><span style='color:{color}'>"
                          f"{tr(alert.text_key, **alert.params)}</span>")
         self.detail.setText(text)
 
@@ -427,7 +425,7 @@ class TrackingCard(QtWidgets.QFrame):
                            " QLabel { border: none; background: transparent; }")
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(12, 10, 12, 12)
-        title = QtWidgets.QLabel(f"🌱 <b>{tr('status.tracking_title')}</b>")
+        title = QtWidgets.QLabel(f"<b>{tr('status.tracking_title')}</b>")
         title.setStyleSheet("font-size: 15px;")
         self.text = QtWidgets.QLabel(tr("status.tracking_loading"))
         self.text.setWordWrap(True)

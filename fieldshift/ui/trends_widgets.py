@@ -71,12 +71,11 @@ class MilestonesCard(Card):
 
     # (tuple milestones)
     def __init__(self, milestones, parent=None):
-        super().__init__(f"⭐ <b>{tr('trends.milestones')}</b>", "milestonesCard", parent)
+        super().__init__(f"<b>{tr('trends.milestones')}</b>", "milestonesCard", parent)
         grid = QtWidgets.QGridLayout()
         grid.setSpacing(6)
         for i, item in enumerate(milestones):
             tile = QtWidgets.QLabel(
-                f"<span style='font-size:16px'>{item.icon}</span> "
                 f"<span style='color:#555'>{tr(item.label_key)}</span><br>"
                 f"<b>{item.value}</b>"
                 + (f" <span style='color:#666'>· {long_month(item.month)}</span>"
@@ -97,7 +96,7 @@ class SeasonsCard(Card):
 
     # (tuple seasons)
     def __init__(self, seasons, parent=None):
-        super().__init__(f"🗓️ <b>{tr('trends.seasons')}</b>", "seasonsCard", parent)
+        super().__init__(f"<b>{tr('trends.seasons')}</b>", "seasonsCard", parent)
         table = QtWidgets.QTableWidget(len(seasons), len(self.COLUMNS) + 1)
         table.setHorizontalHeaderLabels(
             [tr("trends.col.season")]
@@ -376,7 +375,7 @@ class TrendSectionCard(Card):
 
     # (TrendSection section)
     def __init__(self, section, parent=None):
-        super().__init__(f"{section.icon} <b>{tr(section.title_key)}</b>", "trendSection",
+        super().__init__(f"<b>{tr(section.title_key)}</b>", "trendSection",
                          parent)
         self.section = section
         self.table = self.chart = None
@@ -405,7 +404,7 @@ class CropCard(Card):
 
     # (str crop)
     def __init__(self, crop, parent=None):
-        super().__init__(f"🌾 <b>{tr('trends.crop_title')}</b>", "cropCard", parent)
+        super().__init__(f"<b>{tr('trends.crop_title')}</b>", "cropCard", parent)
         # emitted with no arguments when "See suggestions" is clicked
         self.suggestion_requested = Event()
         text = QtWidgets.QLabel(tr("trends.crop_now", crop=crop) if crop

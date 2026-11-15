@@ -154,7 +154,7 @@ class WeatherCard(QtWidgets.QFrame):
                     mm=f"{today.rain_mm:.1f}")
                  + " · " + tr("weather.elevation", m=f"{result.elevation:.0f}")]
         if today.tmin <= forecast_api.FROST_C:
-            lines.append(f"<b style='color:#c62828'>❄ {tr('weather.frost_tonight')}</b>")
+            lines.append(f"<b style='color:#c62828'>{tr('weather.frost_tonight')}</b>")
         self.summary_label.setText("<br>".join(lines))
         for label in (self.now_label, self.summary_label, self.credit_label):
             label.show()
