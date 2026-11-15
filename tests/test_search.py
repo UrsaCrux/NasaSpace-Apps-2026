@@ -130,6 +130,11 @@ class MapSearchTest(unittest.TestCase):
         xmin, ymin, xmax, ymax = zoom.call_args.args
         self.assertTrue(xmin < -71.25 and xmax > -71.15 and ymin < -33.75 and ymax > -33.65)
         self.assertEqual(self.view.pin(), (-71.2, -33.69))
+        # the panel closes by itself; the pin stays with a chip to remove it
+        self.assertTrue(self.search.isHidden())
+        self.assertFalse(self.window.map_controls.search_button.isChecked())
+        self.assertFalse(self.search.chip.isHidden())
+        self.assertEqual(self.search.chip.label.text(), "📍 Melipilla")
 
     def test_long_names_are_not_cut_off(self):
         long_name = ("Casa Central Universidad de Chile, 1058, Avenida Libertador Bernardo O'Higgins, "
@@ -164,13 +169,33 @@ class MapSearchTest(unittest.TestCase):
         self.assertEqual(self.search.status_label.text(), "Could not search (check your connection)")
         self.assertIsNone(self.view.pin())
 
-    def test_closing_removes_the_pin_and_ignores_late_answers(self):
+    def test_chip_cross_removes_the_pin(self):
         self.window.map_controls.search_button.click()
         self.run_search("Melipilla")
         self.search.go_to(0)
         self.assertIsNotNone(self.view.pin())
-        self.window.map_controls.search_button.click()          # close
+        self.search.chip.close_button.click()
         self.assertIsNone(self.view.pin())
+        self.assertTrue(self.search.chip.isHidden())
+
+    def test_pin_goes_away_when_drawing_starts_or_a_new_search_opens(self):
+        for leave in (lambda: self.window.fields_bar.draw_button.click(),
+                      lambda: self.window.map_controls.search_button.click()):
+            self.window.map_controls.search_button.setChecked(True)
+            self.run_search("Melipilla")
+            self.search.go_to(0)
+            self.assertIsNotNone(self.view.pin())
+            leave()
+            self.assertIsNone(self.view.pin())
+            self.assertTrue(self.search.chip.isHidden())
+            self.view.cancel_drawing()
+            self.window.map_controls.search_button.setChecked(False)
+
+    def test_closing_the_panel_keeps_the_pin_and_drops_late_answers(self):
+        self.window.map_controls.search_button.click()
+        self.run_search("Melipilla")
+        self.search.go_to(0)
+        self.assertIsNotNone(self.view.pin())                   # panel closed by go_to
         self.search._on_finished(self.search._request - 1, list(geocode.parse_places(CITY)))
         self.assertEqual(self.search.places, [])               # stale answer dropped
 

@@ -99,6 +99,14 @@ class _ViewContract:
             self.assertAlmostEqual(lon, elon, places=6)
             self.assertAlmostEqual(lat, elat, places=6)
 
+    def test_drawing_started_event(self):
+        started = []
+        self.view.drawing_started.connect(lambda: started.append(1))
+        self.view.start_polygon_drawing()
+        self.view.start_polygon_drawing()           # already drawing: no second event
+        self.assertEqual(started, [1])
+        self.view.cancel_drawing()
+
     def test_cancel_drawing(self):
         cancelled = []
         self.view.drawing_cancelled.connect(lambda: cancelled.append(True))

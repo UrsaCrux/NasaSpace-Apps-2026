@@ -30,6 +30,57 @@ _STYLE = ("QFrame#mapSearch { background: rgba(255, 255, 255, 240); border: 1px 
           "QListWidget::item:hover, QListWidget::item:selected { background: #e8f1e8; color: #1b1b1b; }")
 
 
+# (str name)
+# the first part of a long place name ("Melipilla"), at most 40 characters
+def short_name(name):
+    first = name.split(",")[0].strip() or name
+    return first if len(first) <= 40 else first[:39] + "…"
+
+
+# small chip at the top centre of the map while a found place is pinned:
+# "📍 Melipilla  ✕". the ✕ removes the pin
+class PinChip(QtWidgets.QFrame):
+
+    # (QWidget parent, callable on_close)
+    # builds the (hidden) chip over parent
+    def __init__(self, parent, on_close):
+        super().__init__(parent)
+        self.setObjectName("pinChip")
+        self.setStyleSheet(
+            "QFrame#pinChip { background: rgba(255, 255, 255, 240); border: 1px solid #e53935;"
+            " border-radius: 14px; } QLabel { background: transparent; border: none; font-weight: bold; }"
+            "QToolButton { border: none; background: #e53935; color: white; border-radius: 9px;"
+            " font-weight: bold; min-width: 18px; max-width: 18px; min-height: 18px; max-height: 18px; }"
+            "QToolButton:hover { background: #b71c1c; }")
+        self.label = QtWidgets.QLabel()
+        self.close_button = QtWidgets.QToolButton()
+        self.close_button.setText("✕")
+        self.close_button.setToolTip(tr("search.remove_pin"))
+        self.close_button.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self.close_button.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.close_button.clicked.connect(lambda *_: on_close())
+        row = QtWidgets.QHBoxLayout(self)
+        row.setContentsMargins(12, 4, 6, 4)
+        row.setSpacing(8)
+        row.addWidget(self.label)
+        row.addWidget(self.close_button)
+        self.hide()
+
+    # (str name)
+    # shows the chip with this place name, centred at the top of the map
+    def show_place(self, name):
+        self.label.setText(f"📍 {short_name(name)}")
+        self.adjustSize()
+        self.place()
+        self.show()
+        self.raise_()
+
+    # puts the chip at the top centre of the map
+    def place(self):
+        parent = self.parentWidget()
+        self.move(max(0, (parent.width() - self.width()) // 2), 12)
+
+
 # (list bbox)
 # (xmin, ymin, xmax, ymax) grown to at least 2 * MIN_HALF_SPAN_DEG on each side,
 # so a house is shown with its surroundings
@@ -78,6 +129,7 @@ class MapSearch(QtWidgets.QFrame):
         self.results.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.results.itemClicked.connect(lambda item: self.go_to(self.results.row(item)))
         self.results.itemActivated.connect(lambda item: self.go_to(self.results.row(item)))
+        self.chip = PinChip(view.widget(), self.clear_found)
         self.credit_label = QtWidgets.QLabel(geocode.ATTRIBUTION)
         self.credit_label.setStyleSheet("color: #777; font-size: 10px;")
         layout = QtWidgets.QVBoxLayout(self)
@@ -91,6 +143,7 @@ class MapSearch(QtWidgets.QFrame):
 
         self._finished.connect(self._on_finished)
         controls.search_button.toggled.connect(self.set_open)
+        view.drawing_started.connect(self.clear_found)          # drawing a field: pin not needed
         view.widget().installEventFilter(self)
 
     # (bool opened)
@@ -100,6 +153,7 @@ class MapSearch(QtWidgets.QFrame):
             self.controls.search_button.setChecked(opened)      # comes back through toggled
             return
         if opened:
+            self.clear_found()                                  # a new search starts clean
             self._place()
             self.show()
             self.raise_()
@@ -107,12 +161,18 @@ class MapSearch(QtWidgets.QFrame):
             self.edit.selectAll()
         else:
             self.hide()
-            self.view.clear_pin()
             self._request += 1                                  # drop a pending answer
             self.places, self._query = [], ""                   # a fresh search next time
             self.results.clear()
             self.results.hide()
             self.status_label.hide()
+            # the pin and its chip stay: the ✕ of the chip removes them
+
+    # ()
+    # removes the pin and its chip
+    def clear_found(self):
+        self.view.clear_pin()
+        self.chip.hide()
 
     # ()
     # searches the text of the box (Enter). returns True when a search started
@@ -141,10 +201,8 @@ class MapSearch(QtWidgets.QFrame):
         place = self.places[index]
         self.view.zoom_to_extent(*padded_bbox(place.bbox))
         self.view.show_pin(place.lon, place.lat)
-        self.results.hide()
-        self.status_label.setText(place.name)
-        self.status_label.show()
-        self._place()
+        self.chip.show_place(place.name)
+        self.set_open(False)                    # the map is the focus now
 
     def _run(self, request, text):
         try:
@@ -223,7 +281,9 @@ class MapSearch(QtWidgets.QFrame):
             super().keyPressEvent(event)
 
     def eventFilter(self, watched, event):
-        if (watched is self.parentWidget() and event.type() == QtCore.QEvent.Type.Resize
-                and not self.isHidden()):
-            self._place()
+        if watched is self.parentWidget() and event.type() == QtCore.QEvent.Type.Resize:
+            if not self.isHidden():
+                self._place()
+            if not self.chip.isHidden():
+                self.chip.place()
         return False

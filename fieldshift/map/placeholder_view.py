@@ -126,8 +126,11 @@ class PlaceholderMapView(MapView):
         pass
 
     def start_polygon_drawing(self):
+        if self._drawing:
+            return
         self._drawing = True
         self.layer_hovered.emit(None, 0.0, 0.0)
+        self.drawing_started.emit()
 
     def cancel_drawing(self):
         if self._drawing:

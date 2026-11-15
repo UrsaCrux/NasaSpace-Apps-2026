@@ -271,5 +271,6 @@
   "search.searching": "Buscando…",
   "search.none": "No se encontró nada para «{text}»",
   "search.failed": "No se pudo buscar (revisa tu conexión)",
-  "search.offline": "Búsqueda no disponible"
+  "search.offline": "Búsqueda no disponible",
+  "search.remove_pin": "Quitar la marca"
 }

@@ -2071,7 +2071,7 @@ def simulate_double_click(self, layer_id, lon=0.0, lat=0.0)
 ```
 
 - **Arguments:** `(str layer_id, float lon = 0, float lat = 0)`
-- **Line:** 144
+- **Line:** 147
 
 reports a double click on a feature of this layer, as the real map would; nothing happens for unknown, locked or hidden layers, or while drawing
 
@@ -2082,7 +2082,7 @@ def simulate_polygon(self, vertices)
 ```
 
 - **Arguments:** `(list vertices)`
-- **Line:** 152
+- **Line:** 155
 
 ends the current drawing as if the user had closed this polygon of (lon, lat) vertices; there is no map to click on, so tests use this
 
@@ -2304,7 +2304,7 @@ def widget(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 47
+- **Line:** 49
 
 the QWidget to put in a window; created once and reused
 
@@ -2315,7 +2315,7 @@ def add_layer(self, spec)
 ```
 
 - **Arguments:** `(LayerSpec spec)`
-- **Line:** 54
+- **Line:** 56
 
 loads the layer on top of the others; returns its id. raises ValueError when the source cannot be opened
 
@@ -2326,7 +2326,7 @@ def remove_layer(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 60
+- **Line:** 62
 
 removes a layer added with add_layer; unknown ids are ignored
 
@@ -2337,7 +2337,7 @@ def layers(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 66
+- **Line:** 68
 
 list of LayerInfo, top layer first
 
@@ -2348,7 +2348,7 @@ def set_layer_visible(self, layer_id, visible)
 ```
 
 - **Arguments:** `(str layer_id, bool visible)`
-- **Line:** 72
+- **Line:** 74
 
 shows or hides a layer without removing it
 
@@ -2359,7 +2359,7 @@ def set_center(self, lon, lat, scale=None)
 ```
 
 - **Arguments:** `(float lon, float lat, float scale = None)`
-- **Line:** 78
+- **Line:** 80
 
 centres the map on a point; keeps the current scale when none is given
 
@@ -2370,7 +2370,7 @@ def zoom_to_extent(self, xmin, ymin, xmax, ymax)
 ```
 
 - **Arguments:** `(float xmin, float ymin, float xmax, float ymax)`
-- **Line:** 84
+- **Line:** 86
 
 fits the view to a lon/lat bounding box
 
@@ -2381,7 +2381,7 @@ def zoom_to_layer(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 90
+- **Line:** 92
 
 fits the view to the extent of one layer
 
@@ -2392,7 +2392,7 @@ def refresh(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 96
+- **Line:** 98
 
 redraws the map
 
@@ -2403,7 +2403,7 @@ def start_polygon_drawing(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 105
+- **Line:** 107
 
 lets the user draw a polygon on the map (click adds a vertex; double click, right click or a click on the first vertex closes it; Backspace removes the last vertex; Esc cancels). ends with polygon_drawn or drawing_cancelled, then the map goes back to panning
 
@@ -2414,7 +2414,7 @@ def cancel_drawing(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 111
+- **Line:** 113
 
 stops the current drawing and emits drawing_cancelled; no-op when idle
 
@@ -2425,7 +2425,7 @@ def is_drawing(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 117
+- **Line:** 119
 
 True while a drawing started with start_polygon_drawing is in progress
 
@@ -2436,7 +2436,7 @@ def meters_per_pixel(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 125
+- **Line:** 127
 
 ground distance in metres covered by one screen pixel, measured across the centre of the view (it changes with latitude in Web Mercator), or None when the backend cannot tell
 
@@ -2447,7 +2447,7 @@ def zoom_by(self, factor)
 ```
 
 - **Arguments:** `(float factor)`
-- **Line:** 132
+- **Line:** 134
 
 zooms around the centre of the view: the visible width is multiplied by factor (0.5 zooms in twice as close, 2 zooms out)
 
@@ -2458,7 +2458,7 @@ def set_highlight(self, vertices)
 ```
 
 - **Arguments:** `(list vertices)`
-- **Line:** 139
+- **Line:** 141
 
 draws a bright outline around this (lon, lat) polygon, on top of every layer; None removes it. only one polygon is highlighted at a time
 
@@ -2469,7 +2469,7 @@ def highlighted(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 145
+- **Line:** 147
 
 the highlighted (lon, lat) vertices, or None
 
@@ -2480,7 +2480,7 @@ def set_marked(self, polygons)
 ```
 
 - **Arguments:** `(list polygons)`
-- **Line:** 152
+- **Line:** 154
 
 draws a thick outline around each (lon, lat) polygon of the list (the fields the user checked), under the hover highlight; [] removes them
 
@@ -2491,7 +2491,7 @@ def marked(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 158
+- **Line:** 160
 
 the polygons given to set_marked, as lists of (lon, lat) tuples
 
@@ -2502,7 +2502,7 @@ def center(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 164
+- **Line:** 166
 
 (lon, lat) of the centre of the view, or None when the backend cannot tell
 
@@ -2513,7 +2513,7 @@ def show_pin(self, lon, lat)
 ```
 
 - **Arguments:** `(float lon, float lat)`
-- **Line:** 170
+- **Line:** 172
 
 puts a temporary pin on the map (a found place); replaces the last one
 
@@ -2524,7 +2524,7 @@ def clear_pin(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 176
+- **Line:** 178
 
 removes the pin
 
@@ -2535,7 +2535,7 @@ def pin(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 182
+- **Line:** 184
 
 (lon, lat) of the pin, or None
 
@@ -2548,10 +2548,11 @@ def pin(self)
 | `MapView.layers_changed` | emitted with no arguments after a layer is added, removed or toggled | 20 |
 | `MapView.polygon_drawn` | emitted with (list vertices) when the user closes a polygon started with start_polygon_drawing; vertices are (lon, lat) tuples and the first one is not repeated at the end | 24 |
 | `MapView.drawing_cancelled` | emitted with no arguments when a drawing ends without a polygon | 26 |
-| `MapView.layer_double_clicked` | emitted with (str layer_id, float lon, float lat) when the user double-clicks a feature of a layer that is not locked (topmost layer first). never while drawing a polygon. a double click on a feature does not zoom the map in | 31 |
-| `MapView.view_changed` | emitted with no arguments after the visible area changes (pan, zoom, resize); read meters_per_pixel() to draw a scale bar | 34 |
-| `MapView.layer_hovered` | emitted with (str layer_id or None, float lon, float lat) when the mouse moves onto a feature of another visible, unlocked layer, or off every feature (None). not while dragging or drawing | 38 |
-| `MapView.layer_right_clicked` | emitted with (str layer_id, float lon, float lat) when the user right-clicks a feature of a visible, unlocked layer (topmost first); not while drawing. the UI opens its menu there | 42 |
+| `MapView.drawing_started` | emitted with no arguments when start_polygon_drawing begins a drawing | 28 |
+| `MapView.layer_double_clicked` | emitted with (str layer_id, float lon, float lat) when the user double-clicks a feature of a layer that is not locked (topmost layer first). never while drawing a polygon. a double click on a feature does not zoom the map in | 33 |
+| `MapView.view_changed` | emitted with no arguments after the visible area changes (pan, zoom, resize); read meters_per_pixel() to draw a scale bar | 36 |
+| `MapView.layer_hovered` | emitted with (str layer_id or None, float lon, float lat) when the mouse moves onto a feature of another visible, unlocked layer, or off every feature (None). not while dragging or drawing | 40 |
+| `MapView.layer_right_clicked` | emitted with (str layer_id, float lon, float lat) when the user right-clicks a feature of a visible, unlocked layer (topmost first); not while drawing. the UI opens its menu there | 44 |
 
 ## `fieldshift/native/__init__.py`
 
@@ -3609,17 +3610,70 @@ def basemap(self)
 
 ### Classes
 
+#### `PinChip`
+
+```python
+class PinChip(QtWidgets.QFrame)
+```
+
+- **Line:** 42
+
+small chip at the top centre of the map while a found place is pinned: "📍 Melipilla  ✕". the ✕ removes the pin
+
 #### `MapSearch`
 
 ```python
 class MapSearch(QtWidgets.QFrame)
 ```
 
-- **Line:** 48
+- **Line:** 99
 
 the search panel. controls is the MapControls (the panel sits to the right of its search button). search(text) -> [Place] replaces the real service (tests); without it and with FIELDSHIFT_OFFLINE=1 the search says it is not available
 
 ### Functions
+
+#### `short_name`
+
+```python
+def short_name(name)
+```
+
+- **Arguments:** `(str name)`
+- **Line:** 35
+
+the first part of a long place name ("Melipilla"), at most 40 characters
+
+#### `PinChip.__init__`
+
+```python
+def __init__(self, parent, on_close)
+```
+
+- **Arguments:** `(QWidget parent, callable on_close)`
+- **Line:** 46
+
+builds the (hidden) chip over parent
+
+#### `PinChip.show_place`
+
+```python
+def show_place(self, name)
+```
+
+- **Arguments:** `(str name)`
+- **Line:** 71
+
+shows the chip with this place name, centred at the top of the map
+
+#### `PinChip.place`
+
+```python
+def place(self)
+```
+
+- **Line:** 79
+
+puts the chip at the top centre of the map
 
 #### `padded_bbox`
 
@@ -3628,7 +3682,7 @@ def padded_bbox(bbox)
 ```
 
 - **Arguments:** `(list bbox)`
-- **Line:** 36
+- **Line:** 87
 
 (xmin, ymin, xmax, ymax) grown to at least 2 * MIN_HALF_SPAN_DEG on each side, so a house is shown with its surroundings
 
@@ -3639,7 +3693,7 @@ def __init__(self, view, controls, search=None)
 ```
 
 - **Arguments:** `(MapView view, MapControls controls, callable search = None)`
-- **Line:** 55
+- **Line:** 106
 
 builds the (closed) panel over view.widget()
 
@@ -3650,9 +3704,20 @@ def set_open(self, opened)
 ```
 
 - **Arguments:** `(bool opened)`
-- **Line:** 98
+- **Line:** 151
 
 opens the panel (focus in the text box) or closes it and removes the pin
+
+#### `MapSearch.clear_found`
+
+```python
+def clear_found(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 173
+
+removes the pin and its chip
 
 #### `MapSearch.search`
 
@@ -3661,7 +3726,7 @@ def search(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 119
+- **Line:** 179
 
 searches the text of the box (Enter). returns True when a search started
 
@@ -3672,7 +3737,7 @@ def go_to(self, index)
 ```
 
 - **Arguments:** `(int index)`
-- **Line:** 138
+- **Line:** 198
 
 takes the map to result number index, drops the pin and closes the list
 

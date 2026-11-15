@@ -202,6 +202,7 @@ class QgisMapView(MapView):
         self._draw_tool.start()
         self._canvas.setMapTool(self._draw_tool)
         self._canvas.setFocus()       # so Esc and Backspace reach the tool
+        self.drawing_started.emit()
 
     def cancel_drawing(self):
         self._draw_tool.cancel()

@@ -271,5 +271,6 @@
   "search.searching": "Searching…",
   "search.none": "Nothing found for “{text}”",
   "search.failed": "Could not search (check your connection)",
-  "search.offline": "Search not available"
+  "search.offline": "Search not available",
+  "search.remove_pin": "Remove the marker"
 }

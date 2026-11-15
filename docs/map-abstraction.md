@@ -54,6 +54,7 @@ LayerSpec.raster("NDVI", "/path/ndvi.tif")
 | `layers_changed` | – |
 | `polygon_drawn` | `vertices`: list of `(lon, lat)`, first vertex not repeated |
 | `drawing_cancelled` | – |
+| `drawing_started` | – (a drawing began) |
 | `layer_right_clicked` | `layer_id, lon, lat`: right click on a feature of a visible, unlocked layer; not while drawing |
 | `layer_hovered` | `layer_id` or `None`, `lon, lat`: the mouse moved onto a feature of another visible, unlocked layer, or off every feature; not while dragging or drawing |
 | `view_changed` | – (after a pan, zoom or resize) |
