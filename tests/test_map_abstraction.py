@@ -117,6 +117,24 @@ class _ViewContract:
         lon, lat = clicked[0][1:]
         self.assertTrue(-70.70 <= lon <= -70.69 and -33.41 <= lat <= -33.40)
 
+    def test_highlight(self):
+        layer_id = self.add_square_layer("field")
+        self.assertIsNone(self.view.highlighted())
+        self.view.set_highlight(SQUARE)
+        self.assertEqual(self.view.highlighted(), [tuple(v) for v in SQUARE])
+        self.view.set_highlight(None)
+        self.assertIsNone(self.view.highlighted())
+        self.view.set_highlight(SQUARE)
+        self.view.remove_layer(layer_id)          # must not crash at exit
+
+    def test_hover_enters_and_leaves_a_layer(self):
+        seen = []
+        self.view.layer_hovered.connect(lambda lid, lon, lat: seen.append(lid))
+        layer_id = self.add_square_layer("field")
+        self.hover_square(True)
+        self.hover_square(False)
+        self.assertEqual(seen, [layer_id, None])
+
     def test_double_click_ignores_locked_hidden_and_drawing(self):
         clicked = []
         self.view.layer_double_clicked.connect(lambda *a: clicked.append(a))
@@ -175,6 +193,11 @@ class _ViewContract:
     def double_click_square(self):
         raise NotImplementedError
 
+    # (bool inside)
+    # moves the mouse onto the middle of SQUARE (inside) or off it
+    def hover_square(self, inside):
+        raise NotImplementedError
+
 
 class PlaceholderViewTest(_ViewContract, unittest.TestCase):
     backend = "placeholder"
@@ -188,6 +211,9 @@ class PlaceholderViewTest(_ViewContract, unittest.TestCase):
 
     def double_click_square(self):
         self.view.simulate_double_click(self._square_id, -70.695, -33.405)
+
+    def hover_square(self, inside):
+        self.view.simulate_hover(self._square_id if inside else None)
 
     def close_polygon(self, vertices):
         self.view.simulate_polygon(vertices)
@@ -278,6 +304,15 @@ class QgisViewTest(_ViewContract, unittest.TestCase):
         tool.canvasMoveEvent(self._mouse(Type.MouseMove, end, NoButton, Left))
         tool.canvasReleaseEvent(self._mouse(Type.MouseButtonRelease, end, Left, NoButton))
         self.assertGreater(abs(canvas.center().x() - before.x()), 1)         # drag
+
+    def hover_square(self, inside):
+        from fieldshift.qt import QtCore
+        lon = sum(v[0] for v in SQUARE) / len(SQUARE)
+        lat = sum(v[1] for v in SQUARE) / len(SQUARE)
+        target = (lon, lat) if inside else (-70.719, -33.419)
+        pos = self._pixels([target])[0]
+        self.view.canvas().mapTool().canvasMoveEvent(self._mouse(
+            QtCore.QEvent.Type.MouseMove, pos, QtCore.Qt.MouseButton.NoButton))
 
     def test_double_click_on_empty_map_still_zooms_in(self):
         from fieldshift.qt import QtCore

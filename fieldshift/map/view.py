@@ -32,6 +32,10 @@ class MapView(ABC):
         # emitted with no arguments after the visible area changes (pan, zoom,
         # resize); read meters_per_pixel() to draw a scale bar
         self.view_changed = Event()
+        # emitted with (str layer_id or None, float lon, float lat) when the
+        # mouse moves onto a feature of another visible, unlocked layer, or off
+        # every feature (None). not while dragging or drawing
+        self.layer_hovered = Event()
 
     # ()
     # the QWidget to put in a window; created once and reused
@@ -122,4 +126,17 @@ class MapView(ABC):
     # factor (0.5 zooms in twice as close, 2 zooms out)
     @abstractmethod
     def zoom_by(self, factor):
+        ...
+
+    # (list vertices)
+    # draws a bright outline around this (lon, lat) polygon, on top of every
+    # layer; None removes it. only one polygon is highlighted at a time
+    @abstractmethod
+    def set_highlight(self, vertices):
+        ...
+
+    # ()
+    # the highlighted (lon, lat) vertices, or None
+    @abstractmethod
+    def highlighted(self):
         ...

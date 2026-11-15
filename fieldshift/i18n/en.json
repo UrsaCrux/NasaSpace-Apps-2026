@@ -247,5 +247,9 @@
   "map.fit_fields_tooltip": "Show all your fields on the map",
   "map.satellite": "Satellite",
   "map.streets": "Map",
-  "map.basemap_tooltip": "Background: satellite image or street map"
+  "map.basemap_tooltip": "Background: satellite image or street map",
+  "hover.area": "{area} ha",
+  "hover.crop": "Crop",
+  "hover.no_crop": "not chosen",
+  "hover.hint": "Double-click to check it"
 }

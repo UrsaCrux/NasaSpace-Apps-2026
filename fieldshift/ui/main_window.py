@@ -9,6 +9,7 @@ from fieldshift.ui.analysis_tab import AnalysisTab
 from fieldshift.ui.analyze_dialog import AnalysisProgress, AnalyzeDialog
 from fieldshift.ui.field_list import LAYER_ID_ROLE
 from fieldshift.ui.fields_bar import FieldsBar
+from fieldshift.ui.hover_card import HoverCard
 from fieldshift.ui.map_controls import MapControls
 from fieldshift.ui.scale_bar import ScaleBar
 from fieldshift.ui.side_panel import SidePanel
@@ -44,6 +45,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.scale_bar = ScaleBar(view)
         # zoom, "my fields" and background buttons over the top-left corner
         self.map_controls = MapControls(view, self.fields, basemaps)
+        # card with the field under the mouse, and its outline highlighted
+        self.hover_card = HoverCard(view, self.fields)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         splitter.addWidget(map_area)

@@ -1827,13 +1827,13 @@ the default map tool: drag to pan, wheel to zoom. a double click first asks on_d
 #### `PickPanTool.__init__`
 
 ```python
-def __init__(self, canvas, on_double_click)
+def __init__(self, canvas, on_double_click, on_hover=None)
 ```
 
-- **Arguments:** `(QgsMapCanvas canvas, callable on_double_click)`
-- **Line:** 18
+- **Arguments:** `(QgsMapCanvas canvas, callable on_double_click, callable on_hover = None)`
+- **Line:** 19
 
-on_double_click gets the clicked QgsPointXY (canvas CRS) and returns True when it used the click
+on_double_click gets the clicked QgsPointXY (canvas CRS) and returns True when it used the click; on_hover gets the point under the mouse, or None while the map is being dragged
 
 ## `fieldshift/map/placeholder_view.py`
 
@@ -1862,6 +1862,17 @@ def __init__(self)
 
 creates an empty in-memory view
 
+#### `PlaceholderMapView.simulate_hover`
+
+```python
+def simulate_hover(self, layer_id, lon=0.0, lat=0.0)
+```
+
+- **Arguments:** `(str layer_id or None, float lon = 0, float lat = 0)`
+- **Line:** 82
+
+reports the mouse entering a feature of this layer (None: leaving), as the real map would; ignored for locked or hidden layers and while drawing
+
 #### `PlaceholderMapView.simulate_double_click`
 
 ```python
@@ -1869,7 +1880,7 @@ def simulate_double_click(self, layer_id, lon=0.0, lat=0.0)
 ```
 
 - **Arguments:** `(str layer_id, float lon = 0, float lat = 0)`
-- **Line:** 96
+- **Line:** 114
 
 reports a double click on a feature of this layer, as the real map would; nothing happens for unknown, locked or hidden layers, or while drawing
 
@@ -1880,7 +1891,7 @@ def simulate_polygon(self, vertices)
 ```
 
 - **Arguments:** `(list vertices)`
-- **Line:** 104
+- **Line:** 122
 
 ends the current drawing as if the user had closed this polygon of (lon, lat) vertices; there is no map to click on, so tests use this
 
@@ -2042,7 +2053,7 @@ def canvas(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 92
+- **Line:** 101
 
 the underlying QgsMapCanvas, for code that needs QGIS-specific features
 
@@ -2053,7 +2064,7 @@ def set_click_mode(self, enabled)
 ```
 
 - **Arguments:** `(bool enabled)`
-- **Line:** 97
+- **Line:** 106
 
 switches between the pan tool and the click tool (emits `clicked`)
 
@@ -2102,7 +2113,7 @@ def widget(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 39
+- **Line:** 43
 
 the QWidget to put in a window; created once and reused
 
@@ -2113,7 +2124,7 @@ def add_layer(self, spec)
 ```
 
 - **Arguments:** `(LayerSpec spec)`
-- **Line:** 46
+- **Line:** 50
 
 loads the layer on top of the others; returns its id. raises ValueError when the source cannot be opened
 
@@ -2124,7 +2135,7 @@ def remove_layer(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 52
+- **Line:** 56
 
 removes a layer added with add_layer; unknown ids are ignored
 
@@ -2135,7 +2146,7 @@ def layers(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 58
+- **Line:** 62
 
 list of LayerInfo, top layer first
 
@@ -2146,7 +2157,7 @@ def set_layer_visible(self, layer_id, visible)
 ```
 
 - **Arguments:** `(str layer_id, bool visible)`
-- **Line:** 64
+- **Line:** 68
 
 shows or hides a layer without removing it
 
@@ -2157,7 +2168,7 @@ def set_center(self, lon, lat, scale=None)
 ```
 
 - **Arguments:** `(float lon, float lat, float scale = None)`
-- **Line:** 70
+- **Line:** 74
 
 centres the map on a point; keeps the current scale when none is given
 
@@ -2168,7 +2179,7 @@ def zoom_to_extent(self, xmin, ymin, xmax, ymax)
 ```
 
 - **Arguments:** `(float xmin, float ymin, float xmax, float ymax)`
-- **Line:** 76
+- **Line:** 80
 
 fits the view to a lon/lat bounding box
 
@@ -2179,7 +2190,7 @@ def zoom_to_layer(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 82
+- **Line:** 86
 
 fits the view to the extent of one layer
 
@@ -2190,7 +2201,7 @@ def refresh(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 88
+- **Line:** 92
 
 redraws the map
 
@@ -2201,7 +2212,7 @@ def start_polygon_drawing(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 97
+- **Line:** 101
 
 lets the user draw a polygon on the map (click adds a vertex; double click, right click or a click on the first vertex closes it; Backspace removes the last vertex; Esc cancels). ends with polygon_drawn or drawing_cancelled, then the map goes back to panning
 
@@ -2212,7 +2223,7 @@ def cancel_drawing(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 103
+- **Line:** 107
 
 stops the current drawing and emits drawing_cancelled; no-op when idle
 
@@ -2223,7 +2234,7 @@ def is_drawing(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 109
+- **Line:** 113
 
 True while a drawing started with start_polygon_drawing is in progress
 
@@ -2234,7 +2245,7 @@ def meters_per_pixel(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 117
+- **Line:** 121
 
 ground distance in metres covered by one screen pixel, measured across the centre of the view (it changes with latitude in Web Mercator), or None when the backend cannot tell
 
@@ -2245,9 +2256,31 @@ def zoom_by(self, factor)
 ```
 
 - **Arguments:** `(float factor)`
-- **Line:** 124
+- **Line:** 128
 
 zooms around the centre of the view: the visible width is multiplied by factor (0.5 zooms in twice as close, 2 zooms out)
+
+#### `MapView.set_highlight`
+
+```python
+def set_highlight(self, vertices)
+```
+
+- **Arguments:** `(list vertices)`
+- **Line:** 135
+
+draws a bright outline around this (lon, lat) polygon, on top of every layer; None removes it. only one polygon is highlighted at a time
+
+#### `MapView.highlighted`
+
+```python
+def highlighted(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 141
+
+the highlighted (lon, lat) vertices, or None
 
 ### Variables
 
@@ -2260,6 +2293,7 @@ zooms around the centre of the view: the visible width is multiplied by factor (
 | `MapView.drawing_cancelled` | emitted with no arguments when a drawing ends without a polygon | 26 |
 | `MapView.layer_double_clicked` | emitted with (str layer_id, float lon, float lat) when the user double-clicks a feature of a layer that is not locked (topmost layer first). never while drawing a polygon. a double click on a feature does not zoom the map in | 31 |
 | `MapView.view_changed` | emitted with no arguments after the visible area changes (pan, zoom, resize); read meters_per_pixel() to draw a scale bar | 34 |
+| `MapView.layer_hovered` | emitted with (str layer_id or None, float lon, float lat) when the mouse moves onto a feature of another visible, unlocked layer, or off every feature (None). not while dragging or drawing | 38 |
 
 ## `fieldshift/native/__init__.py`
 
@@ -3110,6 +3144,51 @@ def refresh(self)
 
 rebuilds the tree from the fields checked right now
 
+## `fieldshift/ui/hover_card.py`
+
+### Classes
+
+#### `HoverCard`
+
+```python
+class HoverCard(QtWidgets.QFrame)
+```
+
+- **Line:** 23
+
+the floating card; hidden while the mouse is not over a field
+
+### Functions
+
+#### `HoverCard.__init__`
+
+```python
+def __init__(self, view, fields)
+```
+
+- **Arguments:** `(MapView view, FieldsManager fields)`
+- **Line:** 27
+
+puts the (hidden) card over view.widget() and follows the mouse
+
+#### `HoverCard.show_field`
+
+```python
+def show_field(self, layer_id)
+```
+
+- **Arguments:** `(str layer_id)`
+- **Line:** 56
+
+shows the card for this field (None or a non-field layer hides it)
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `CARD_KEYS` | zone data shown on the card, in this order, when the field has them | 15 |
+| `OFFSET_PX` | distance (pixels) between the mouse and the card | 17 |
+
 ## `fieldshift/ui/main_window.py`
 
 ### Classes
@@ -3120,7 +3199,7 @@ rebuilds the tree from the fields checked right now
 class MainWindow(QtWidgets.QMainWindow)
 ```
 
-- **Line:** 25
+- **Line:** 26
 
 top-level window, made of tabs. The first tab ("Map", always there) holds the MapView with the FieldsBar under it (left) and the SidePanel (right), which share one FieldsManager. "Analyze…" adds one closable tab per analysis result
 
@@ -3133,7 +3212,7 @@ def __init__(self, view, parent=None, basemaps=None)
 ```
 
 - **Arguments:** `(MapView view, QWidget parent = None, dict basemaps = None)`
-- **Line:** 30
+- **Line:** 31
 
 builds the splitter layout around an already created map view. basemaps maps "satellite" / "streets" to layer ids for the background switch
 
@@ -3144,7 +3223,7 @@ def analyze(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 82
+- **Line:** 85
 
 asks for a field and analyses, runs them with a progress window and opens one tab per result. returns the new tabs (empty if cancelled)
 
@@ -3155,7 +3234,7 @@ def open_results(self, field, results)
 ```
 
 - **Arguments:** `(Field field, list results)`
-- **Line:** 97
+- **Line:** 100
 
 adds a tab for each AnalysisResult and shows the first one; returns the tabs
 
@@ -3163,11 +3242,12 @@ adds a tab for each AnalysisResult and shows the first one; returns the tabs
 
 | Name | Description | Line |
 |------|-------------|------|
-| `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 17 |
-| `MainWindow.scale_bar` | scale bar over the bottom-left corner of the map | 44 |
-| `MainWindow.map_controls` | zoom, "my fields" and background buttons over the top-left corner | 46 |
-| `MainWindow.map_splitter` | the map tab; analysis results open as more tabs next to it | 57 |
-| `MainWindow.attribution_label` | credit of the visible layers (basemap licences require it) | 72 |
+| `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 18 |
+| `MainWindow.scale_bar` | scale bar over the bottom-left corner of the map | 45 |
+| `MainWindow.map_controls` | zoom, "my fields" and background buttons over the top-left corner | 47 |
+| `MainWindow.hover_card` | card with the field under the mouse, and its outline highlighted | 49 |
+| `MainWindow.map_splitter` | the map tab; analysis results open as more tabs next to it | 60 |
+| `MainWindow.attribution_label` | credit of the visible layers (basemap licences require it) | 75 |
 
 ## `fieldshift/ui/map_controls.py`
 
@@ -3203,7 +3283,7 @@ def show_basemap(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 81
+- **Line:** 83
 
 shows the "satellite" or the "streets" background and hides the other
 
@@ -3214,7 +3294,7 @@ def basemap(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 90
+- **Line:** 92
 
 "satellite" or "streets": the background shown now
 

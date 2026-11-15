@@ -22,6 +22,7 @@ class PlaceholderMapView(MapView):
         self._layers = {}          # id -> LayerInfo, insertion order = bottom first
         self._ids = itertools.count(1)
         self._drawing = False
+        self._highlight = None
 
     def widget(self):
         if self._widget is None:
@@ -69,6 +70,22 @@ class PlaceholderMapView(MapView):
         if layer_id in self._layers:
             self.view_changed.emit()
 
+    def set_highlight(self, vertices):
+        self._highlight = [tuple(v) for v in vertices] if vertices else None
+
+    def highlighted(self):
+        return self._highlight
+
+    # (str layer_id or None, float lon = 0, float lat = 0)
+    # reports the mouse entering a feature of this layer (None: leaving), as
+    # the real map would; ignored for locked or hidden layers and while drawing
+    def simulate_hover(self, layer_id, lon=0.0, lat=0.0):
+        info = self._layers.get(layer_id) if layer_id is not None else None
+        if layer_id is not None and (info is None or not info.visible or info.locked
+                                     or self._drawing):
+            return
+        self.layer_hovered.emit(layer_id, lon, lat)
+
     def zoom_by(self, factor):
         self.view_changed.emit()
 
@@ -80,6 +97,7 @@ class PlaceholderMapView(MapView):
 
     def start_polygon_drawing(self):
         self._drawing = True
+        self.layer_hovered.emit(None, 0.0, 0.0)
 
     def cancel_drawing(self):
         if self._drawing:

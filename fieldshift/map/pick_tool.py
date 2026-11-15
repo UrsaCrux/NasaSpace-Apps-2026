@@ -12,12 +12,14 @@ from fieldshift.qt import QtCore, QtGui
 # would jump away under the cursor while the user double-clicks a field
 class PickPanTool(QgsMapToolPan):
 
-    # (QgsMapCanvas canvas, callable on_double_click)
+    # (QgsMapCanvas canvas, callable on_double_click, callable on_hover = None)
     # on_double_click gets the clicked QgsPointXY (canvas CRS) and returns True
-    # when it used the click
-    def __init__(self, canvas, on_double_click):
+    # when it used the click; on_hover gets the point under the mouse, or
+    # None while the map is being dragged
+    def __init__(self, canvas, on_double_click, on_hover=None):
         super().__init__(canvas)
         self._on_double_click = on_double_click
+        self._on_hover = on_hover
         self._moved = False         # the mouse moved with the button held
 
     def canvasPressEvent(self, event):
@@ -25,8 +27,11 @@ class PickPanTool(QgsMapToolPan):
         super().canvasPressEvent(event)
 
     def canvasMoveEvent(self, event):
-        if event.buttons() & QtCore.Qt.MouseButton.LeftButton:
+        dragging = bool(event.buttons() & QtCore.Qt.MouseButton.LeftButton)
+        if dragging:
             self._moved = True
+        if self._on_hover is not None:
+            self._on_hover(None if dragging else event.mapPoint())
         super().canvasMoveEvent(event)
 
     def canvasReleaseEvent(self, event):

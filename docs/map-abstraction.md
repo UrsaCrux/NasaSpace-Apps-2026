@@ -40,6 +40,7 @@ LayerSpec.raster("NDVI", "/path/ndvi.tif")
 | `start_polygon_drawing()` | Let the user draw a polygon (see below) |
 | `cancel_drawing()` | Stop the drawing in progress |
 | `is_drawing() -> bool` | A drawing is in progress |
+| `set_highlight(vertices)` / `highlighted()` | Bright outline around a (lon, lat) polygon over every layer; `None` removes it |
 | `zoom_by(factor)` | Zoom around the centre: visible width × factor (0.5 = twice as close) |
 | `meters_per_pixel() -> float` | Ground metres covered by one screen pixel at the centre of the view (`None` without a real map); used by the scale bar |
 
@@ -50,6 +51,7 @@ LayerSpec.raster("NDVI", "/path/ndvi.tif")
 | `layers_changed` | – |
 | `polygon_drawn` | `vertices`: list of `(lon, lat)`, first vertex not repeated |
 | `drawing_cancelled` | – |
+| `layer_hovered` | `layer_id` or `None`, `lon, lat`: the mouse moved onto a feature of another visible, unlocked layer, or off every feature; not while dragging or drawing |
 | `view_changed` | – (after a pan, zoom or resize) |
 | `layer_double_clicked` | `layer_id, lon, lat`: double click on a feature of a visible, unlocked layer (topmost first), never while drawing. The map does not zoom in on that click |
 

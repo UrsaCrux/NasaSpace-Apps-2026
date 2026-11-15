@@ -19,13 +19,13 @@ from qgis.core import (
     QgsVectorLayer,
     QgsVectorLayerSimpleLabeling,
 )
-from qgis.gui import QgsMapCanvas, QgsMapToolEmitPoint
+from qgis.gui import QgsMapCanvas, QgsMapToolEmitPoint, QgsRubberBand
 
 from fieldshift.map.layer import LayerInfo, LayerKind
 from fieldshift.map.pick_tool import PickPanTool
 from fieldshift.map.polygon_tool import PolygonDrawTool
 from fieldshift.map.view import MapView
-from fieldshift.qt import QtGui
+from fieldshift.qt import QtCore, QtGui
 
 # CRS the public API speaks (longitude / latitude)
 WGS84 = QgsCoordinateReferenceSystem("EPSG:4326")
@@ -73,7 +73,16 @@ class QgisMapView(MapView):
         self._to_map = QgsCoordinateTransform(WGS84, WEB_MERCATOR, self._project)
         self._to_wgs = QgsCoordinateTransform(WEB_MERCATOR, WGS84, self._project)
 
-        self._pan_tool = PickPanTool(canvas, self._on_double_click)
+        self._pan_tool = PickPanTool(canvas, self._on_double_click, self._on_hover)
+        self._hovered = None              # layer id under the mouse
+        self._highlight_vertices = None
+        self._highlight_band = QgsRubberBand(canvas, Qgis.GeometryType.Polygon)
+        self._highlight_band.setFillColor(QtGui.QColor(255, 255, 255, 40))
+        self._highlight_band.setStrokeColor(QtGui.QColor("#ffeb3b"))
+        self._highlight_band.setWidth(4)
+        # the mouse leaving the map ends the hover
+        self._leave_watcher = _LeaveWatcher(lambda: self._set_hovered(None, None), canvas)
+        canvas.installEventFilter(self._leave_watcher)
         self._click_tool = QgsMapToolEmitPoint(canvas)
         self._click_tool.canvasClicked.connect(self._on_click)
         self._draw_tool = PolygonDrawTool(canvas, self._on_polygon_done,
@@ -124,6 +133,8 @@ class QgisMapView(MapView):
         self._locked.discard(layer_id)
         self._attribution.pop(layer_id, None)
         self._sync_canvas()
+        if layer_id == self._hovered:
+            self._set_hovered(None, None)
         self._project.removeMapLayer(layer_id)
         self.layers_changed.emit()
 
@@ -203,6 +214,8 @@ class QgisMapView(MapView):
 
     # another tool replaced the draw tool (e.g. set_click_mode): drop the drawing
     def _on_map_tool_set(self, new_tool, old_tool):
+        if new_tool is not self._pan_tool:
+            self._set_hovered(None, None)         # drawing or clicking: no hover
         if old_tool is self._draw_tool and new_tool is not self._draw_tool:
             self._draw_tool.cancel()
 
@@ -217,6 +230,17 @@ class QgisMapView(MapView):
     # double click while panning: reports the topmost visible, unlocked
     # vector feature under point (canvas CRS). True when there was one
     def _on_double_click(self, point):
+        layer_id = self._layer_at(point)
+        if layer_id is None:
+            return False
+        p = self._to_wgs.transform(point)
+        self.layer_double_clicked.emit(layer_id, p.x(), p.y())
+        return True
+
+    # (QgsPointXY point)
+    # id of the topmost visible, unlocked vector layer with a feature under
+    # point (canvas CRS), within PICK_TOLERANCE_PX; None when there is none
+    def _layer_at(self, point):
         tolerance = self._canvas.mapUnitsPerPixel() * PICK_TOLERANCE_PX
         box = QgsRectangle(point.x() - tolerance, point.y() - tolerance,
                            point.x() + tolerance, point.y() + tolerance)
@@ -227,12 +251,41 @@ class QgisMapView(MapView):
                 continue
             to_layer = QgsCoordinateTransform(WEB_MERCATOR, layer.crs(), self._project)
             area = QgsGeometry.fromRect(to_layer.transformBoundingBox(box))
-            request = QgsFeatureRequest().setFilterRect(area.boundingBox())
-            if any(f.geometry().intersects(area) for f in layer.getFeatures(request)):
-                p = self._to_wgs.transform(point)
-                self.layer_double_clicked.emit(layer_id, p.x(), p.y())
-                return True
-        return False
+            features = layer.getFeatures(QgsFeatureRequest().setFilterRect(area.boundingBox()))
+            try:
+                hit = any(f.geometry().intersects(area) for f in features)
+            finally:
+                features.close()  # any() may stop early and leave the iterator open
+            if hit:
+                return layer_id
+        return None
+
+    # mouse moved while panning (point None: dragging)
+    def _on_hover(self, point):
+        self._set_hovered(self._layer_at(point) if point is not None else None, point)
+
+    # emits layer_hovered when the layer under the mouse changes
+    def _set_hovered(self, layer_id, point):
+        if layer_id == self._hovered:
+            return
+        self._hovered = layer_id
+        p = self._to_wgs.transform(point) if point is not None else QgsPointXY(0, 0)
+        self.layer_hovered.emit(layer_id, p.x(), p.y())
+
+    def set_highlight(self, vertices):
+        # built from the vertices, not from the layer's features: reading a
+        # layer's features for this and then removing the layer crashed QGIS
+        # when the program exits
+        self._highlight_band.reset(Qgis.GeometryType.Polygon)
+        self._highlight_vertices = [tuple(v) for v in vertices] if vertices else None
+        if not self._highlight_vertices:
+            return
+        last = len(self._highlight_vertices) - 1
+        for i, (lon, lat) in enumerate(self._highlight_vertices):
+            self._highlight_band.addPoint(self._to_map.transform(QgsPointXY(lon, lat)), i == last)
+
+    def highlighted(self):
+        return self._highlight_vertices
 
     def zoom_by(self, factor):
         self._canvas.zoomByFactor(factor)
@@ -260,6 +313,20 @@ class QgisMapView(MapView):
     def _on_click(self, point, _button):
         p = self._to_wgs.transform(point)
         self.clicked.emit(p.x(), p.y())
+
+
+# Qt event filter that calls on_leave when the mouse leaves the widget. it
+# belongs to that widget (parent), so Qt deletes it together with the map
+class _LeaveWatcher(QtCore.QObject):
+
+    def __init__(self, on_leave, parent):
+        super().__init__(parent)
+        self._on_leave = on_leave
+
+    def eventFilter(self, watched, event):
+        if event.type() == QtCore.QEvent.Type.Leave:
+            self._on_leave()
+        return False
 
 
 # (float lat1, float lon1, float lat2, float lon2)
