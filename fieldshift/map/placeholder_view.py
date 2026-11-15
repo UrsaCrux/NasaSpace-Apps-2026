@@ -69,6 +69,9 @@ class PlaceholderMapView(MapView):
         if layer_id in self._layers:
             self.view_changed.emit()
 
+    def zoom_by(self, factor):
+        self.view_changed.emit()
+
     def meters_per_pixel(self):
         return None                 # no map, no scale
 

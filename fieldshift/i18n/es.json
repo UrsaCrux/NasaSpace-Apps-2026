@@ -240,5 +240,12 @@
   "data_fields.soil_group.stagnosols": "Stagnosoles",
   "data_fields.soil_group.technosols": "Tecnosoles",
   "data_fields.soil_group.umbrisols": "Umbrisoles",
-  "data_fields.soil_group.vertisols": "Vertisoles"
+  "data_fields.soil_group.vertisols": "Vertisoles",
+  "map.zoom_in": "Acercar",
+  "map.zoom_out": "Alejar",
+  "map.fit_fields": "⤢ Mis terrenos",
+  "map.fit_fields_tooltip": "Muestra todos tus terrenos en el mapa",
+  "map.satellite": "Satélite",
+  "map.streets": "Mapa",
+  "map.basemap_tooltip": "Fondo: imagen satelital o mapa de calles"
 }

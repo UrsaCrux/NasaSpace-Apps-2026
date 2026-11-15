@@ -240,5 +240,12 @@
   "data_fields.soil_group.stagnosols": "Stagnosols",
   "data_fields.soil_group.technosols": "Technosols",
   "data_fields.soil_group.umbrisols": "Umbrisols",
-  "data_fields.soil_group.vertisols": "Vertisols"
+  "data_fields.soil_group.vertisols": "Vertisols",
+  "map.zoom_in": "Zoom in",
+  "map.zoom_out": "Zoom out",
+  "map.fit_fields": "⤢ My fields",
+  "map.fit_fields_tooltip": "Show all your fields on the map",
+  "map.satellite": "Satellite",
+  "map.streets": "Map",
+  "map.basemap_tooltip": "Background: satellite image or street map"
 }

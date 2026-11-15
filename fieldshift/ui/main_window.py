@@ -9,6 +9,7 @@ from fieldshift.ui.analysis_tab import AnalysisTab
 from fieldshift.ui.analyze_dialog import AnalysisProgress, AnalyzeDialog
 from fieldshift.ui.field_list import LAYER_ID_ROLE
 from fieldshift.ui.fields_bar import FieldsBar
+from fieldshift.ui.map_controls import MapControls
 from fieldshift.ui.scale_bar import ScaleBar
 from fieldshift.ui.side_panel import SidePanel
 
@@ -23,9 +24,10 @@ PANEL_STRETCH = 1
 # analysis result
 class MainWindow(QtWidgets.QMainWindow):
 
-    # (MapView view, QWidget parent = None)
-    # builds the splitter layout around an already created map view
-    def __init__(self, view, parent=None):
+    # (MapView view, QWidget parent = None, dict basemaps = None)
+    # builds the splitter layout around an already created map view.
+    # basemaps maps "satellite" / "streets" to layer ids for the background switch
+    def __init__(self, view, parent=None, basemaps=None):
         super().__init__(parent)
         self.view = view
         self.fields = FieldsManager(view)
@@ -40,6 +42,8 @@ class MainWindow(QtWidgets.QMainWindow):
         column.addWidget(self.fields_bar)
         # scale bar over the bottom-left corner of the map
         self.scale_bar = ScaleBar(view)
+        # zoom, "my fields" and background buttons over the top-left corner
+        self.map_controls = MapControls(view, self.fields, basemaps)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         splitter.addWidget(map_area)

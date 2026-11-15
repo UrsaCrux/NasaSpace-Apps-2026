@@ -149,10 +149,22 @@ class FieldsManager:
     # centres and zooms the map on a field, with some margin around it
     def zoom_to(self, layer_id):
         field = self._fields.get(layer_id)
-        if field is None:
-            return
-        lons = [v[0] for v in field.vertices]
-        lats = [v[1] for v in field.vertices]
+        if field is not None:
+            self._zoom_to_vertices(field.vertices)
+
+    # ()
+    # fits the map to all the fields at once (does nothing without fields);
+    # returns True when it moved the map
+    def zoom_to_all(self):
+        vertices = [v for f in self._fields.values() for v in f.vertices]
+        if not vertices:
+            return False
+        self._zoom_to_vertices(vertices)
+        return True
+
+    def _zoom_to_vertices(self, vertices):
+        lons = [v[0] for v in vertices]
+        lats = [v[1] for v in vertices]
         dx = (max(lons) - min(lons)) * ZOOM_MARGIN or 0.001
         dy = (max(lats) - min(lats)) * ZOOM_MARGIN or 0.001
         self.view.zoom_to_extent(min(lons) - dx, min(lats) - dy,

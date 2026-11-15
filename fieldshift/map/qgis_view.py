@@ -234,6 +234,10 @@ class QgisMapView(MapView):
                 return True
         return False
 
+    def zoom_by(self, factor):
+        self._canvas.zoomByFactor(factor)
+        self._canvas.refresh()
+
     def meters_per_pixel(self):
         width = self._canvas.width()
         units_per_pixel = self._canvas.mapUnitsPerPixel()

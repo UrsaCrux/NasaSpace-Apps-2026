@@ -143,6 +143,16 @@ class _ViewContract:
         self.view.set_center(-70.70, -33.40)
         self.assertGreaterEqual(len(changes), 2)
 
+    def test_zoom_by(self):
+        changes = []
+        self.view.view_changed.connect(lambda: changes.append(1))
+        self.view.zoom_to_extent(-70.72, -33.42, -70.67, -33.39)
+        before = self.view.meters_per_pixel()
+        self.view.zoom_by(0.5)
+        self.assertGreaterEqual(len(changes), 2)
+        if before is not None:                       # real map: twice as close
+            self.assertAlmostEqual(before / self.view.meters_per_pixel(), 2, delta=0.05)
+
     def test_meters_per_pixel_is_none_or_positive(self):
         value = self.view.meters_per_pixel()
         self.assertTrue(value is None or value > 0)

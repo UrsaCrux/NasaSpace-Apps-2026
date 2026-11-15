@@ -116,3 +116,10 @@ class MapView(ABC):
     @abstractmethod
     def meters_per_pixel(self):
         ...
+
+    # (float factor)
+    # zooms around the centre of the view: the visible width is multiplied by
+    # factor (0.5 zooms in twice as close, 2 zooms out)
+    @abstractmethod
+    def zoom_by(self, factor):
+        ...

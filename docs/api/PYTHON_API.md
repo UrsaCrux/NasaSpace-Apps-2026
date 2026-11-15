@@ -983,7 +983,7 @@ def parse_args(argv)
 ```
 
 - **Arguments:** `(list argv)`
-- **Line:** 40
+- **Line:** 50
 
 reads the command line: returns (str language or None, list of the arguments left for Qt). --lang must be one of i18n.available_languages(); anything else makes the program print the usage and exit
 
@@ -994,7 +994,7 @@ def main(argv=None)
 ```
 
 - **Arguments:** `(list argv)`
-- **Line:** 53
+- **Line:** 63
 
 creates the QApplication (QgsApplication when QGIS is present), shows the main window and runs the event loop; returns the exit code. --lang CODE picks the language of the texts
 
@@ -1005,6 +1005,7 @@ creates the QApplication (QgsApplication when QGIS is present), shows the main w
 | `DATA_DIR` | folder with the bundled datasets | 14 |
 | `COUNTRIES` | offline country outlines, drawn below the tiles (visible without internet). base layers are "locked": the panel does not list them, so they cannot be removed | 18 |
 | `DEFAULT_BASEMAP` | Sentinel-2 cloudless 2024 (EOX): 10 m satellite mosaic, no API key. free for non-commercial use under CC BY-NC-SA 4.0 as long as the credit below stays visible (https://cloudless.eox.at/documentation/license); a commercial product needs an agreement with EOX. tiles exist up to zoom 18. to change the basemap, change only this constant | 26 |
+| `STREET_BASEMAP` | street map (roads, towns, names) the user can switch to from the map controls; hidden at start. OpenStreetMap requires the credit below | 38 |
 
 ## `fieldshift/crops/__init__.py`
 
@@ -1254,6 +1255,17 @@ def zoom_to(self, layer_id)
 
 centres and zooms the map on a field, with some margin around it
 
+#### `FieldsManager.zoom_to_all`
+
+```python
+def zoom_to_all(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 158
+
+fits the map to all the fields at once (does nothing without fields); returns True when it moved the map
+
 #### `FieldsManager.export`
 
 ```python
@@ -1261,7 +1273,7 @@ def export(self, path, layer_ids=None)
 ```
 
 - **Arguments:** `(str path, list layer_ids = None)`
-- **Line:** 164
+- **Line:** 176
 
 writes these fields (all when None) to one GeoJSON file; returns how many. raises OSError
 
@@ -1857,7 +1869,7 @@ def simulate_double_click(self, layer_id, lon=0.0, lat=0.0)
 ```
 
 - **Arguments:** `(str layer_id, float lon = 0, float lat = 0)`
-- **Line:** 93
+- **Line:** 96
 
 reports a double click on a feature of this layer, as the real map would; nothing happens for unknown, locked or hidden layers, or while drawing
 
@@ -1868,7 +1880,7 @@ def simulate_polygon(self, vertices)
 ```
 
 - **Arguments:** `(list vertices)`
-- **Line:** 101
+- **Line:** 104
 
 ends the current drawing as if the user had closed this polygon of (lon, lat) vertices; there is no map to click on, so tests use this
 
@@ -2225,6 +2237,17 @@ def meters_per_pixel(self)
 - **Line:** 117
 
 ground distance in metres covered by one screen pixel, measured across the centre of the view (it changes with latitude in Web Mercator), or None when the backend cannot tell
+
+#### `MapView.zoom_by`
+
+```python
+def zoom_by(self, factor)
+```
+
+- **Arguments:** `(float factor)`
+- **Line:** 124
+
+zooms around the centre of the view: the visible width is multiplied by factor (0.5 zooms in twice as close, 2 zooms out)
 
 ### Variables
 
@@ -3097,7 +3120,7 @@ rebuilds the tree from the fields checked right now
 class MainWindow(QtWidgets.QMainWindow)
 ```
 
-- **Line:** 24
+- **Line:** 25
 
 top-level window, made of tabs. The first tab ("Map", always there) holds the MapView with the FieldsBar under it (left) and the SidePanel (right), which share one FieldsManager. "Analyze…" adds one closable tab per analysis result
 
@@ -3106,13 +3129,13 @@ top-level window, made of tabs. The first tab ("Map", always there) holds the Ma
 #### `MainWindow.__init__`
 
 ```python
-def __init__(self, view, parent=None)
+def __init__(self, view, parent=None, basemaps=None)
 ```
 
-- **Arguments:** `(MapView view, QWidget parent = None)`
-- **Line:** 28
+- **Arguments:** `(MapView view, QWidget parent = None, dict basemaps = None)`
+- **Line:** 30
 
-builds the splitter layout around an already created map view
+builds the splitter layout around an already created map view. basemaps maps "satellite" / "streets" to layer ids for the background switch
 
 #### `MainWindow.analyze`
 
@@ -3121,7 +3144,7 @@ def analyze(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 78
+- **Line:** 82
 
 asks for a field and analyses, runs them with a progress window and opens one tab per result. returns the new tabs (empty if cancelled)
 
@@ -3132,7 +3155,7 @@ def open_results(self, field, results)
 ```
 
 - **Arguments:** `(Field field, list results)`
-- **Line:** 93
+- **Line:** 97
 
 adds a tab for each AnalysisResult and shows the first one; returns the tabs
 
@@ -3140,10 +3163,67 @@ adds a tab for each AnalysisResult and shows the first one; returns the tabs
 
 | Name | Description | Line |
 |------|-------------|------|
-| `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 16 |
-| `MainWindow.scale_bar` | scale bar over the bottom-left corner of the map | 42 |
-| `MainWindow.map_splitter` | the map tab; analysis results open as more tabs next to it | 53 |
-| `MainWindow.attribution_label` | credit of the visible layers (basemap licences require it) | 68 |
+| `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 17 |
+| `MainWindow.scale_bar` | scale bar over the bottom-left corner of the map | 44 |
+| `MainWindow.map_controls` | zoom, "my fields" and background buttons over the top-left corner | 46 |
+| `MainWindow.map_splitter` | the map tab; analysis results open as more tabs next to it | 57 |
+| `MainWindow.attribution_label` | credit of the visible layers (basemap licences require it) | 72 |
+
+## `fieldshift/ui/map_controls.py`
+
+### Classes
+
+#### `MapControls`
+
+```python
+class MapControls(QtWidgets.QFrame)
+```
+
+- **Line:** 29
+
+the floating buttons. basemaps maps "satellite" / "streets" to their layer ids; without both, the background switch is not shown
+
+### Functions
+
+#### `MapControls.__init__`
+
+```python
+def __init__(self, view, fields, basemaps=None)
+```
+
+- **Arguments:** `(MapView view, FieldsManager fields, dict basemaps = None)`
+- **Line:** 33
+
+puts the buttons over view.widget()
+
+#### `MapControls.show_basemap`
+
+```python
+def show_basemap(self, key)
+```
+
+- **Arguments:** `(str key)`
+- **Line:** 81
+
+shows the "satellite" or the "streets" background and hides the other
+
+#### `MapControls.basemap`
+
+```python
+def basemap(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 90
+
+"satellite" or "streets": the background shown now
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `MARGIN_PX` | distance (pixels) from the top-left corner of the map | 11 |
+| `ZOOM_STEP` | how much one click on + / - zooms (visible width multiplied by this) | 13 |
 
 ## `fieldshift/ui/scale_bar.py`
 
