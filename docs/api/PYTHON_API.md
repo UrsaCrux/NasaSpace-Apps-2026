@@ -3948,7 +3948,7 @@ def default_height(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 246
+- **Line:** 249
 
 height the dialog opens with: the main window's height minus WINDOW_MARGIN_PX, never more than the screen's free height (the screen's when there is no main window)
 
@@ -3959,7 +3959,7 @@ def name(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 259
+- **Line:** 262
 
 the name typed, without surrounding spaces
 
@@ -3970,7 +3970,7 @@ def color(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 264
+- **Line:** 267
 
 the chosen colour as "#rrggbb" (grey when none was chosen)
 
@@ -3981,7 +3981,7 @@ def crop(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 269
+- **Line:** 272
 
 id of the chosen crop variety, or None
 
@@ -3992,7 +3992,7 @@ def is_loading(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 274
+- **Line:** 277
 
 True while some data source has not answered yet
 
@@ -4003,7 +4003,7 @@ def data(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 280
+- **Line:** 283
 
 the data: {key: {"value", "source"[, "prefilled"]}} for DATA_FIELDS, plus CROP_KEY
 
@@ -4014,7 +4014,7 @@ def is_modified(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 302
+- **Line:** 305
 
 True when the user changed this datum (it is not the loaded one)
 
@@ -4025,7 +4025,7 @@ def row_state(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 307
+- **Line:** 310
 
 state of a row: loading, prefilled, edited, missing or farmer
 
@@ -4036,7 +4036,7 @@ def set_value(self, key, value)
 ```
 
 - **Arguments:** `(str key, any value)`
-- **Line:** 312
+- **Line:** 315
 
 sets a datum as if the user had typed it (marks it edited)
 
@@ -4047,7 +4047,7 @@ def reset_value(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 319
+- **Line:** 322
 
 puts the loaded value back and marks the datum as not edited
 
@@ -4057,9 +4057,20 @@ puts the loaded value back and marks the datum as not edited
 def accept(self)
 ```
 
-- **Line:** 325
+- **Line:** 328
 
 refuses to close with Save while something is invalid or loading
+
+#### `FieldDialog.stop_loading`
+
+```python
+def stop_loading(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 338
+
+stops waiting for the data sources: rows still loading become "not available" (their late answers are ignored)
 
 #### `FieldDialog.done`
 
@@ -4067,7 +4078,7 @@ refuses to close with Save while something is invalid or loading
 def done(self, result)
 ```
 
-- **Line:** 331
+- **Line:** 351
 
 stops the threads' results from reaching a closed dialog
 
@@ -4079,7 +4090,8 @@ stops the threads' results from reaching a closed dialog
 | `STYLE_LOADING` | looks of a row in each state | 42 |
 | `WINDOW_MARGIN_PX` | the dialog opens this many pixels shorter than the main window (and never taller than the screen); its content scrolls when it does not fit | 53 |
 | `OFFLINE_ENV` | set to "1" to never contact the data sources (tests, no internet) | 56 |
-| `FieldDialog.tooltip_widgets` | every title and button has a tooltip from i18n/tooltips/tooltips.json | 162 |
+| `FieldDialog.editing` | an existing field already has its data saved: it can be saved while the empty rows still load (saving stops the loading) | 137 |
+| `FieldDialog.tooltip_widgets` | every title and button has a tooltip from i18n/tooltips/tooltips.json | 165 |
 
 ## `fieldshift/ui/field_list.py`
 

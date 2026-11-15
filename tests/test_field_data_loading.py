@@ -166,6 +166,43 @@ class LoadingTest(_DialogCase):
         self.assertEqual(dialog.crop(), "pear.v3")
         self.assertTrue(dialog.save_button.isEnabled())
 
+    def test_an_existing_field_can_be_saved_while_loading(self):
+        field = self.store.create("A", SQUARE, data={
+            "ph": {"value": 5.5, "source": "user"},
+            "crop": {"value": "pear.v3", "source": "user"}})
+        release = threading.Event()
+        self.addCleanup(release.set)
+
+        def slow(group, area):
+            if group.name != "copernicus_dem":
+                release.wait(5)
+            return dict(FAKE_VALUES[group.name])
+
+        dialog = self.dialog(field=field, fetch=slow)
+        wait_until(lambda: dialog.row_state("slope") == "prefilled")
+        self.assertTrue(dialog.is_loading())
+        self.assertTrue(dialog.save_button.isEnabled())            # not blocked when editing
+        self.assertIn("save now", dialog.load_label.text())
+        dialog.accept()
+        self.assertEqual(dialog.result(), 1)                       # saved
+        self.assertFalse(dialog.is_loading())                      # loading stopped
+        data = dialog.data()
+        self.assertEqual(data["ph"], {"value": 5.5, "source": "user"})        # kept
+        self.assertEqual(data["slope"]["value"], 3.5)                          # had arrived
+        self.assertEqual(data["ndvi"], {"value": None, "source": "missing"})   # stopped
+        release.set()
+        get_app().processEvents()
+        self.assertEqual(dialog.data()["ndvi"]["value"], None)    # late answer ignored
+
+    def test_a_new_field_still_waits(self):
+        release = threading.Event()
+        self.addCleanup(release.set)
+        dialog = self.dialog(vertices=SQUARE,
+                             fetch=lambda g, a: (release.wait(5), dict(FAKE_VALUES[g.name]))[1])
+        dialog.crop_search.choose("peach.v1")
+        self.assertFalse(dialog.editing)
+        self.assertFalse(dialog.save_button.isEnabled())
+
     def test_nothing_is_loaded_when_every_row_has_a_value(self):
         data = {k: {"value": v, "source": "prefilled"}
                 for values in FAKE_VALUES.values() for k, v in values.items()}

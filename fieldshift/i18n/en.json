@@ -368,5 +368,6 @@
   "analysis.crop_growth.crop.sunflower": "sunflower",
   "analysis.crop_growth.crop.sweetpotato": "sweet potato",
   "analysis.crop_growth.crop.tobacco": "tobacco",
-  "analysis.crop_growth.crop.wheat": "wheat"
+  "analysis.crop_growth.crop.wheat": "wheat",
+  "fields.data_status_loading_edit": "Loading zone data ({done}/{total})… You can save now: data not loaded yet stays as it is."
 }

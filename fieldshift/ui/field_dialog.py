@@ -132,6 +132,9 @@ class FieldDialog(CenteredDialog):
         super().__init__(parent)
         self.store = store
         self._own_name = field.name if field is not None else None
+        # an existing field already has its data saved: it can be saved while
+        # the empty rows still load (saving stops the loading)
+        self.editing = field is not None
         vertices = list(field.vertices) if field is not None else list(vertices)
         current = normalize_data(field.data if field is not None else None)
         self._color = normalize_color(field.color if field is not None else DEFAULT_COLOR)
@@ -325,7 +328,24 @@ class FieldDialog(CenteredDialog):
     def accept(self):
         if self._problems():
             return
+        if self.is_loading():                       # editing: stop and keep what there is
+            self.stop_loading()
         super().accept()
+
+    # ()
+    # stops waiting for the data sources: rows still loading become "not
+    # available" (their late answers are ignored)
+    def stop_loading(self):
+        for group in self._pending.values():
+            for key in group.keys:
+                row = self._rows[key]
+                if row["state"] == "loading":
+                    self._set_state(row, "missing")
+        self._pending.clear()
+        self._loader_cancel()
+        self._spinner.stop()
+        self._update_load_label()
+        self._validate()
 
     # stops the threads' results from reaching a closed dialog
     def done(self, result):
@@ -420,7 +440,8 @@ class FieldDialog(CenteredDialog):
     def _update_load_label(self):
         if self._pending:
             done = self._total - len(self._pending)
-            self.load_label.setText(tr("fields.data_status_loading", done=done, total=self._total))
+            key = "fields.data_status_loading_edit" if self.editing else "fields.data_status_loading"
+            self.load_label.setText(tr(key, done=done, total=self._total))
         elif self._failed:
             self.load_label.setText(tr("fields.data_status_partial",
                                        names=", ".join(self._failed)))
@@ -606,7 +627,7 @@ class FieldDialog(CenteredDialog):
             problems.append("name")
         if self.crop() is None:
             problems.append("crop")
-        if self.is_loading():
+        if self.is_loading() and not self.editing:
             problems.append("loading")
         return problems
 

@@ -368,5 +368,6 @@
   "analysis.crop_growth.crop.sunflower": "maravilla",
   "analysis.crop_growth.crop.sweetpotato": "camote",
   "analysis.crop_growth.crop.tobacco": "tabaco",
-  "analysis.crop_growth.crop.wheat": "trigo"
+  "analysis.crop_growth.crop.wheat": "trigo",
+  "fields.data_status_loading_edit": "Cargando datos de la zona ({done}/{total})… Ya puedes guardar: lo que aún no cargó queda como está."
 }
