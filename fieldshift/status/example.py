@@ -10,7 +10,7 @@ from datetime import date, timedelta
 
 from fieldshift.analysis.models import TextureFigure
 from fieldshift.fields.zone_data import usda_texture
-from fieldshift.status.rules import when
+from fieldshift.status import rules
 from fieldshift.status.models import (
     CHART_BARS, LEVEL_ALERT, LEVEL_WATCH, StatusAlert, StatusReport, StatusRow,
     StatusSection, SummaryTile)
@@ -64,12 +64,6 @@ def _weather(rng, days, dates):
                     suggestion=True),
         StatusAlert("status.alert.radiation", {"value": f"{radiation[-1]:.0f}"}, LEVEL_WATCH,
                     suggestion=True),
-        StatusAlert("status.alert.rain_upcoming", {"when": when(1),
-                                                   "mm": f"{rng.uniform(15, 30):.0f}"},
-                    LEVEL_ALERT, upcoming=True, suggestion=True),
-        StatusAlert("status.alert.frost_upcoming", {"temp": f"{rng.uniform(-2, 1):.0f}",
-                                                    "when": when(rng.randint(3, 6))},
-                    LEVEL_WATCH, upcoming=True),
     )
     return StatusSection("weather", "status.section.weather", "🌤️", rows, alerts)
 
@@ -143,6 +137,27 @@ def example_report(field, days=7, today=None, crop=None):
         SummaryTile("growth", pick["ndvi"], "🌿"),
         SummaryTile("soil", pick["soil_moisture"], "🟫"),
     )
-    return StatusReport(field.name, days, dates[-1], (weather, growth, soil), summary)
+    forecast = _forecast(rng, today)
+    weather = StatusSection(**{**weather.__dict__,
+                               "alerts": weather.alerts + tuple(rules.upcoming(forecast))})
+    return StatusReport(field.name, days, dates[-1], (weather, growth, soil), summary,
+                        forecast=forecast.days)
+
+
+# an example Forecast of the next 7 days (rain tomorrow, a frosty night later)
+def _forecast(rng, today):
+    from fieldshift.api.forecast import SKY_CLEAR, SKY_PARTLY, SKY_RAIN, DayForecast, Forecast
+    frost = rng.randint(3, 6)
+    days = []
+    for i in range(7):
+        tmax = rng.uniform(19, 27)
+        tmin = rng.uniform(-2, 0.5) if i == frost else rng.uniform(5, 11)
+        rain = rng.uniform(16, 30) if i == 1 else (rng.uniform(0, 3) if rng.random() < 0.3 else 0)
+        sky = SKY_RAIN if rain > 5 else (SKY_PARTLY if rain else SKY_CLEAR)
+        days.append(DayForecast((today + timedelta(days=i)).isoformat(), round(tmin, 1),
+                                round(tmax, 1), round(rain, 1), sky, round(rng.uniform(8, 25)),
+                                round(rng.uniform(40, 85)), round(rng.uniform(14, 30), 1),
+                                round(min(100, rain * 4 + rng.uniform(0, 20)))))
+    return Forecast(0.0, 0.0, 0.0, days[0].tmax - 4, 12.0, days[0].sky, tuple(days))
 
 

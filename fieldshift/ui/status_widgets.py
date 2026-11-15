@@ -332,34 +332,291 @@ class AlertRow(QtWidgets.QFrame):
             layout.addWidget(self.link)
 
 
-# card with the warnings about the next 7 days (short forecast) of every
-# section, apart from what was observed
+# variables of the forecast chart: key, icon, i18n label, unit, decimals
+FORECAST_VARIABLES = (("temp", "🌡️", "status.fc.temp", "°C", 0),
+                      ("rain", "🌧️", "status.fc.rain", "mm", 1),
+                      ("wind", "💨", "status.fc.wind", "km/h", 0),
+                      ("humidity", "💧", "status.fc.humidity", "%", 0),
+                      ("radiation", "☀️", "status.fc.radiation", "MJ/m²", 1))
+_HOT = QtGui.QColor("#e53935")
+_COLD = QtGui.QColor("#1e88e5")
+
+
+# (int index, str iso_date)
+# "Today" / "Tomorrow" / "Mon 17" for the day number index of the forecast
+def day_label(index, iso_date):
+    if index == 0:
+        return tr("status.day.today")
+    if index == 1:
+        return tr("status.when.tomorrow")
+    from fieldshift.ui.weather_card import weekday_name
+    return f"{weekday_name(iso_date)} {int(iso_date[8:10])}"
+
+
+# (DayForecast day, str variable)
+# (main value, second value or None) of a day for a FORECAST_VARIABLES key
+def day_values(day, variable):
+    if variable == "temp":
+        return day.tmax, day.tmin
+    return {"rain": day.rain_mm, "wind": day.wind_kmh, "humidity": day.humidity,
+            "radiation": day.radiation}[variable], None
+
+
+# chart of the next 7 days for one variable (temperature: max and min),
+# with the chosen day marked. click a day to choose it
+class ForecastChart(QtWidgets.QWidget):
+
+    # (tuple days)
+    def __init__(self, days, parent=None):
+        super().__init__(parent)
+        self.days = days
+        self.variable = "temp"
+        self.selected = 0
+        # emitted with (int index) when the user clicks a day
+        self.day_clicked = Event()
+        self.setMinimumSize(300, 170)
+        self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+
+    # (str variable, int selected)
+    def show_day(self, variable, selected):
+        self.variable, self.selected = variable, selected
+        self.update()
+
+    def _plot(self):
+        metrics = self.fontMetrics()
+        return QtCore.QRectF(40, metrics.height() + 6, self.width() - 50,
+                             self.height() - 2 * metrics.height() - 14)
+
+    def _x(self, plot, i):
+        return plot.left() + plot.width() * (i + 0.5) / len(self.days)
+
+    def mousePressEvent(self, event):
+        plot = self._plot()
+        x = event.position().x()
+        self.day_clicked.emit(min(range(len(self.days)), key=lambda i: abs(self._x(plot, i) - x)))
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        metrics, plot = self.fontMetrics(), self._plot()
+        pairs = [day_values(d, self.variable) for d in self.days]
+        known = [v for pair in pairs for v in pair if v is not None]
+        if not known:
+            painter.setPen(_MEAN)
+            painter.drawText(self.rect(), QtCore.Qt.AlignmentFlag.AlignCenter,
+                             tr("status.no_data"))
+            return
+        bars = self.variable == "rain"
+        low, high = (0.0 if bars else min(known)), max(known)
+        if high - low < 1:
+            high = low + 1
+        pad = (high - low) * 0.15
+        low, high = (low if bars else low - pad), high + pad
+
+        def y(v):
+            return plot.bottom() - plot.height() * (v - low) / (high - low)
+
+        # chosen day band
+        width = plot.width() / len(self.days)
+        painter.setPen(QtCore.Qt.PenStyle.NoPen)
+        painter.setBrush(QtGui.QColor(249, 168, 37, 50))
+        painter.drawRect(QtCore.QRectF(self._x(plot, self.selected) - width / 2, plot.top(),
+                                       width, plot.height()))
+        painter.setPen(QtGui.QPen(_GRID, 1))
+        painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+        painter.drawRect(plot)
+        painter.setPen(_INK)
+        for v in (low, high):
+            painter.drawText(QtCore.QRectF(0, y(v) - metrics.height() / 2, plot.left() - 6,
+                                           metrics.height()),
+                             QtCore.Qt.AlignmentFlag.AlignRight
+                             | QtCore.Qt.AlignmentFlag.AlignVCenter, f"{v:.0f}")
+        for i, day in enumerate(self.days):
+            text = day_label(i, day.date)
+            font = painter.font()
+            font.setBold(i == self.selected)
+            painter.setFont(font)
+            painter.drawText(QtCore.QPointF(self._x(plot, i) - metrics.horizontalAdvance(text) / 2,
+                                            self.height() - 4), text)
+        font = painter.font()
+        font.setBold(False)
+        painter.setFont(font)
+
+        if bars:
+            for i, (v, _) in enumerate(pairs):
+                if v is None:
+                    continue
+                color = QtGui.QColor(_BARS)
+                if i != self.selected:
+                    color.setAlpha(150)
+                painter.setPen(QtCore.Qt.PenStyle.NoPen)
+                painter.setBrush(color)
+                painter.drawRect(QtCore.QRectF(self._x(plot, i) - width * 0.3, y(v), width * 0.6,
+                                               plot.bottom() - y(v)))
+                chance = self.days[i].rain_chance
+                if chance is not None:
+                    painter.setPen(_MEAN)
+                    label = f"{chance:.0f}%"
+                    painter.drawText(QtCore.QPointF(
+                        self._x(plot, i) - metrics.horizontalAdvance(label) / 2,
+                        y(v) - 3), label)
+        else:
+            lines = [(0, _HOT if self.variable == "temp" else _LINE)]
+            if self.variable == "temp":
+                lines.append((1, _COLD))
+            for slot, color in lines:
+                points = [(i, p[slot]) for i, p in enumerate(pairs) if p[slot] is not None]
+                painter.setPen(QtGui.QPen(color, 2.2))
+                painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+                for (i0, v0), (i1, v1) in zip(points, points[1:]):
+                    painter.drawLine(QtCore.QPointF(self._x(plot, i0), y(v0)),
+                                     QtCore.QPointF(self._x(plot, i1), y(v1)))
+                for i, v in points:
+                    painter.setBrush(color if i == self.selected else QtGui.QColor("white"))
+                    painter.drawEllipse(QtCore.QPointF(self._x(plot, i), y(v)), 4, 4)
+                    if i == self.selected:
+                        painter.drawText(QtCore.QPointF(self._x(plot, i) + 6, y(v) - 6),
+                                         f"{v:.0f}")
+        painter.end()
+
+
+# the next 7 days: a chart of the chosen variable, a slider (and play button)
+# to move through the days, the details of the chosen day, and the warnings
 class UpcomingCard(QtWidgets.QFrame):
 
-    # (list alerts)
-    def __init__(self, alerts, parent=None):
+    # (list alerts, tuple days)
+    # days: api.forecast.DayForecast, today first (may be empty)
+    def __init__(self, alerts, days=(), parent=None):
         super().__init__(parent)
+        self.alerts = list(alerts)
+        self.days = tuple(days)
+        self.variable = "temp"
         # emitted with no arguments when an alert's "See suggestion" is clicked
         self.suggestion_requested = Event()
         self.setObjectName("upcomingCard")
         self.setStyleSheet("QFrame#upcomingCard { background: #f3f0fa; border: 1px solid #c9bfe3;"
-                           " border-radius: 8px; }")
+                           " border-radius: 8px; } QLabel { background: transparent;"
+                           " border: none; }"
+                           " QPushButton#fcVar { background: white; border: 1px solid #c9bfe3;"
+                           " padding: 3px 8px; }"
+                           " QPushButton#fcVar:checked { background: #6a1b9a; color: white; }")
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(12, 10, 12, 12)
         layout.setSpacing(6)
         title = QtWidgets.QLabel(f"🔮 <b>{tr('status.upcoming_title')}</b>")
-        title.setStyleSheet("font-size: 15px; border: none; background: transparent;")
+        title.setStyleSheet("font-size: 15px;")
         layout.addWidget(title)
+        self.chart = self.slider = self.detail = None
+        if self.days:
+            self._build_forecast(layout)
         self.alert_rows = []
-        if not alerts:
+        if not self.alerts:
             none = QtWidgets.QLabel(tr("status.upcoming_none"))
-            none.setStyleSheet("color: #555; border: none; background: transparent;")
+            none.setStyleSheet("color: #555;")
             layout.addWidget(none)
-        for alert in alerts:
+        for alert in self.alerts:
             row = AlertRow(alert)
             row.suggestion_requested.connect(self.suggestion_requested.emit)
             layout.addWidget(row)
             self.alert_rows.append(row)
+
+    def _build_forecast(self, layout):
+        buttons = QtWidgets.QHBoxLayout()
+        buttons.setSpacing(0)
+        group = QtWidgets.QButtonGroup(self)
+        self.variable_buttons = {}
+        for key, icon, label, _, _ in FORECAST_VARIABLES:
+            button = QtWidgets.QPushButton(f"{icon} {tr(label)}")
+            button.setObjectName("fcVar")
+            button.setCheckable(True)
+            button.setChecked(key == self.variable)
+            button.clicked.connect(lambda _=False, k=key: self.set_variable(k))
+            group.addButton(button)
+            buttons.addWidget(button)
+            self.variable_buttons[key] = button
+        buttons.addStretch(1)
+        layout.addLayout(buttons)
+
+        self.chart = ForecastChart(self.days)
+        self.chart.day_clicked.connect(lambda i: self.slider.setValue(i))
+        layout.addWidget(self.chart)
+
+        controls = QtWidgets.QHBoxLayout()
+        self.play_button = QtWidgets.QPushButton("▶")
+        self.play_button.setFixedWidth(34)
+        self.play_button.setToolTip(tr("status.fc.play"))
+        self.play_button.clicked.connect(self.toggle_play)
+        self.slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
+        self.slider.setRange(0, len(self.days) - 1)
+        self.slider.setPageStep(1)
+        self.slider.setTickPosition(QtWidgets.QSlider.TickPosition.TicksBelow)
+        self.slider.setTickInterval(1)
+        self.slider.setToolTip(tr("status.fc.slider"))
+        self.slider.valueChanged.connect(self.show_day)
+        controls.addWidget(self.play_button)
+        controls.addWidget(self.slider, 1)
+        layout.addLayout(controls)
+
+        self.detail = QtWidgets.QLabel()
+        self.detail.setWordWrap(True)
+        self.detail.setStyleSheet("QLabel { background: white; border: 1px solid #e0d8f0;"
+                                  " border-radius: 6px; padding: 6px 8px; }")
+        layout.addWidget(self.detail)
+        self._timer = QtCore.QTimer(self)
+        self._timer.setInterval(900)
+        self._timer.timeout.connect(self._step)
+        self.show_day(0)
+
+    # (str variable)
+    # draws another FORECAST_VARIABLES key in the chart
+    def set_variable(self, variable):
+        self.variable = variable
+        self.variable_buttons[variable].setChecked(True)
+        self.chart.show_day(variable, self.slider.value())
+
+    # (int index)
+    # marks the day number index and shows its details
+    def show_day(self, index):
+        from fieldshift.ui.weather_card import SKY_ICONS
+        day = self.days[index]
+        self.chart.show_day(self.variable, index)
+
+        def part(key, value, decimals, unit):
+            return None if value is None else tr(key, value=f"{value:.{decimals}f}", unit=unit)
+        rain = tr("status.fc.d_rain", value=f"{day.rain_mm:.1f}")
+        if day.rain_chance is not None:
+            rain += f" ({day.rain_chance:.0f}%)"
+        parts = [tr("status.fc.d_temp", tmax=f"{day.tmax:.0f}", tmin=f"{day.tmin:.0f}"), rain,
+                 part("status.fc.d_wind", day.wind_kmh, 0, "km/h"),
+                 part("status.fc.d_humidity", day.humidity, 0, "%"),
+                 part("status.fc.d_radiation", day.radiation, 1, "MJ/m²")]
+        text = (f"<span style='font-size:18px'>{SKY_ICONS.get(day.sky, '')}</span> "
+                f"<b>{day_label(index, day.date)}</b> · {short_date(day.date)}<br>"
+                + " · ".join(p for p in parts if p))
+        warnings = [a for a in self.alerts if a.date == day.date]
+        for alert in warnings:
+            color = LEVEL_COLORS.get(alert.level, LEVEL_COLORS[LEVEL_WATCH])
+            text += (f"<br><span style='color:{color}'>⚠ "
+                     f"{tr(alert.text_key, **alert.params)}</span>")
+        self.detail.setText(text)
+
+    # ()
+    # starts or stops moving through the days by itself
+    def toggle_play(self):
+        if self._timer.isActive():
+            self._timer.stop()
+            self.play_button.setText("▶")
+            return
+        if self.slider.value() == self.slider.maximum():
+            self.slider.setValue(0)
+        self._timer.start()
+        self.play_button.setText("⏸")
+
+    def _step(self):
+        if self.slider.value() >= self.slider.maximum():
+            self.toggle_play()
+            return
+        self.slider.setValue(self.slider.value() + 1)
 
 
 # a section card: title, optional note (crop stage), optional soil
@@ -440,6 +697,8 @@ class SectionCard(QtWidgets.QFrame):
                          silt=f"{figure.silt:.0f}", clay=f"{figure.clay:.0f}")
         else:
             heading = f"<b>{name}</b>"
+            if not figure.texture:
+                heading += "<br>" + tr("status.texture_missing")
         text = QtWidgets.QLabel(heading
                                 + "<br><br>" + tr(f"status.texture_hint.{figure.texture}"
                                                   if figure.texture in _HINTS

@@ -72,7 +72,8 @@ class StatusPanel(FieldPanel):
         holder.setLayout(tiles)
         self.content_layout.addWidget(holder)
         # what comes: the short-forecast warnings of every section
-        self.upcoming = UpcomingCard([a for a in report.alerts() if a.upcoming])
+        self.upcoming = UpcomingCard([a for a in report.alerts() if a.upcoming],
+                                     report.forecast)
         self.upcoming.suggestion_requested.connect(
             lambda: self.suggestion_requested.emit(self.layer_id))
         self.content_layout.addWidget(self.upcoming)

@@ -52,7 +52,8 @@ class StatusRow:
 
 
 # a warning of a section: text_key filled with params. upcoming alerts are
-# about the next days (short forecast); suggestion True links to Analyze
+# about the next days (short forecast), on date; suggestion True links to
+# Analyze
 @dataclass(frozen=True)
 class StatusAlert:
     text_key: str
@@ -60,6 +61,7 @@ class StatusAlert:
     level: str = LEVEL_WATCH
     upcoming: bool = False
     suggestion: bool = False
+    date: str = ""
 
 
 # one tile of the "today" summary: the row it comes from and its value
@@ -98,6 +100,7 @@ class StatusReport:
     example: bool = True
     notice_key: str = ""
     missing: tuple = ()
+    forecast: tuple = ()          # api.forecast.DayForecast, today first
 
     # (str section_id)
     # the section with that id, or None

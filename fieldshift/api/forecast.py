@@ -36,7 +36,9 @@ _cache = {}
 _cache_lock = threading.Lock()
 
 
-# forecast of one day: date "YYYY-MM-DD", min / max °C, rain mm, sky kind
+# forecast of one day: date "YYYY-MM-DD", min / max °C, rain mm, sky kind;
+# and, when the service gives them, max wind km/h, mean air humidity %,
+# sun MJ/m² and chance of rain %
 @dataclass(frozen=True)
 class DayForecast:
     date: str
@@ -44,6 +46,10 @@ class DayForecast:
     tmax: float
     rain_mm: float
     sky: str
+    wind_kmh: float = None
+    humidity: float = None
+    radiation: float = None
+    rain_chance: float = None
 
 
 # weather at a point: now (temperature °C, wind km/h, sky kind), the model's
@@ -98,11 +104,18 @@ def cell_of(lon, lat):
 # ValueError when the answer is not as expected
 def parse_forecast(response, lon, lat):
     current, daily = response["current"], response["daily"]
+
+    def extra(name):                    # optional daily values (None when missing)
+        values = daily.get(name) or []
+        return [None if v is None else float(v) for v in values] + [None] * len(daily["time"])
     days = tuple(
-        DayForecast(date, float(tmin), float(tmax), float(rain or 0.0), sky_of(int(code)))
-        for date, tmin, tmax, rain, code in zip(
+        DayForecast(date, float(tmin), float(tmax), float(rain or 0.0), sky_of(int(code)),
+                    wind, humidity, sun, chance)
+        for date, tmin, tmax, rain, code, wind, humidity, sun, chance in zip(
             daily["time"], daily["temperature_2m_min"], daily["temperature_2m_max"],
-            daily["precipitation_sum"], daily["weather_code"]))
+            daily["precipitation_sum"], daily["weather_code"], extra("wind_speed_10m_max"),
+            extra("relative_humidity_2m_mean"), extra("shortwave_radiation_sum"),
+            extra("precipitation_probability_max")))
     if not days:
         raise ValueError("forecast without days")
     return Forecast(lon, lat, float(response.get("elevation") or 0.0),
@@ -120,7 +133,9 @@ def get_forecast(lon, lat, timeout=10):
     response = get_json(URL, params={
         "latitude": round(lat, 4), "longitude": round(lon, 4),
         "current": "temperature_2m,weather_code,wind_speed_10m",
-        "daily": "temperature_2m_min,temperature_2m_max,precipitation_sum,weather_code",
+        "daily": "temperature_2m_min,temperature_2m_max,precipitation_sum,weather_code,"
+                 "wind_speed_10m_max,relative_humidity_2m_mean,shortwave_radiation_sum,"
+                 "precipitation_probability_max",
         "forecast_days": DAYS, "timezone": "auto"}, timeout=timeout)
     forecast = parse_forecast(response, lon, lat)
     with _cache_lock:

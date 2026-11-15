@@ -81,19 +81,21 @@ def upcoming(forecast):
             level = LEVEL_ALERT if day.rain_mm >= 30 else LEVEL_WATCH
             alerts.append(StatusAlert("status.alert.rain_upcoming",
                                       {"when": when(n), "mm": f"{day.rain_mm:.0f}"},
-                                      level, upcoming=True, suggestion=True))
+                                      level, upcoming=True, suggestion=True, date=day.date))
             break
     for n, day in enumerate(days, 1):
         if day.tmin <= FROST_C:
             alerts.append(StatusAlert("status.alert.frost_upcoming",
                                       {"when": when(n), "temp": f"{day.tmin:.0f}"},
-                                      LEVEL_ALERT, upcoming=True, suggestion=True))
+                                      LEVEL_ALERT, upcoming=True, suggestion=True,
+                                      date=day.date))
             break
     for n, day in enumerate(days, 1):
         if day.tmax >= HEAT_C:
             alerts.append(StatusAlert("status.alert.heat_upcoming",
                                       {"when": when(n), "temp": f"{day.tmax:.0f}"},
-                                      LEVEL_WATCH, upcoming=True, suggestion=True))
+                                      LEVEL_WATCH, upcoming=True, suggestion=True,
+                                      date=day.date))
             break
     return alerts
 
