@@ -251,5 +251,19 @@
   "menu.zoom": "Acercar",
   "menu.check": "Marcar",
   "menu.uncheck": "Desmarcar",
-  "menu.delete": "Eliminar…"
+  "menu.delete": "Eliminar…",
+  "weather.title": "Clima de la zona",
+  "weather.loading": "Cargando clima…",
+  "weather.unavailable": "Clima no disponible",
+  "weather.now": "{icon} {temp} °C ahora · viento {wind} km/h",
+  "weather.rain": "Lluvia, {days} días: {mm} mm",
+  "weather.elevation": "{m} m s. n. m.",
+  "weather.frost": "Helada probable: {days}",
+  "weekday.0": "lun",
+  "weekday.1": "mar",
+  "weekday.2": "mié",
+  "weekday.3": "jue",
+  "weekday.4": "vie",
+  "weekday.5": "sáb",
+  "weekday.6": "dom"
 }

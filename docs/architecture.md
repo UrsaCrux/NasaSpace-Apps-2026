@@ -25,7 +25,10 @@
    the left and the `SidePanel` on the right of a `QSplitter` (3:1 stretch,
    the user can drag the divider). Under the map sits the `FieldsBar`; a
    `ScaleBar` (`ui/scale_bar.py`) is drawn over its bottom-left corner.
-   The window is a set of tabs: "Map" holds all of the above, and
+   Over the map float the `MapControls` (top left), the `WeatherCard` (top
+   right: weather now and 7 days at the centre of the view, from Open-Meteo
+   through `fieldshift/api/forecast.py`, credit shown on the card), the
+   `HoverCard` and the `ScaleBar`. The window is a set of tabs: "Map" holds all of the above, and
    "Analyze…" adds one tab per analysis result (see
    [analysis.md](analysis.md)). Both
    share one `FieldsManager` (`fieldshift/fields/manager.py`), which saves

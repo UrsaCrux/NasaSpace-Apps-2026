@@ -317,6 +317,15 @@ class QgisMapView(MapView):
         self._canvas.zoomByFactor(factor)
         self._canvas.refresh()
 
+    def center(self):
+        try:
+            p = self._to_wgs.transform(self._canvas.center())
+        except Exception:                 # outside Web Mercator
+            return None
+        if math.isnan(p.x()) or math.isnan(p.y()):
+            return None
+        return (p.x(), p.y())
+
     def meters_per_pixel(self):
         width = self._canvas.width()
         units_per_pixel = self._canvas.mapUnitsPerPixel()

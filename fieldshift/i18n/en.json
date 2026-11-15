@@ -251,5 +251,19 @@
   "menu.zoom": "Zoom to it",
   "menu.check": "Check",
   "menu.uncheck": "Uncheck",
-  "menu.delete": "Delete…"
+  "menu.delete": "Delete…",
+  "weather.title": "Weather in this zone",
+  "weather.loading": "Loading weather…",
+  "weather.unavailable": "Weather not available",
+  "weather.now": "{icon} {temp} °C now · wind {wind} km/h",
+  "weather.rain": "Rain, {days} days: {mm} mm",
+  "weather.elevation": "{m} m a.s.l.",
+  "weather.frost": "Frost likely: {days}",
+  "weekday.0": "Mon",
+  "weekday.1": "Tue",
+  "weekday.2": "Wed",
+  "weekday.3": "Thu",
+  "weekday.4": "Fri",
+  "weekday.5": "Sat",
+  "weekday.6": "Sun"
 }

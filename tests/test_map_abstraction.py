@@ -182,6 +182,12 @@ class _ViewContract:
         self.view.set_center(-70.70, -33.40)
         self.assertGreaterEqual(len(changes), 2)
 
+    def test_center(self):
+        self.view.set_center(-70.70, -33.40)
+        lon, lat = self.view.center()
+        self.assertAlmostEqual(lon, -70.70, places=4)
+        self.assertAlmostEqual(lat, -33.40, places=4)
+
     def test_zoom_by(self):
         changes = []
         self.view.view_changed.connect(lambda: changes.append(1))

@@ -201,6 +201,118 @@ list of (name, title, status) for every provider: implemented or planned
 |------|-------------|------|
 | `WEATHER_PRIORITY` | weather sources from best to worst resolution; the first one that has a value fills SiteData.weather (each source's values stay in weather_by_source) | 12 |
 
+## `fieldshift/api/forecast.py`
+
+### Classes
+
+#### `DayForecast`
+
+```python
+class DayForecast
+```
+
+- **Line:** 41
+
+forecast of one day: date "YYYY-MM-DD", min / max °C, rain mm, sky kind
+
+#### `Forecast`
+
+```python
+class Forecast
+```
+
+- **Line:** 52
+
+weather at a point: now (temperature °C, wind km/h, sky kind), the model's ground elevation (m) and the next days, today first
+
+### Functions
+
+#### `Forecast.frost_days`
+
+```python
+def frost_days(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 63
+
+the days whose minimum is at or below FROST_C
+
+#### `Forecast.total_rain_mm`
+
+```python
+def total_rain_mm(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 68
+
+rain of all the days together, mm
+
+#### `sky_of`
+
+```python
+def sky_of(code)
+```
+
+- **Arguments:** `(int code)`
+- **Line:** 74
+
+sky kind (SKY_*) of a WMO weather code
+
+#### `cell_of`
+
+```python
+def cell_of(lon, lat)
+```
+
+- **Arguments:** `(float lon, float lat)`
+- **Line:** 92
+
+the cache cell of a point: points in one cell share a forecast
+
+#### `parse_forecast`
+
+```python
+def parse_forecast(response, lon, lat)
+```
+
+- **Arguments:** `(dict response, float lon, float lat)`
+- **Line:** 99
+
+Forecast from an Open-Meteo JSON answer; raises KeyError / TypeError / ValueError when the answer is not as expected
+
+#### `get_forecast`
+
+```python
+def get_forecast(lon, lat, timeout=10)
+```
+
+- **Arguments:** `(float lon, float lat, float timeout = 10)`
+- **Line:** 115
+
+the forecast for a point (cached per cell); raises when the service fails
+
+#### `clear_cache`
+
+```python
+def clear_cache()
+```
+
+- **Arguments:** `()`
+- **Line:** 133
+
+forgets the cached forecasts (tests, or to force a new download)
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `ATTRIBUTION` | credit required by the CC BY 4.0 licence of the data | 22 |
+| `DAYS` | days of forecast asked for | 24 |
+| `FROST_C` | a frost is forecast when the daily minimum is at or below this (°C) | 26 |
+| `CACHE_CELL_DEG` | results are reused for points in the same cell of this size (degrees, about 10 km: the resolution of the forecast models) | 29 |
+
 ## `fieldshift/api/geo.py`
 
 ### Classes
@@ -1141,7 +1253,7 @@ def count(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 56
+- **Line:** 59
 
 how many fields are on the map
 
@@ -1152,7 +1264,7 @@ def is_field(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 61
+- **Line:** 64
 
 True when the layer is a saved field
 
@@ -1163,7 +1275,7 @@ def field(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 66
+- **Line:** 69
 
 the Field shown by this layer, or None
 
@@ -1174,7 +1286,7 @@ def layer_ids(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 71
+- **Line:** 74
 
 layer ids of every field, oldest first
 
@@ -1185,7 +1297,7 @@ def selected(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 76
+- **Line:** 79
 
 layer ids of the fields the user chose, oldest first
 
@@ -1196,7 +1308,7 @@ def is_selected(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 81
+- **Line:** 84
 
 True when the user chose this field
 
@@ -1207,7 +1319,7 @@ def set_selected(self, layer_id, selected)
 ```
 
 - **Arguments:** `(str layer_id, bool selected)`
-- **Line:** 86
+- **Line:** 89
 
 adds a field to the chosen ones or takes it out
 
@@ -1218,7 +1330,7 @@ def add(self, name, vertices, color=None, data=None)
 ```
 
 - **Arguments:** `(str name, list vertices, str color = None, dict data = None)`
-- **Line:** 98
+- **Line:** 101
 
 saves a new field and shows it on the map; returns its layer id. raises ValueError (bad name or polygon, layer cannot load) or OSError
 
@@ -1229,7 +1341,7 @@ def update(self, layer_id, name, color=None, data=None)
 ```
 
 - **Arguments:** `(str layer_id, str name, str color = None, dict data = None)`
-- **Line:** 113
+- **Line:** 116
 
 changes name, colour and data of a field: the file, the map layer and the lists follow, and the field stays checked if it was. the layer gets a new id, which is returned. raises ValueError (not a field, bad name, layer cannot load) or OSError; then nothing has changed
 
@@ -1240,7 +1352,7 @@ def remove(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 135
+- **Line:** 138
 
 removes a field from the map and deletes its file; returns False when the layer is not a field
 
@@ -1251,7 +1363,7 @@ def zoom_to(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 150
+- **Line:** 153
 
 centres and zooms the map on a field, with some margin around it
 
@@ -1262,7 +1374,7 @@ def zoom_to_all(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 158
+- **Line:** 161
 
 fits the map to all the fields at once (does nothing without fields); returns True when it moved the map
 
@@ -1273,7 +1385,7 @@ def export(self, path, layer_ids=None)
 ```
 
 - **Arguments:** `(str path, list layer_ids = None)`
-- **Line:** 176
+- **Line:** 179
 
 writes these fields (all when None) to one GeoJSON file; returns how many. raises OSError
 
@@ -1834,6 +1946,16 @@ def __init__(self, canvas, on_double_click, on_hover=None, on_right_click=None)
 
 (QgsMapCanvas canvas, callable on_double_click, callable on_hover = None, callable on_right_click = None) on_double_click gets the clicked QgsPointXY (canvas CRS) and returns True when it used the click; on_hover gets the point under the mouse, or None while the map is being dragged; on_right_click gets the right-clicked point
 
+#### `PickPanTool.flags`
+
+```python
+def flags(self)
+```
+
+- **Line:** 31
+
+same as the plain pan tool, without ShowContextMenu: the map's built-in menu ("Copy Coordinate") took the right click, so layer_right_clicked (and the field menu) never happened
+
 ## `fieldshift/map/placeholder_view.py`
 
 ### Classes
@@ -1868,7 +1990,7 @@ def simulate_right_click(self, layer_id, lon=0.0, lat=0.0)
 ```
 
 - **Arguments:** `(str layer_id, float lon = 0, float lat = 0)`
-- **Line:** 82
+- **Line:** 91
 
 reports a right click on a feature of this layer, as the real map would; ignored for unknown, locked or hidden layers and while drawing
 
@@ -1879,7 +2001,7 @@ def simulate_hover(self, layer_id, lon=0.0, lat=0.0)
 ```
 
 - **Arguments:** `(str layer_id or None, float lon = 0, float lat = 0)`
-- **Line:** 90
+- **Line:** 99
 
 reports the mouse entering a feature of this layer (None: leaving), as the real map would; ignored for locked or hidden layers and while drawing
 
@@ -1890,7 +2012,7 @@ def simulate_double_click(self, layer_id, lon=0.0, lat=0.0)
 ```
 
 - **Arguments:** `(str layer_id, float lon = 0, float lat = 0)`
-- **Line:** 122
+- **Line:** 134
 
 reports a double click on a feature of this layer, as the real map would; nothing happens for unknown, locked or hidden layers, or while drawing
 
@@ -1901,7 +2023,7 @@ def simulate_polygon(self, vertices)
 ```
 
 - **Arguments:** `(list vertices)`
-- **Line:** 130
+- **Line:** 142
 
 ends the current drawing as if the user had closed this polygon of (lon, lat) vertices; there is no map to click on, so tests use this
 
@@ -2063,7 +2185,7 @@ def canvas(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 102
+- **Line:** 109
 
 the underlying QgsMapCanvas, for code that needs QGIS-specific features
 
@@ -2074,7 +2196,7 @@ def set_click_mode(self, enabled)
 ```
 
 - **Arguments:** `(bool enabled)`
-- **Line:** 107
+- **Line:** 114
 
 switches between the pan tool and the click tool (emits `clicked`)
 
@@ -2291,6 +2413,39 @@ def highlighted(self)
 - **Line:** 145
 
 the highlighted (lon, lat) vertices, or None
+
+#### `MapView.set_marked`
+
+```python
+def set_marked(self, polygons)
+```
+
+- **Arguments:** `(list polygons)`
+- **Line:** 152
+
+draws a thick outline around each (lon, lat) polygon of the list (the fields the user checked), under the hover highlight; [] removes them
+
+#### `MapView.marked`
+
+```python
+def marked(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 158
+
+the polygons given to set_marked, as lists of (lon, lat) tuples
+
+#### `MapView.center`
+
+```python
+def center(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 164
+
+(lon, lat) of the centre of the view, or None when the backend cannot tell
 
 ### Variables
 
@@ -3248,7 +3403,7 @@ shows the card for this field (None or a non-field layer hides it)
 class MainWindow(QtWidgets.QMainWindow)
 ```
 
-- **Line:** 27
+- **Line:** 28
 
 top-level window, made of tabs. The first tab ("Map", always there) holds the MapView with the FieldsBar under it (left) and the SidePanel (right), which share one FieldsManager. "Analyze…" adds one closable tab per analysis result
 
@@ -3261,7 +3416,7 @@ def __init__(self, view, parent=None, basemaps=None)
 ```
 
 - **Arguments:** `(MapView view, QWidget parent = None, dict basemaps = None)`
-- **Line:** 32
+- **Line:** 33
 
 builds the splitter layout around an already created map view. basemaps maps "satellite" / "streets" to layer ids for the background switch
 
@@ -3272,7 +3427,7 @@ def analyze(self, layer_id=None)
 ```
 
 - **Arguments:** `(str layer_id = None)`
-- **Line:** 89
+- **Line:** 92
 
 asks for a field (layer_id first, if given) and analyses, runs them with a progress window and opens one tab per result. returns the new tabs (empty if cancelled)
 
@@ -3283,7 +3438,7 @@ def open_results(self, field, results)
 ```
 
 - **Arguments:** `(Field field, list results)`
-- **Line:** 104
+- **Line:** 107
 
 adds a tab for each AnalysisResult and shows the first one; returns the tabs
 
@@ -3291,13 +3446,14 @@ adds a tab for each AnalysisResult and shows the first one; returns the tabs
 
 | Name | Description | Line |
 |------|-------------|------|
-| `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 19 |
-| `MainWindow.scale_bar` | scale bar over the bottom-left corner of the map | 46 |
-| `MainWindow.map_controls` | zoom, "my fields" and background buttons over the top-left corner | 48 |
-| `MainWindow.hover_card` | card with the field under the mouse, and its outline highlighted | 50 |
-| `MainWindow.field_menu` | right click on a field: edit, analyze, zoom, check, delete | 52 |
-| `MainWindow.map_splitter` | the map tab; analysis results open as more tabs next to it | 63 |
-| `MainWindow.attribution_label` | credit of the visible layers (basemap licences require it) | 78 |
+| `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 20 |
+| `MainWindow.scale_bar` | scale bar over the bottom-left corner of the map | 47 |
+| `MainWindow.map_controls` | zoom, "my fields" and background buttons over the top-left corner | 49 |
+| `MainWindow.hover_card` | card with the field under the mouse, and its outline highlighted | 51 |
+| `MainWindow.field_menu` | right click on a field: edit, analyze, zoom, check, delete | 53 |
+| `MainWindow.weather_card` | weather of the zone (now and 7 days) over the top-right corner | 55 |
+| `MainWindow.map_splitter` | the map tab; analysis results open as more tabs next to it | 66 |
+| `MainWindow.attribution_label` | credit of the visible layers (basemap licences require it) | 81 |
 
 ## `fieldshift/ui/map_controls.py`
 
@@ -3520,3 +3676,61 @@ asks for the new details of a field and applies them
 | Name | Description | Line |
 |------|-------------|------|
 | `SidePanel.data_box` | data of the checked fields (see fields_data.py) | 31 |
+
+## `fieldshift/ui/weather_card.py`
+
+### Classes
+
+#### `WeatherCard`
+
+```python
+class WeatherCard(QtWidgets.QFrame)
+```
+
+- **Line:** 43
+
+the floating weather card. fetch(lon, lat) -> Forecast replaces the real service (tests); without it and with FIELDSHIFT_OFFLINE=1 the card stays hidden
+
+### Functions
+
+#### `weekday_name`
+
+```python
+def weekday_name(iso_date)
+```
+
+- **Arguments:** `(str iso_date)`
+- **Line:** 37
+
+short weekday name of "YYYY-MM-DD" in the current language ("Mon")
+
+#### `WeatherCard.__init__`
+
+```python
+def __init__(self, view, fetch=None)
+```
+
+- **Arguments:** `(MapView view, callable fetch = None)`
+- **Line:** 50
+
+puts the card over view.widget() and follows the view
+
+#### `WeatherCard.reload`
+
+```python
+def reload(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 91
+
+loads the forecast of the centre of the map now, unless it is the zone already shown. returns True when a load started
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `MARGIN_PX` | distance (pixels) from the top-right corner of the map | 18 |
+| `SETTLE_MS` | wait this long (ms) after the last map movement before loading | 20 |
+| `OFFLINE_ENV` | when set to "1" the card never contacts the service (tests) | 22 |
+| `SKY_ICONS` | icon of each sky kind of the forecast | 25 |

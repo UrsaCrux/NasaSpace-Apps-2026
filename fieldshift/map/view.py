@@ -157,3 +157,9 @@ class MapView(ABC):
     @abstractmethod
     def marked(self):
         ...
+
+    # ()
+    # (lon, lat) of the centre of the view, or None when the backend cannot tell
+    @abstractmethod
+    def center(self):
+        ...

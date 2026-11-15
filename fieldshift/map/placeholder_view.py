@@ -24,6 +24,7 @@ class PlaceholderMapView(MapView):
         self._drawing = False
         self._highlight = None
         self._marked = []
+        self._center = None        # last set_center, so the UI can be tested
 
     def widget(self):
         if self._widget is None:
@@ -62,6 +63,7 @@ class PlaceholderMapView(MapView):
             self.layers_changed.emit()
 
     def set_center(self, lon, lat, scale=None):
+        self._center = (float(lon), float(lat))
         self.view_changed.emit()
 
     def zoom_to_extent(self, xmin, ymin, xmax, ymax):
@@ -103,6 +105,9 @@ class PlaceholderMapView(MapView):
 
     def zoom_by(self, factor):
         self.view_changed.emit()
+
+    def center(self):
+        return self._center
 
     def meters_per_pixel(self):
         return None                 # no map, no scale

@@ -14,6 +14,7 @@ from fieldshift.ui.hover_card import HoverCard
 from fieldshift.ui.map_controls import MapControls
 from fieldshift.ui.scale_bar import ScaleBar
 from fieldshift.ui.side_panel import SidePanel
+from fieldshift.ui.weather_card import WeatherCard
 
 # relative widths of the map and the panel inside the splitter
 MAP_STRETCH = 3
@@ -50,6 +51,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.hover_card = HoverCard(view, self.fields)
         # right click on a field: edit, analyze, zoom, check, delete
         self.field_menu = FieldMenu(self)
+        # weather of the zone (now and 7 days) over the top-right corner
+        self.weather_card = WeatherCard(view)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         splitter.addWidget(map_area)
