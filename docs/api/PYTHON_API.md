@@ -1080,18 +1080,6 @@ SMAP provider: adds SMAP entries to site.soil.moisture / temperature
 
 ## `fieldshift/api/providers/soilgrids.py`
 
-### Classes
-
-#### `SoilGridsProvider`
-
-```python
-class SoilGridsProvider(Provider)
-```
-
-- **Line:** 31
-
-SoilGrids provider: fills site.soil (type and all depth-dependent properties)
-
 ### Functions
 
 #### `SoilGridsProvider.__init__`
@@ -1101,7 +1089,7 @@ def __init__(self, depths=DEPTHS, properties=tuple(PROPERTIES))
 ```
 
 - **Arguments:** `(tuple depths = DEPTHS, tuple properties = all of PROPERTIES)`
-- **Line:** 39
+- **Line:** 44
 
 fewer depths / properties make the answer smaller and faster
 
@@ -1112,7 +1100,7 @@ def parse_properties(response, soil, source)
 ```
 
 - **Arguments:** `(dict response, Soil soil, str source)`
-- **Line:** 65
+- **Line:** 86
 
 copies a /properties/query response into soil; returns the number of values
 
@@ -1122,6 +1110,7 @@ copies a /properties/query response into soil; returns the number of values
 |------|-------------|------|
 | `DEPTHS` | standard SoilGrids depth intervals | 14 |
 | `PROPERTIES` | SoilGrids property -> (Soil field, unit after dividing by d_factor) | 16 |
+| `CHUNK` | SoilGrids provider: fills site.soil (type and all depth-dependent properties) properties asked for in one request, and how long each request may take (s) | 32 |
 
 ## `fieldshift/api/providers/wapor.py`
 
@@ -1546,7 +1535,7 @@ JPEG bytes of the crop's picture (cached), or None when it has none
 class FieldsManager
 ```
 
-- **Line:** 35
+- **Line:** 38
 
 the user's fields: saves them with a FieldStore and shows each one as a MapView layer. the UI (fields bar, side panel, future field sheets) shares one FieldsManager
 
@@ -1559,7 +1548,7 @@ def style_colors(color)
 ```
 
 - **Arguments:** `(str color)`
-- **Line:** 26
+- **Line:** 29
 
 (fill, stroke) CSS colours of a field on the map: "#rrggbb" becomes a semi-transparent "#AARRGGBB" fill and a darker "#rrggbb" outline
 
@@ -1570,7 +1559,7 @@ def __init__(self, view, store=None)
 ```
 
 - **Arguments:** `(MapView view, FieldStore store = None)`
-- **Line:** 39
+- **Line:** 42
 
 loads the fields saved in earlier sessions onto the map
 
@@ -1581,7 +1570,7 @@ def count(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 59
+- **Line:** 62
 
 how many fields are on the map
 
@@ -1592,7 +1581,7 @@ def is_field(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 64
+- **Line:** 67
 
 True when the layer is a saved field
 
@@ -1603,7 +1592,7 @@ def field(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 69
+- **Line:** 72
 
 the Field shown by this layer, or None
 
@@ -1614,7 +1603,7 @@ def layer_ids(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 74
+- **Line:** 77
 
 layer ids of every field, oldest first
 
@@ -1625,7 +1614,7 @@ def selected(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 79
+- **Line:** 82
 
 layer ids of the fields the user chose, oldest first
 
@@ -1636,7 +1625,7 @@ def is_selected(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 84
+- **Line:** 87
 
 True when the user chose this field
 
@@ -1647,7 +1636,7 @@ def set_selected(self, layer_id, selected)
 ```
 
 - **Arguments:** `(str layer_id, bool selected)`
-- **Line:** 89
+- **Line:** 92
 
 adds a field to the chosen ones or takes it out
 
@@ -1658,7 +1647,7 @@ def add(self, name, vertices, color=None, data=None)
 ```
 
 - **Arguments:** `(str name, list vertices, str color = None, dict data = None)`
-- **Line:** 101
+- **Line:** 104
 
 saves a new field and shows it on the map; returns its layer id. raises ValueError (bad name or polygon, layer cannot load) or OSError
 
@@ -1669,7 +1658,7 @@ def update(self, layer_id, name, color=None, data=None)
 ```
 
 - **Arguments:** `(str layer_id, str name, str color = None, dict data = None)`
-- **Line:** 116
+- **Line:** 119
 
 changes name, colour and data of a field: the file, the map layer and the lists follow, and the field stays checked if it was. the layer gets a new id, which is returned. raises ValueError (not a field, bad name, layer cannot load) or OSError; then nothing has changed
 
@@ -1680,7 +1669,7 @@ def remove(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 138
+- **Line:** 141
 
 removes a field from the map and deletes its file; returns False when the layer is not a field
 
@@ -1691,7 +1680,7 @@ def zoom_to(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 153
+- **Line:** 156
 
 centres and zooms the map on a field, with some margin around it
 
@@ -1702,7 +1691,7 @@ def zoom_to_all(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 161
+- **Line:** 164
 
 fits the map to all the fields at once (does nothing without fields); returns True when it moved the map
 
@@ -1713,7 +1702,7 @@ def export(self, path, layer_ids=None)
 ```
 
 - **Arguments:** `(str path, list layer_ids = None)`
-- **Line:** 179
+- **Line:** 182
 
 writes these fields (all when None) to one GeoJSON file; returns how many. raises OSError
 
@@ -1723,9 +1712,10 @@ writes these fields (all when None) to one GeoJSON file; returns how many. raise
 |------|-------------|------|
 | `FIELD_FILL_ALPHA` | look of fields on the map: the field's colour with a semi-transparent fill (alpha 0x55, "#AARRGGBB") and a solid, darker outline | 11 |
 | `LABEL_COLOR` | name drawn over each field: white text with a dark halo (readable on satellite) | 16 |
-| `ZOOM_MARGIN` | extra space around a field when zooming to it (fraction of its size) | 20 |
-| `FieldsManager.fields_changed` | emitted with no arguments after a field is added or removed | 43 |
-| `FieldsManager.selection_changed` | emitted with no arguments when the set of chosen fields changes | 45 |
+| `FIELDS_RENDER_GROUP` | MapView render group of the field layers (see the "render_group" option) | 20 |
+| `ZOOM_MARGIN` | extra space around a field when zooming to it (fraction of its size) | 23 |
+| `FieldsManager.fields_changed` | emitted with no arguments after a field is added or removed | 46 |
+| `FieldsManager.selection_changed` | emitted with no arguments when the set of chosen fields changes | 48 |
 
 ## `fieldshift/fields/schema.py`
 
@@ -2489,7 +2479,7 @@ abandons the drawing and calls on_cancelled; no-op when idle
 class QgisMapView(MapView)
 ```
 
-- **Line:** 47
+- **Line:** 51
 
 MapView backed by QgsMapCanvas; layers are registered in QgsProject.instance()
 
@@ -2502,7 +2492,7 @@ def __init__(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 51
+- **Line:** 55
 
 creates the canvas in Web Mercator with pan as the default tool
 
@@ -2513,7 +2503,7 @@ def canvas(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 116
+- **Line:** 130
 
 the underlying QgsMapCanvas, for code that needs QGIS-specific features
 
@@ -2524,7 +2514,7 @@ def set_click_mode(self, enabled)
 ```
 
 - **Arguments:** `(bool enabled)`
-- **Line:** 121
+- **Line:** 135
 
 switches between the pan tool and the click tool (emits `clicked`)
 
@@ -2532,12 +2522,12 @@ switches between the pan tool and the click tool (emits `clicked`)
 
 | Name | Description | Line |
 |------|-------------|------|
-| `WGS84` | CRS the public API speaks (longitude / latitude) | 31 |
-| `WEB_MERCATOR` | CRS the canvas draws in (same as web tiles) | 33 |
-| `PICK_TOLERANCE_PX` | a double click counts as "on a feature" within this many pixels of it | 35 |
-| `MAP_UPDATE_INTERVAL_MS` | how often (ms) the canvas may show a half-finished picture while it redraws. a very long time means: keep showing the previous picture until the new one is complete, so the satellite tiles never vanish while new ones download | 39 |
-| `EARTH_RADIUS_M` | mean Earth radius (metres) used to measure the scale | 41 |
-| `WORLD` | initial extent in lon/lat (Web Mercator is undefined at the poles) | 43 |
+| `WGS84` | CRS the public API speaks (longitude / latitude) | 35 |
+| `WEB_MERCATOR` | CRS the canvas draws in (same as web tiles) | 37 |
+| `PICK_TOLERANCE_PX` | a double click counts as "on a feature" within this many pixels of it | 39 |
+| `MAP_UPDATE_INTERVAL_MS` | how often (ms) the canvas may show a half-finished picture while it redraws. a very long time means: keep showing the previous picture until the new one is complete, so the satellite tiles never vanish while new ones download | 43 |
+| `EARTH_RADIUS_M` | mean Earth radius (metres) used to measure the scale | 45 |
+| `WORLD` | initial extent in lon/lat (Web Mercator is undefined at the poles) | 47 |
 
 ## `fieldshift/map/view.py`
 

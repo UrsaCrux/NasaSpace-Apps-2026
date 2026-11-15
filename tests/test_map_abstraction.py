@@ -303,6 +303,32 @@ class QgisViewTest(_ViewContract, unittest.TestCase):
         with self.assertRaises(ValueError):
             self.view.add_layer(LayerSpec.vector("bad", "/does/not/exist.geojson"))
 
+    def test_render_group_is_drawn_as_one_layer(self):
+        # regression: one map-sized picture per field layer used gigabytes of RAM
+        style = dict(render_group="fields", fill_color="#55ff0000", stroke_color="#990000",
+                     stroke_width=0.8, label_field="name")
+        a = self.add_square_layer("A", **style)
+        b = self.add_square_layer("B", **{**style, "fill_color": "#5500ff00"})
+        plain = self.add_square_layer("Plain")
+        canvas_layers = self.view.canvas().layers()
+        self.assertEqual(len(canvas_layers), 2)                    # Plain (added last) + group
+        self.assertEqual(canvas_layers[0].id(), plain)
+        merged = canvas_layers[1]                                  # where its top member was
+        self.assertEqual(merged.name(), "render group fields")
+        self.assertEqual(merged.featureCount(), 2)
+        rows = [f.attributes() for f in merged.getFeatures()]     # bottom (A) first
+        self.assertEqual(rows, [["255,0,0,85", "153,0,0,255", "A"],
+                                ["0,255,0,85", "153,0,0,255", "B"]])
+        self.assertTrue(merged.labelsEnabled())
+        self.assertEqual(merged.labeling().settings().fieldName, "label")
+        # the members are still the layers the API knows (and picks)
+        self.assertLessEqual({a, b, plain}, {i.id for i in self.view.layers()})
+        self.view.set_layer_visible(a, False)
+        merged = self.view.canvas().layers()[1]
+        self.assertEqual([f["label"] for f in merged.getFeatures()], ["B"])
+        self.view.remove_layer(b)
+        self.assertEqual([l.id() for l in self.view.canvas().layers()], [plain])
+
     def test_label_option_turns_labels_on(self):
         spec = self.make_spec("labelled")
         plain = self.view.add_layer(spec)

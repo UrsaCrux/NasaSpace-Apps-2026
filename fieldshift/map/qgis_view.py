@@ -8,7 +8,11 @@ from qgis.core import (
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
     QgsFeatureRequest,
+    QgsFeature,
+    QgsField,
     QgsGeometry,
+    QgsProperty,
+    QgsSymbolLayer,
     QgsPalLayerSettings,
     QgsPointXY,
     QgsProject,
@@ -55,6 +59,16 @@ class QgisMapView(MapView):
         self._hidden = set()
         self._locked = set()       # ids of layers added with the "locked" option
         self._attribution = {}     # layer id -> credit text
+        # layers added with the "render_group" option are not drawn one by
+        # one: a single in-memory layer per group holds a copy of all their
+        # features (with each layer's colours and label) and is drawn
+        # instead. The canvas keeps one map-sized picture per drawn layer
+        # (while rendering and in its cache), so 15 fields used ~1 GB more on
+        # a HiDPI screen; now they cost one picture. The member layers stay
+        # in the project (ids, picking, extent) and are what the API reports
+        self._render_group = {}    # layer id -> group name
+        self._options = {}         # layer id -> LayerSpec options (render groups)
+        self._group_layers = {}    # group name -> merged QgsVectorLayer
 
         canvas = QgsMapCanvas()
         canvas.setCanvasColor(QtGui.QColor("#dde6ea"))
@@ -134,6 +148,9 @@ class QgisMapView(MapView):
         self._order.insert(0, layer.id())
         if spec.options.get("locked"):
             self._locked.add(layer.id())
+        if spec.options.get("render_group") and isinstance(layer, QgsVectorLayer):
+            self._render_group[layer.id()] = str(spec.options["render_group"])
+            self._options[layer.id()] = dict(spec.options)
         if spec.options.get("attribution"):
             self._attribution[layer.id()] = spec.options["attribution"]
         self._sync_canvas()
@@ -147,6 +164,8 @@ class QgisMapView(MapView):
         self._hidden.discard(layer_id)
         self._locked.discard(layer_id)
         self._attribution.pop(layer_id, None)
+        self._render_group.pop(layer_id, None)
+        self._options.pop(layer_id, None)
         self._sync_canvas()
         if layer_id == self._hovered:
             self._set_hovered(None, None)
@@ -238,9 +257,84 @@ class QgisMapView(MapView):
     # ()
     # pushes the visible layers, in order, to the canvas
     def _sync_canvas(self):
-        visible = [self._project.mapLayer(i) for i in self._order if i not in self._hidden]
-        self._canvas.setLayers([layer for layer in visible if layer is not None])
+        visible = [(i, self._project.mapLayer(i)) for i in self._order if i not in self._hidden]
+        layers, members = [], {}
+        for layer_id, layer in visible:
+            if layer is None:
+                continue
+            group = self._render_group.get(layer_id)
+            if group is None:
+                layers.append(layer)
+                continue
+            if group not in members:               # the group takes the place of its top layer
+                members[group] = []
+                layers.append(group)
+            members[group].append(layer_id)
+        layers = [self._merged_layer(item, members[item]) if isinstance(item, str) else item
+                  for item in layers]
+        self._canvas.setLayers(layers)
+        # groups with no visible member: removed only now that the canvas no
+        # longer draws them (the project owns them, so nothing is freed early)
+        for group in [g for g in self._group_layers if g not in members]:
+            self._project.removeMapLayer(self._group_layers.pop(group).id())
         self._canvas.refresh()
+
+    # (str group, list member_ids top first)
+    # the in-memory layer that draws a render group (created once, owned by
+    # the project but not listed by the API), refilled with a copy of the
+    # members' features, each with its layer's colours and label text
+    def _merged_layer(self, group, member_ids):
+        merged = self._group_layers.get(group)
+        if merged is None:
+            merged = QgsVectorLayer("MultiPolygon?crs=EPSG:4326", f"render group {group}",
+                                    "memory")
+            merged.dataProvider().addAttributes([
+                QgsField("fill", QtCore.QMetaType.Type.QString),
+                QgsField("stroke", QtCore.QMetaType.Type.QString),
+                QgsField("label", QtCore.QMetaType.Type.QString)])
+            merged.updateFields()
+            symbol_layer = merged.renderer().symbol().symbolLayer(0)
+            symbol_layer.setDataDefinedProperty(QgsSymbolLayer.Property.FillColor,
+                                                QgsProperty.fromField("fill"))
+            symbol_layer.setDataDefinedProperty(QgsSymbolLayer.Property.StrokeColor,
+                                                QgsProperty.fromField("stroke"))
+            self._project.addMapLayer(merged, False)
+            self._group_layers[group] = merged
+        features, to_merged = [], {}
+        for layer_id in reversed(member_ids):      # bottom first: later features draw on top
+            layer, options = self._project.mapLayer(layer_id), self._options[layer_id]
+            crs = layer.crs().authid()
+            if crs not in to_merged:
+                to_merged[crs] = QgsCoordinateTransform(layer.crs(), merged.crs(), self._project)
+            label_field = options.get("label_field")
+            fill = _qgis_color(options.get("fill_color", "#55888888"))
+            stroke = _qgis_color(options.get("stroke_color", "#444444"))
+            iterator = layer.getFeatures()
+            try:
+                for source in iterator:
+                    geometry = QgsGeometry(source.geometry())
+                    if geometry.isEmpty():
+                        continue
+                    geometry.transform(to_merged[crs])
+                    feature = QgsFeature(merged.fields())
+                    feature.setGeometry(geometry)
+                    label = source[label_field] if label_field and label_field in \
+                        source.fields().names() else ""
+                    feature.setAttributes([fill, stroke, "" if label is None else str(label)])
+                    features.append(feature)
+            finally:
+                iterator.close()   # an open iterator crashes QGIS when the layer is removed
+        provider = merged.dataProvider()
+        provider.truncate()
+        provider.addFeatures(features)
+        merged.updateExtents()
+        first = self._options[member_ids[0]]
+        if first.get("stroke_width"):
+            merged.renderer().symbol().symbolLayer(0).setStrokeWidth(float(first["stroke_width"]))
+        if first.get("label_field"):
+            _apply_labels(merged, {**first, "label_field": "label"})
+        merged.triggerRepaint()
+        return merged
 
     # (QgsPointXY point)
     # double click while panning: reports the topmost visible, unlocked
@@ -432,6 +526,14 @@ def _apply_style(layer, options):
         if hasattr(symbol_layer, "setStrokeWidth"):
             symbol_layer.setStrokeWidth(float(width))
     layer.triggerRepaint()
+
+
+# (str css)
+# "r,g,b,a" text of a CSS colour ("#rrggbb" or "#AARRGGBB"), the form QGIS
+# data-defined colours read
+def _qgis_color(css):
+    c = QtGui.QColor(css)
+    return f"{c.red()},{c.green()},{c.blue()},{c.alpha()}"
 
 
 # (QgsMapLayer layer, dict options)

@@ -26,6 +26,13 @@ every datum `missing` (the dialog then loads them). Data keys of older
 versions (`soil_type`, `annual_rain_mm`) are dropped. "Export" writes the same
 properties.
 
+## On the map
+
+Each field is its own map layer (id used by the list, hover, double click,
+edit, remove), but all fields are **drawn together as one picture**
+(`render_group="fields"`, see [map-abstraction.md](map-abstraction.md#memory-drawing-many-layers-render_group)):
+one picture per field used ~60 MB of RAM each on a HiDPI screen.
+
 ## Editing a field
 
 Each row of "My fields" has an **Edit** button. It opens the same dialog as

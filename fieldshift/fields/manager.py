@@ -16,6 +16,9 @@ FIELD_STROKE_WIDTH = 0.8    # millimetres
 LABEL_COLOR = "#ffffff"
 LABEL_HALO = "#1b1b1b"
 
+# MapView render group of the field layers (see the "render_group" option)
+FIELDS_RENDER_GROUP = "fields"
+
 # extra space around a field when zooming to it (fraction of its size)
 ZOOM_MARGIN = 0.25
 
@@ -190,7 +193,10 @@ class FieldsManager:
         spec = LayerSpec.vector(field.name, str(field.path), fill_color=fill,
                                 stroke_color=stroke, stroke_width=FIELD_STROKE_WIDTH,
                                 label_field="name", label_color=LABEL_COLOR,
-                                label_halo_color=LABEL_HALO)
+                                label_halo_color=LABEL_HALO,
+                                # all fields drawn as one picture: one map-sized
+                                # image per field used gigabytes with many fields
+                                render_group=FIELDS_RENDER_GROUP)
         layer_id = self.view.add_layer(spec)
         self._fields[layer_id] = field
         return layer_id

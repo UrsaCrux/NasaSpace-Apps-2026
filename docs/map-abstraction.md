@@ -22,7 +22,7 @@ LayerSpec.raster("NDVI", "/path/ndvi.tif")
 | `name` | Display name |
 | `source` | URL template (XYZ), or any path / URI OGR or GDAL can open |
 | `kind` | `LayerKind.XYZ`, `VECTOR` or `RASTER` |
-| `options` | Backend hints: `zmin`/`zmax` (XYZ), `provider` (force a data provider, e.g. `"memory"`), `locked` (base layer such as the basemap: the side panel does not list it, so the user cannot remove it; reported as `LayerInfo.locked`), `attribution` (credit text the window shows in the status bar while the layer is visible; reported as `LayerInfo.attribution`), `fill_color`/`stroke_color` (vectors; `"#AARRGGBB"` for transparency), `stroke_width` (vectors, mm), `label_field` (vectors: attribute shown over each feature, with a halo; also `label_color`, `label_halo_color`, `label_size`) |
+| `options` | Backend hints: `zmin`/`zmax` (XYZ), `provider` (force a data provider, e.g. `"memory"`), `locked` (base layer such as the basemap: the side panel does not list it, so the user cannot remove it; reported as `LayerInfo.locked`), `attribution` (credit text the window shows in the status bar while the layer is visible; reported as `LayerInfo.attribution`), `fill_color`/`stroke_color` (vectors; `"#AARRGGBB"` for transparency), `stroke_width` (vectors, mm), `label_field` (vectors: attribute shown over each feature, with a halo; also `label_color`, `label_halo_color`, `label_size`), `render_group` (vectors: name of a group whose layers are drawn together as **one** picture — see below) |
 
 ## Using the map: `MapView`
 
@@ -107,3 +107,21 @@ box"):
 Subclass `MapView`, implement every abstract method, call
 `super().__init__()`, and register it in `create_map_view()` in
 `factory.py`. Then add a test class that inherits `_ViewContract`.
+
+## Memory: drawing many layers (`render_group`)
+
+The QGIS canvas keeps one picture as big as the map **per drawn layer** —
+while rendering, in its cache and for the preview of the area around the
+view. On a HiDPI screen each picture is ~33 MB, so drawing every field as its
+own layer made the app grow by ~60 MB per field (3.6 GB was seen).
+
+Layers added with the same `render_group` option are therefore not drawn one
+by one: `QgisMapView` keeps one in-memory layer per group with a copy of all
+their features (each with its layer's fill, outline and label) and draws that
+instead. The member layers stay in the project and are what the API works
+with (`layers()`, picking, hover, double click, zoom, remove). Hiding,
+adding or removing a member refills the group's layer. Measured with a
+1920×1080 window at scale 2: 15 fields 1.9 GB → 1.06 GB, 40 fields 1.03 GB
+(memory no longer depends on the number of fields).
+
+`FieldsManager` puts every field in the `"fields"` group.
