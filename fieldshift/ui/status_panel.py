@@ -76,9 +76,9 @@ class StatusPanel(QtWidgets.QFrame):
 
         self.info_label = QtWidgets.QLabel()
         self.info_label.setStyleSheet("color: #666; font-size: 11px;")
-        self.example_label = QtWidgets.QLabel(tr("status.example"))
-        self.example_label.setObjectName("exampleBanner")
-        self.example_label.setWordWrap(True)
+        #self.example_label = QtWidgets.QLabel(tr("status.example"))
+        #self.example_label.setObjectName("exampleBanner")
+        #self.example_label.setWordWrap(True)
 
         self.content = QtWidgets.QWidget()
         self.content.setObjectName("statusContent")
@@ -95,7 +95,7 @@ class StatusPanel(QtWidgets.QFrame):
         layout.setSpacing(6)
         layout.addLayout(header)
         layout.addWidget(self.info_label)
-        layout.addWidget(self.example_label)
+        #layout.addWidget(self.example_label)
         layout.addWidget(self.scroll, 1)
         self.setMinimumWidth(MIN_WIDTH_PX)
 
@@ -132,7 +132,7 @@ class StatusPanel(QtWidgets.QFrame):
         self.report = report = status_report(field, self.days)
         self.info_label.setText(tr("status.info", date=format_date(report.last_date),
                                    days=report.days))
-        self.example_label.setVisible(report.example)
+        #self.example_label.setVisible(report.example)
         while self.content_layout.count():
             item = self.content_layout.takeAt(0)
             if item.widget() is not None:
@@ -144,23 +144,23 @@ class StatusPanel(QtWidgets.QFrame):
         tiles = QtWidgets.QGridLayout()
         tiles.setSpacing(6)
         for i, tile in enumerate(report.summary):
-            widget = SummaryTile(tile)
-            widget.clicked.connect(self.show_row)
+            widget = SummaryTile(tile,3)
+            #widget.clicked.connect(self.show_row)
             tiles.addWidget(widget, i // 3, i % 3)
         alerts = len(report.alerts())
         holder = QtWidgets.QWidget()
         holder.setLayout(tiles)
         self.content_layout.addWidget(holder)
-        if alerts:
-            count = QtWidgets.QLabel(tr("status.alert_count", count=alerts))
-            count.setStyleSheet("color: #c62828;")
-            self.content_layout.addWidget(count)
-        for section in report.sections:
-            card = SectionCard(section)
-            card.suggestion_requested.connect(
-                lambda: self.suggestion_requested.emit(self.layer_id))
-            self.content_layout.addWidget(card)
-            self.sections[section.id] = card
+        #if alerts:
+            #count = QtWidgets.QLabel(tr("status.alert_count", count=alerts))
+            #count.setStyleSheet("color: #c62828;")
+            #self.content_layout.addWidget(count)
+        #for section in report.sections:
+            #card = SectionCard(section)
+            #card.suggestion_requested.connect(
+            #    lambda: self.suggestion_requested.emit(self.layer_id))
+            #self.content_layout.addWidget(card)
+            #self.sections[section.id] = card
         self.content_layout.addStretch(1)
 
     # (str section_id, str row_key)

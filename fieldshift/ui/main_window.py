@@ -17,12 +17,13 @@ from fieldshift.ui.scale_bar import ScaleBar
 from fieldshift.ui.side_panel import SidePanel
 from fieldshift.ui.status_panel import StatusPanel
 from fieldshift.ui.weather_card import WeatherCard
+from fieldshift.qt import QtGui
 
 # relative widths of the map and the panel inside the splitter
 MAP_STRETCH = 3
 PANEL_STRETCH = 1
 # share of the map tab the right column takes while it shows Status
-STATUS_SHARE = 0.45
+STATUS_SHARE = 0.5
 
 
 # top-level window, made of tabs. The first tab ("Map", always there) holds
@@ -93,6 +94,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.fields_bar.fields_requested.connect(self.show_fields)
         self.fields_bar.trends_requested.connect(lambda: self.open_mode("trends"))
         self.setWindowTitle(f"Field Shift {__version__}")
+        self.setWindowIcon(QtGui.QIcon("fieldshift/images/logo.png"))
         self.resize(1280, 800)
         self.statusBar().showMessage(tr("status.ready"))
         # credit of the visible layers (basemap licences require it)

@@ -93,8 +93,8 @@
     "es": "Restablece los valores precargados. Esto descartará cualquier cambio realizado en las propiedades del campo y restaurará los valores originales."
   },
   "field_dialog.reload_button": {
-    "en": "[tooltip field_dialog.reload_button] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
-    "es": "[tooltip field_dialog.reload_button] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+    "en": "Tries again to access the satellite data. This will attempt to fetch the latest data from the satellite sources and update the field properties accordingly.",
+    "es": "Intenta acceder nuevamente a los datos del satélite. Esto intentará obtener los últimos datos de las fuentes del satélite y actualizar las propiedades del campo en consecuencia."
   },
   "field_dialog.save": {
     "en": "Save the properties of the field. The data will be saved in the database and will be used to generate recommendations for the field.",
@@ -105,15 +105,15 @@
     "es": "Cancela la creación o edición del campo. Los datos no se guardarán y el campo no se modificará."
   },
   "field_dialog.data.clay": {
-    "en": "[tooltip field_dialog.data.clay] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
-    "es": "[tooltip field_dialog.data.clay] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+    "en": "Percentage of clay in the soil by mass. Clay is a fine-grained soil material that has a high capacity to retain water and nutrients. It is chemically active and can adsorb ions and molecules, making it rich in nutrients. However, clay soils can also be impermeable and root-asphyxiating, which can limit plant growth.",
+    "es": "Porcentaje de arcilla en el suelo por masa. La arcilla es un material del suelo de grano fino que tiene una alta capacidad para retener agua y nutrientes. Es químicamente activa y puede adsorber iones y moléculas, lo que la hace rica en nutrientes. Sin embargo, los suelos arcillosos también pueden ser impermeables y asfixiantes para las raíces, lo que puede limitar el crecimiento de las plantas."
   },
   "field_dialog.data.sand": {
-    "en": "[tooltip field_dialog.data.sand] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
-    "es": "[tooltip field_dialog.data.sand] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+    "en": "Percentage of sand in the soil by mass. Sand is a coarse-grained soil material that is chemically inert and lacks colloidal properties and nutrient supply. It is physically poorly structured, well-aerated, highly permeable, and has zero water retention. Sandy soils can be prone to erosion and may require additional fertilization to support plant growth.",
+    "es": "Porcentaje de arena en el suelo por masa. La arena es un material del suelo de grano grueso que es químicamente inerte y carece de propiedades coloidales y suministro de nutrientes. Es físicamente mal estructurada, bien aerada, altamente permeable y tiene cero retención de agua. Los suelos arenosos pueden ser propensos a la erosión y pueden requerir fertilización adicional para soportar el crecimiento de las plantas."
   },
   "field_dialog.data.silt": {
-    "en": "[tooltip field_dialog.data.silt] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
-    "es": "[tooltip field_dialog.data.silt] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+    "en": "Percentage of silt in the soil by mass. Silt is a fine-grained soil material that is between sand and clay in terms of particle size. It has a moderate capacity to retain water and nutrients, and is generally more fertile than sandy soils but less fertile than clay soils.",
+    "es": "Porcentaje de limo en el suelo por masa. El limo es un material del suelo de grano fino que se encuentra entre la arena y la arcilla en cuanto al tamaño de las partículas. Tiene una capacidad moderada para retener agua y nutrientes, y es generalmente más fértil que los suelos arenosos pero menos fértil que los suelos arcillosos."
   }
 }
