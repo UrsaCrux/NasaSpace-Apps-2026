@@ -5,7 +5,7 @@ with the farmer's measurements of today in place of the forecast's values.
 from dataclasses import replace
 
 from fieldshift.fields.records import latest
-from fieldshift.status.models import LEVEL_ALERT, LEVEL_OK, LEVEL_WATCH, TodayTile
+from fieldshift.status.models import LEVEL_ALERT, LEVEL_OK, LEVEL_WATCH, TodayTile, num
 from fieldshift.status.rules import FROST_C, HEAT_C, RAIN_MM, UV_HIGH, WIND_KMH
 
 
@@ -35,7 +35,7 @@ def _forecast_tiles(forecast):
     hot = day.tmax >= HEAT_C or day.tmin <= FROST_C
     return (
         TodayTile("temp", "🌡️", "status.tile.temp", forecast.temperature, "°C", 0,
-                  "status.tile.temp_note", {"tmax": f"{day.tmax:.0f}", "tmin": f"{day.tmin:.0f}"},
+                  "status.tile.temp_note", {"tmax": num(day.tmax), "tmin": num(day.tmin)},
                   LEVEL_WATCH if hot else LEVEL_OK),
         TodayTile("rain", "🌧️", "status.tile.rain", day.rain_mm, "mm", 1,
                   "status.tile.rain_note" if day.rain_chance is not None else "",

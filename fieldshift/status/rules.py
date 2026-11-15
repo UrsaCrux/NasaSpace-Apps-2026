@@ -3,7 +3,7 @@ changes, rain, frost, heat, wind, strong sun. Short tips, not advice: the
 details are in Analyze.
 """
 
-from fieldshift.status.models import LEVEL_ALERT, LEVEL_WATCH, StatusAlert
+from fieldshift.status.models import LEVEL_ALERT, LEVEL_WATCH, StatusAlert, num
 
 # thresholds
 TEMP_SWING_C = 8.0            # change of the maximum from one day to the next
@@ -27,17 +27,17 @@ def forecast_alerts(days):
     for before, day in zip((None,) + tuple(days[:-1]), days):
         if before is not None and abs(day.tmax - before.tmax) >= TEMP_SWING_C:
             add("swing", day, "status.alert.temp_swing",
-                {"before": f"{before.tmax:.0f}", "after": f"{day.tmax:.0f}"})
+                {"before": num(before.tmax), "after": num(day.tmax)})
         if day.rain_mm >= RAIN_MM:
-            add("rain", day, "status.alert.rain", {"mm": f"{day.rain_mm:.0f}"},
+            add("rain", day, "status.alert.rain", {"mm": num(day.rain_mm)},
                 LEVEL_ALERT if day.rain_mm >= 3 * RAIN_MM else LEVEL_WATCH)
         if day.tmin <= FROST_C:
-            add("frost", day, "status.alert.frost", {"temp": f"{day.tmin:.0f}"},
+            add("frost", day, "status.alert.frost", {"temp": num(day.tmin)},
                 LEVEL_ALERT if day.tmin <= 0 else LEVEL_WATCH)
         if day.tmax >= HEAT_C:
-            add("heat", day, "status.alert.heat", {"temp": f"{day.tmax:.0f}"})
+            add("heat", day, "status.alert.heat", {"temp": num(day.tmax)})
         if day.wind_kmh is not None and day.wind_kmh >= WIND_KMH:
-            add("wind", day, "status.alert.wind", {"kmh": f"{day.wind_kmh:.0f}"})
+            add("wind", day, "status.alert.wind", {"kmh": num(day.wind_kmh)})
         if day.uv is not None and day.uv >= UV_HIGH:
-            add("uv", day, "status.alert.uv", {"uv": f"{day.uv:.0f}"})
+            add("uv", day, "status.alert.uv", {"uv": num(day.uv)})
     return sorted(alerts, key=lambda a: a.date)

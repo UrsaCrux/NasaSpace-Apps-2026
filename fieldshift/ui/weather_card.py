@@ -14,6 +14,7 @@ from datetime import date
 from fieldshift.api import forecast as forecast_api
 from fieldshift.api import geocode
 from fieldshift.i18n import tr
+from fieldshift.status.models import num
 from fieldshift.qt import QtCore, QtWidgets
 
 # distance (pixels) from the top-right corner of the map
@@ -151,12 +152,12 @@ class WeatherCard(QtWidgets.QFrame):
         cells = "".join(
             f"<td align='center' style='padding: 0 4px;'>{h.time[11:13]}h<br>"
             f"<span style='font-size:15px'>{SKY_ICONS.get(h.sky, '')}</span><br>"
-            f"<b>{h.temp:.0f}°</b><br>"
+            f"<b>{num(h.temp)}°</b><br>"
             f"<span style='color:#1e88e5'>{chance(h)}</span></td>" for h in hours)
         self.hours_label.setText(f"<table cellspacing='0'><tr>{cells}</tr></table>")
         self.hours_label.setVisible(bool(hours))
         today = result.days[0]
-        lines = [tr("weather.today", tmax=f"{today.tmax:.0f}", tmin=f"{today.tmin:.0f}",
+        lines = [tr("weather.today", tmax=num(today.tmax), tmin=num(today.tmin),
                     mm=f"{today.rain_mm:.1f}")
                  + " · " + tr("weather.elevation", m=f"{result.elevation:.0f}")]
         if today.tmin <= forecast_api.FROST_C:

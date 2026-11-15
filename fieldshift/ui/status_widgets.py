@@ -7,6 +7,7 @@ from fieldshift.i18n import tr
 from fieldshift.map import Event
 from fieldshift.qt import QtCore, QtGui, QtWidgets
 from fieldshift.status import HORIZONS, LEVEL_ALERT, LEVEL_OK, LEVEL_WATCH
+from fieldshift.status.models import num
 
 # colour of each level
 LEVEL_COLORS = {LEVEL_OK: "#2e7d32", LEVEL_WATCH: "#ef8f00", LEVEL_ALERT: "#d65858"}
@@ -51,7 +52,7 @@ class TodayTile(QtWidgets.QFrame):
         if tile.value is None:
             text = "—"
         else:
-            text = f"{tile.value:.{tile.decimals}f}" + (f" {tile.unit}" if tile.unit else "")
+            text = num(tile.value, tile.decimals) + (f" {tile.unit}" if tile.unit else "")
         self.value_label = QtWidgets.QLabel(f"<b>{text}</b>")
         self.value_label.setStyleSheet("font-size: 16px; color: #1b1b1b;")
         params = dict(tile.note_params, time=tile.measured) if tile.measured else tile.note_params
@@ -198,7 +199,7 @@ class ForecastChart(QtWidgets.QWidget):
                                            metrics.height()),
                              QtCore.Qt.AlignmentFlag.AlignRight
                              | QtCore.Qt.AlignmentFlag.AlignVCenter,
-                             f"{v:.{decimals}f} {unit}")
+                             f"{num(v, decimals)} {unit}")
         step = max(1, round(len(self.days) * (metrics.horizontalAdvance("Mmm 00") + 6)
                             / max(1.0, plot.width())))
         for i, day in enumerate(self.days):
@@ -249,7 +250,7 @@ class ForecastChart(QtWidgets.QWidget):
                     if i == self.selected:
                         painter.setPen(_INK)
                         painter.drawText(QtCore.QPointF(self._x(plot, i) + 6, y(v) - 6),
-                                         f"{v:.0f} {unit}")
+                                         f"{num(v)} {unit}")
                         painter.setPen(QtGui.QPen(color, 2.2))
         painter.end()
 
@@ -384,7 +385,7 @@ class ForecastCard(QtWidgets.QFrame):
         rain = tr("status.fc.d_rain", value=f"{day.rain_mm:.1f}")
         if day.rain_chance is not None:
             rain += f" ({day.rain_chance:.0f}%)"
-        parts = [tr("status.fc.d_temp", tmax=f"{day.tmax:.0f}", tmin=f"{day.tmin:.0f}"), rain,
+        parts = [tr("status.fc.d_temp", tmax=num(day.tmax), tmin=num(day.tmin)), rain,
                  part("status.fc.d_wind", day.wind_kmh, 0, "km/h"),
                  part("status.fc.d_humidity", day.humidity, 0, "%"),
                  part("status.fc.d_radiation", day.radiation, 1, "MJ/m²")]

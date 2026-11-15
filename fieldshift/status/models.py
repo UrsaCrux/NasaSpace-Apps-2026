@@ -16,6 +16,13 @@ LEVEL_ALERT = "alert"
 CHART_LINE = "line"
 CHART_BARS = "bars"
 
+# (float value, int decimals = 0)
+# the value as text, never "-0" ("-0.2" with 0 decimals is "0")
+def num(value, decimals=0):
+    text = f"{value:.{decimals}f}"
+    return text[1:] if text.startswith("-") and float(text) == 0 else text
+
+
 # how many coming days the user can choose to see (the forecast service
 # gives at most 16)
 HORIZONS = (7, 14)
