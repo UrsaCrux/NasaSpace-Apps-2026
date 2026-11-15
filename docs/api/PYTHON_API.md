@@ -485,9 +485,9 @@ list of (name, title, status) for every provider: implemented or planned
 class DayForecast
 ```
 
-- **Line:** 41
+- **Line:** 43
 
-forecast of one day: date "YYYY-MM-DD", min / max °C, rain mm, sky kind
+forecast of one day: date "YYYY-MM-DD", min / max °C, rain mm, sky kind; and, when the service gives them, max wind km/h, mean air humidity %, sun MJ/m² and chance of rain %
 
 #### `Forecast`
 
@@ -495,7 +495,7 @@ forecast of one day: date "YYYY-MM-DD", min / max °C, rain mm, sky kind
 class Forecast
 ```
 
-- **Line:** 52
+- **Line:** 58
 
 weather at a point: now (temperature °C, wind km/h, sky kind), the model's ground elevation (m) and the next days, today first
 
@@ -508,7 +508,7 @@ def frost_days(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 63
+- **Line:** 69
 
 the days whose minimum is at or below FROST_C
 
@@ -519,7 +519,7 @@ def total_rain_mm(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 68
+- **Line:** 74
 
 rain of all the days together, mm
 
@@ -530,7 +530,7 @@ def sky_of(code)
 ```
 
 - **Arguments:** `(int code)`
-- **Line:** 74
+- **Line:** 80
 
 sky kind (SKY_*) of a WMO weather code
 
@@ -541,7 +541,7 @@ def cell_of(lon, lat)
 ```
 
 - **Arguments:** `(float lon, float lat)`
-- **Line:** 92
+- **Line:** 98
 
 the cache cell of a point: points in one cell share a forecast
 
@@ -552,7 +552,7 @@ def parse_forecast(response, lon, lat)
 ```
 
 - **Arguments:** `(dict response, float lon, float lat)`
-- **Line:** 99
+- **Line:** 105
 
 Forecast from an Open-Meteo JSON answer; raises KeyError / TypeError / ValueError when the answer is not as expected
 
@@ -563,7 +563,7 @@ def get_forecast(lon, lat, timeout=10)
 ```
 
 - **Arguments:** `(float lon, float lat, float timeout = 10)`
-- **Line:** 115
+- **Line:** 128
 
 the forecast for a point (cached per cell); raises when the service fails
 
@@ -574,7 +574,7 @@ def clear_cache()
 ```
 
 - **Arguments:** `()`
-- **Line:** 133
+- **Line:** 148
 
 forgets the cached forecasts (tests, or to force a new download)
 
@@ -3512,7 +3512,7 @@ def example_report(field, days=7, today=None, crop=None)
 ```
 
 - **Arguments:** `(Field field, int days = 7, date today = None, str crop = None)`
-- **Line:** 130
+- **Line:** 124
 
 an example StatusReport of the field for the last days; crop is the crop name shown in the stage line
 
@@ -3527,7 +3527,7 @@ def live_report(field, days, forecast=None, crop=None)
 ```
 
 - **Arguments:** `(Field field, int days, callable forecast = None)`
-- **Line:** 59
+- **Line:** 61
 
 the StatusReport of the field for the last days from the real sources. forecast(lon, lat) -> Forecast (default: Open-Meteo); raises when NASA POWER does not answer
 
@@ -3535,9 +3535,9 @@ the StatusReport of the field for the last days from the real sources. forecast(
 
 | Name | Description | Line |
 |------|-------------|------|
-| `POWER_LAG_DAYS` | extra days asked to NASA POWER (its newest days are published ~3 days late) | 18 |
-| `NDVI_LOOKBACK_DAYS` | MODIS composites come every 16 days, ~1 month late: look this far back | 20 |
-| `SOIL_FIXED` | stored soil values shown as fixed rows: (data key, row key, unit, decimals) | 22 |
+| `POWER_LAG_DAYS` | extra days asked to NASA POWER (its newest days are published ~3 days late) | 20 |
+| `NDVI_LOOKBACK_DAYS` | MODIS composites come every 16 days, ~1 month late: look this far back | 22 |
+| `SOIL_FIXED` | stored soil values shown as fixed rows: (data key, row key, unit, decimals) | 24 |
 
 ## `fieldshift/status/models.py`
 
@@ -3559,9 +3559,9 @@ one variable of a section ("Rain", mm): one value per day in dates ("2026-11-14"
 class StatusAlert
 ```
 
-- **Line:** 57
+- **Line:** 58
 
-a warning of a section: text_key filled with params. upcoming alerts are about the next days (short forecast); suggestion True links to Analyze
+a warning of a section: text_key filled with params. upcoming alerts are about the next days (short forecast), on date; suggestion True links to Analyze
 
 #### `SummaryTile`
 
@@ -3569,7 +3569,7 @@ a warning of a section: text_key filled with params. upcoming alerts are about t
 class SummaryTile
 ```
 
-- **Line:** 67
+- **Line:** 69
 
 one tile of the "today" summary: the row it comes from and its value
 
@@ -3579,7 +3579,7 @@ one tile of the "today" summary: the row it comes from and its value
 class StatusSection
 ```
 
-- **Line:** 77
+- **Line:** 79
 
 a section of the report: "weather", "growth" or "soil". note_key / params is a line shown under the title (crop stage); texture holds the analysis.models.TextureFigure of the soil section
 
@@ -3589,7 +3589,7 @@ a section of the report: "weather", "growth" or "soil". note_key / params is a l
 class StatusReport
 ```
 
-- **Line:** 92
+- **Line:** 94
 
 everything shown for one field and period. example True when the numbers are made up; notice_key explains why (no connection, ...) or names the sources that did not answer (missing, a tuple of source names)
 
@@ -3635,7 +3635,7 @@ def section(self, section_id)
 ```
 
 - **Arguments:** `(str section_id)`
-- **Line:** 104
+- **Line:** 107
 
 the section with that id, or None
 
@@ -3646,7 +3646,7 @@ def alerts(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 109
+- **Line:** 112
 
 every alert of every section, in section order
 
@@ -4950,7 +4950,7 @@ the menu for this field; each action runs after the menu has closed
 class FieldPanel(QtWidgets.QFrame)
 ```
 
-- **Line:** 35
+- **Line:** 33
 
 the panel. subclasses set title_key and implement make_report(field) (any thread) and build(report) (UI thread, fills content_layout)
 
@@ -4963,7 +4963,7 @@ def __init__(self, view, fields, parent=None)
 ```
 
 - **Arguments:** `(MapView view, FieldsManager fields, QWidget parent = None)`
-- **Line:** 45
+- **Line:** 43
 
 #### `FieldPanel.open`
 
@@ -4972,7 +4972,7 @@ def open(self, layer_id=None)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 104
+- **Line:** 97
 
 shows that field (the first one when None). returns True when a field is shown (its report may still be loading)
 
@@ -4983,7 +4983,7 @@ def refresh(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 117
+- **Line:** 110
 
 loads the report of the field shown again
 
@@ -4994,7 +4994,7 @@ def make_report(self, field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 140
+- **Line:** 132
 
 the report of the field (runs in a background thread)
 
@@ -5005,7 +5005,7 @@ def build(self, report)
 ```
 
 - **Arguments:** `(report)`
-- **Line:** 145
+- **Line:** 137
 
 fills content_layout with the report (UI thread)
 
@@ -5015,8 +5015,8 @@ fills content_layout with the report (UI thread)
 |------|-------------|------|
 | `MIN_WIDTH_PX` | smallest width of the panel (pixels) | 18 |
 | `OFFLINE_ENV` | when set to "1" reports are built at once in the UI thread (tests: the reports are then example data, which is fast) | 21 |
-| `FieldPanel.loading_key` | i18n key of the "loading" text, filled with {field} | 39 |
-| `FieldPanel.suggestion_requested` | emitted with (str layer_id) when a "See suggestion" link is clicked | 54 |
+| `FieldPanel.loading_key` | i18n key of the "loading" text, filled with {field} | 37 |
+| `FieldPanel.suggestion_requested` | emitted with (str layer_id) when a "See suggestion" link is clicked | 52 |
 
 ## `fieldshift/ui/fields_bar.py`
 
@@ -5195,7 +5195,7 @@ shows the card for this field (None or a non-field layer hides it)
 class MainWindow(QtWidgets.QMainWindow)
 ```
 
-- **Line:** 34
+- **Line:** 35
 
 top-level window, made of tabs. The first tab ("Map", always there) holds the MapView with the FieldsBar under it (left) and the SidePanel (right), which share one FieldsManager. The bar switches the right column between "My fields" and "Status". "Analyze…" adds one closable tab per analysis result
 
@@ -5208,7 +5208,7 @@ def __init__(self, view, parent=None, basemaps=None)
 ```
 
 - **Arguments:** `(MapView view, QWidget parent = None, dict basemaps = None)`
-- **Line:** 39
+- **Line:** 40
 
 builds the splitter layout around an already created map view. basemaps maps "satellite" / "streets" to layer ids for the background switch
 
@@ -5219,7 +5219,7 @@ def analyze(self, layer_id=None)
 ```
 
 - **Arguments:** `(str layer_id = None)`
-- **Line:** 115
+- **Line:** 117
 
 asks for a field (layer_id first, if given) and analyses, runs them with a progress window and opens one tab per result. returns the new tabs (empty if cancelled)
 
@@ -5230,7 +5230,7 @@ def open_results(self, field, results)
 ```
 
 - **Arguments:** `(Field field, list results)`
-- **Line:** 130
+- **Line:** 132
 
 adds a tab for each AnalysisResult and shows the first one; returns the tabs
 
@@ -5241,7 +5241,7 @@ def open_status(self, layer_id=None)
 ```
 
 - **Arguments:** `(str layer_id = None)`
-- **Line:** 145
+- **Line:** 147
 
 shows the map with the Status panel of a field (layer_id, else the field shown in the other panel, else the one the Analyze dialog would start with). returns True when it opened
 
@@ -5252,7 +5252,7 @@ def open_trends(self, layer_id=None)
 ```
 
 - **Arguments:** `(str layer_id = None)`
-- **Line:** 150
+- **Line:** 152
 
 the same with the Trends panel
 
@@ -5263,7 +5263,7 @@ def show_fields(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 176
+- **Line:** 178
 
 shows the map with the "My fields" list in the right column
 
@@ -5271,19 +5271,19 @@ shows the map with the "My fields" list in the right column
 
 | Name | Description | Line |
 |------|-------------|------|
-| `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 23 |
-| `STATUS_SHARE` | share of the map tab the right column takes while it shows Status / Trends | 26 |
-| `MainWindow.scale_bar` | scale bar over the bottom-left corner of the map | 53 |
-| `MainWindow.map_controls` | zoom, "my fields" and background buttons over the top-left corner | 55 |
-| `MainWindow.map_search` | place search: opens from the magnifier of the controls | 57 |
-| `MainWindow.hover_card` | card with the field under the mouse, and its outline highlighted | 59 |
-| `MainWindow.field_menu` | right click on a field: edit, analyze, zoom, check, delete | 61 |
-| `MainWindow.weather_card` | weather of the zone (now and 7 days) over the top-right corner | 63 |
-| `MainWindow.status_panel` | Status of one field over the right part of the map (hidden at start) | 65 |
-| `MainWindow.right_stack` | right column: "My fields" (SidePanel) or "Status", as the bar says | 67 |
-| `MainWindow.trends_panel` | Trends of one field (the last 12 months), also in the right column | 71 |
-| `MainWindow.map_splitter` | the map tab; analysis results open as more tabs next to it | 86 |
-| `MainWindow.attribution_label` | credit of the visible layers (basemap licences require it) | 104 |
+| `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 24 |
+| `STATUS_SHARE` | share of the map tab the right column takes while it shows Status / Trends | 27 |
+| `MainWindow.scale_bar` | scale bar over the bottom-left corner of the map | 54 |
+| `MainWindow.map_controls` | zoom, "my fields" and background buttons over the top-left corner | 56 |
+| `MainWindow.map_search` | place search: opens from the magnifier of the controls | 58 |
+| `MainWindow.hover_card` | card with the field under the mouse, and its outline highlighted | 60 |
+| `MainWindow.field_menu` | right click on a field: edit, analyze, zoom, check, delete | 62 |
+| `MainWindow.weather_card` | weather of the zone (now and 7 days) over the top-right corner | 64 |
+| `MainWindow.status_panel` | Status of one field over the right part of the map (hidden at start) | 66 |
+| `MainWindow.right_stack` | right column: "My fields" (SidePanel) or "Status", as the bar says | 68 |
+| `MainWindow.trends_panel` | Trends of one field (the last 12 months), also in the right column | 72 |
+| `MainWindow.map_splitter` | the map tab; analysis results open as more tabs next to it | 87 |
+| `MainWindow.attribution_label` | credit of the visible layers (basemap licences require it) | 106 |
 
 ## `fieldshift/ui/map_controls.py`
 
@@ -5684,20 +5684,9 @@ def set_days(self, days)
 ```
 
 - **Arguments:** `(int days)`
-- **Line:** 48
+- **Line:** 45
 
 shows the last days (one of PERIODS)
-
-#### `StatusPanel.show_row`
-
-```python
-def show_row(self, section_id, row_key)
-```
-
-- **Arguments:** `(str section_id, str row_key)`
-- **Line:** 93
-
-scrolls to a section and shows that row in its chart
 
 ## `fieldshift/ui/status_widgets.py`
 
@@ -5709,59 +5698,9 @@ scrolls to a section and shows that row in its chart
 class SummaryTile(QtWidgets.QFrame)
 ```
 
-- **Line:** 65
+- **Line:** 36
 
-a tile of the "today" summary: icon, name, newest value and trend. click it to jump to its row
-
-#### `StatusTable`
-
-```python
-class StatusTable(QtWidgets.QTableWidget)
-```
-
-- **Line:** 104
-
-table of the rows of a section: variable, newest, mean, min, max, trend. picking a row shows it in the chart
-
-#### `TimeChart`
-
-```python
-class TimeChart(QtWidgets.QWidget)
-```
-
-- **Line:** 168
-
-chart of one row over time: a line, or bars (rain), with the period mean dashed. moving the mouse over it shows the value of that day
-
-#### `AlertRow`
-
-```python
-class AlertRow(QtWidgets.QFrame)
-```
-
-- **Line:** 302
-
-one warning: coloured bar, icon, text and, when there is a suggestion, a "See suggestion →" link
-
-#### `UpcomingCard`
-
-```python
-class UpcomingCard(QtWidgets.QFrame)
-```
-
-- **Line:** 337
-
-card with the warnings about the next 7 days (short forecast) of every section, apart from what was observed
-
-#### `SectionCard`
-
-```python
-class SectionCard(QtWidgets.QFrame)
-```
-
-- **Line:** 367
-
-a section card: title, optional note (crop stage), optional soil triangle, table (left) and chart (right), and its alerts
+a tile of the "today" summary: icon, name, newest value and trend
 
 ### Functions
 
@@ -5772,42 +5711,9 @@ def format_value(row, value)
 ```
 
 - **Arguments:** `(StatusRow row, float value)`
-- **Line:** 25
+- **Line:** 15
 
 the value with the row's decimals and unit ("23.4 °C")
-
-#### `short_date`
-
-```python
-def short_date(iso_date)
-```
-
-- **Arguments:** `(str iso_date)`
-- **Line:** 32
-
-short date for charts and tables: "8 Nov" / "8 nov"
-
-#### `format_number`
-
-```python
-def format_number(row, value)
-```
-
-- **Arguments:** `(StatusRow row, float value)`
-- **Line:** 38
-
-the value with the row's decimals, without unit ("23.4")
-
-#### `row_title`
-
-```python
-def row_title(row)
-```
-
-- **Arguments:** `(StatusRow row)`
-- **Line:** 44
-
-the row name with its unit: "Rain (mm)"
 
 #### `trend_text`
 
@@ -5816,7 +5722,7 @@ def trend_text(row)
 ```
 
 - **Arguments:** `(StatusRow row)`
-- **Line:** 50
+- **Line:** 22
 
 "↑ 2.1" / "↓ 0.4" / "=": newest value against the period mean
 
@@ -5827,7 +5733,7 @@ def source_text(source)
 ```
 
 - **Arguments:** `(str source)`
-- **Line:** 59
+- **Line:** 31
 
 a source name, translated when it is an i18n key ("status.source.farmer")
 
@@ -5838,79 +5744,15 @@ def __init__(self, tile, days, parent=None)
 ```
 
 - **Arguments:** `(SummaryTile tile, int days)`
-- **Line:** 69
+- **Line:** 40
 
 days: length of the period the trend compares with
-
-#### `StatusTable.__init__`
-
-```python
-def __init__(self, rows, parent=None)
-```
-
-- **Arguments:** `(tuple rows)`
-- **Line:** 110
-
-#### `StatusTable.select_key`
-
-```python
-def select_key(self, key)
-```
-
-- **Arguments:** `(str key)`
-- **Line:** 158
-
-selects the row with that key; returns True when found
-
-#### `TimeChart.set_row`
-
-```python
-def set_row(self, row)
-```
-
-- **Arguments:** `(StatusRow row)`
-- **Line:** 179
-
-shows another row
-
-#### `AlertRow.__init__`
-
-```python
-def __init__(self, alert, parent=None)
-```
-
-- **Arguments:** `(StatusAlert alert)`
-- **Line:** 305
-
-#### `UpcomingCard.__init__`
-
-```python
-def __init__(self, alerts, parent=None)
-```
-
-- **Arguments:** `(list alerts)`
-- **Line:** 340
-
-#### `SectionCard.__init__`
-
-```python
-def __init__(self, section, days, parent=None)
-```
-
-- **Arguments:** `(StatusSection section, int days)`
-- **Line:** 371
-
-days: length of the period shown (the dates come from the rows)
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
-| `LEVEL_COLORS` | colour of each level | 13 |
-| `SummaryTile.clicked` | emitted with (str section id, str row key) on click | 73 |
-| `AlertRow.suggestion_requested` | emitted with no arguments when "See suggestion" is clicked | 309 |
-| `UpcomingCard.suggestion_requested` | emitted with no arguments when an alert's "See suggestion" is clicked | 343 |
-| `SectionCard.suggestion_requested` | emitted with no arguments when an alert's "See suggestion" is clicked | 375 |
+| `LEVEL_COLORS` | colour of each level | 10 |
 
 ## `fieldshift/ui/trends_panel.py`
 

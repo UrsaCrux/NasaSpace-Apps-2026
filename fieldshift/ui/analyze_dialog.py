@@ -47,14 +47,14 @@ class AnalyzeDialog(CenteredDialog):
             check.toggled.connect(self._update_run_button)
             about = QtWidgets.QLabel(tr(analysis.description_key))
             about.setWordWrap(True)
-            about.setStyleSheet("color: #555; margin-left: 22px; margin-bottom: 6px;")
+            about.setStyleSheet("color: #555; margin-left: 22px; margin-bottom: 6px; margin-top: 5px")
             rows.addWidget(check)
             rows.addWidget(about)
             self.checks[analysis.id] = check
 
-        note = QtWidgets.QLabel(tr("analysis.placeholder_note"))
-        note.setWordWrap(True)
-        note.setStyleSheet("color: #8a6d00; background: #fff8e1; border-radius: 4px; padding: 6px;")
+        #note = QtWidgets.QLabel(tr("analysis.placeholder_note"))
+        #note.setWordWrap(True)
+        #note.setStyleSheet("color: #8a6d00; background: #fff8e1; border-radius: 4px; padding: 6px;")
 
         buttons = QtWidgets.QDialogButtonBox()
         buttons.addButton(tr("common.cancel"), QtWidgets.QDialogButtonBox.ButtonRole.RejectRole)
@@ -70,7 +70,7 @@ class AnalyzeDialog(CenteredDialog):
         layout = QtWidgets.QVBoxLayout(self)
         layout.addLayout(form)
         layout.addWidget(choose)
-        layout.addWidget(note)
+        #layout.addWidget(note)
         layout.addWidget(buttons)
         self._update_run_button()
 

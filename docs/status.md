@@ -6,11 +6,13 @@ the map shows it; choosing one in the panel's list also moves the map to it.
 
 | Area | Looks at | Example |
 |---|---|---|
-| Status | the present: last 7 / 14 / 30 days + warnings for the next 7 | "32 mm of rain in one day: check erosion" |
+| Status | the present: "today" tiles, each against the mean of the last 7 / 14 / 30 days | max temperature 24 °C, ↑ 2.1 vs 7-day mean |
 | Trends | the past: the last 12 months vs the year before and the normal | wettest month, seasons, NDVI curve |
 | Analyze | the future and decisions | crop rotation, fertiliser plan |
 
-Warnings link to Analyze with "See suggestion →".
+Status shows only the "today" tiles for now (the per-section tables, charts and
+warnings were taken out as not stable yet); the report (`StatusReport`) still
+carries sections, warnings and the 7-day forecast for later views.
 
 ## Data sources
 
@@ -21,12 +23,13 @@ Warnings link to Analyze with "See suggestion →".
 | Top-soil wetness, surface temperature | NASA POWER `GWETTOP`, `TS` | % of saturation |
 | NDVI | MODIS MOD13Q1 via ORNL DAAC | 16-day composites, ~1 month late, slow |
 | Nitrogen, pH, organic carbon, CEC, texture | the field's stored data (SoilGrids or typed) | fixed values |
-| Next 7 days | Open-Meteo forecast | warnings only |
+| Next 7 days | Open-Meteo forecast | kept in the report |
 | Normals (Trends) | NASA POWER climatology | rain, humidity, sun |
 
 Every series is cached in memory per place and day. A source that fails only
-leaves its rows out (listed as "no answer from"); when NASA POWER fails, or with
-`FIELDSHIFT_OFFLINE=1` (tests), the panels show example data with a banner.
+leaves its rows out (listed as "no answer from" in the info line); when NASA
+POWER fails, or with `FIELDSHIFT_OFFLINE=1` (tests), the panels show example
+data and the info line says so.
 
 ## Code
 
@@ -38,8 +41,8 @@ leaves its rows out (listed as "no answer from"); when NASA POWER fails, or with
   before / normal, milestones, seasons), `build.py` (monthly series → report),
   `live.py`, `example.py`, `trends_report(field)` entry point.
 - `fieldshift/ui/field_panel.py` — base of both panels: field chooser, map clicks,
-  loading in a background thread, notice banner.
-- `fieldshift/ui/status_panel.py`, `status_widgets.py` — Status view.
+  loading in a background thread, info line.
+- `fieldshift/ui/status_panel.py`, `status_widgets.py` — Status view (tiles).
 - `fieldshift/ui/trends_panel.py`, `trends_widgets.py` — Trends view (milestones,
   seasons table, 12-month charts with hover, crop card).
 

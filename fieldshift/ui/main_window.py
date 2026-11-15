@@ -18,6 +18,7 @@ from fieldshift.ui.side_panel import SidePanel
 from fieldshift.ui.status_panel import StatusPanel
 from fieldshift.ui.trends_panel import TrendsPanel
 from fieldshift.ui.weather_card import WeatherCard
+from fieldshift.qt import QtGui
 
 # relative widths of the map and the panel inside the splitter
 MAP_STRETCH = 3
@@ -98,6 +99,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.fields_bar.fields_requested.connect(self.show_fields)
         self.fields_bar.trends_requested.connect(lambda: self.open_trends())
         self.setWindowTitle(f"Field Shift {__version__}")
+        self.setWindowIcon(QtGui.QIcon("fieldshift/images/logo.png"))
         self.resize(1280, 800)
         self.statusBar().showMessage(tr("status.ready"))
         # credit of the visible layers (basemap licences require it)

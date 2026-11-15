@@ -1,5 +1,5 @@
 """Base of the panels that show one field in the right column of the map tab
-(Status, Trends): a header with the field chooser, a notice line, and a
+(Status, Trends): a header with the field chooser, an info line, and a
 scrolling content built from a report that loads in a background thread.
 
 Clicking another field on the map shows that field; choosing one in the
@@ -15,7 +15,7 @@ from fieldshift.map import Event
 from fieldshift.qt import QtCore, QtWidgets
 
 # smallest width of the panel (pixels)
-MIN_WIDTH_PX = 520
+MIN_WIDTH_PX = 480
 # when set to "1" reports are built at once in the UI thread (tests: the
 # reports are then example data, which is fast)
 OFFLINE_ENV = "FIELDSHIFT_OFFLINE"
@@ -25,8 +25,6 @@ QFrame#fieldPanel { background: #f4f6f4; }
 QScrollArea, QWidget#panelContent { background: transparent; border: none; }
 QPushButton#period { border: 1px solid #9aa39a; padding: 3px 10px; background: white; }
 QPushButton#period:checked { background: #00796b; color: white; border-color: #00796b; }
-QLabel#exampleBanner { background: #fff8e1; border: 1px solid #ffe082; border-radius: 4px;
-                       padding: 4px 8px; color: #6d4c00; }
 """
 
 
@@ -69,10 +67,6 @@ class FieldPanel(QtWidgets.QFrame):
         self.info_label = QtWidgets.QLabel()
         self.info_label.setStyleSheet("color: #666; font-size: 11px;")
         self.info_label.setWordWrap(True)
-        self.example_label = QtWidgets.QLabel()
-        self.example_label.setObjectName("exampleBanner")
-        self.example_label.setWordWrap(True)
-        self.example_label.hide()
 
         self.content = QtWidgets.QWidget()
         self.content.setObjectName("panelContent")
@@ -81,7 +75,7 @@ class FieldPanel(QtWidgets.QFrame):
         self.content_layout.setSpacing(10)
         self.scroll = QtWidgets.QScrollArea()
         self.scroll.setWidgetResizable(True)
-        self.scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.scroll.setWidget(self.content)
 
         layout = QtWidgets.QVBoxLayout(self)
@@ -89,7 +83,6 @@ class FieldPanel(QtWidgets.QFrame):
         layout.setSpacing(6)
         layout.addLayout(self.header)
         layout.addWidget(self.info_label)
-        layout.addWidget(self.example_label)
         layout.addWidget(self.scroll, 1)
         self.setMinimumWidth(MIN_WIDTH_PX)
 
@@ -122,7 +115,6 @@ class FieldPanel(QtWidgets.QFrame):
         self.report = None
         self._clear()
         self.info_label.setText("")
-        self.example_label.hide()
         if os.environ.get(OFFLINE_ENV) == "1":
             self._on_loaded(self._request, self.make_report(field))
             return
@@ -162,15 +154,16 @@ class FieldPanel(QtWidgets.QFrame):
         if report is None:
             self.content_layout.addWidget(QtWidgets.QLabel(tr("panel.failed")))
             return
-        notice = getattr(report, "notice_key", "")
-        self.example_label.setText(tr(notice) if notice else "")
-        self.example_label.setVisible(bool(notice))
         self.build(report)
+        # why the numbers may be partial: sources that did not answer, or no
+        # connection at all (a short note in the info line)
+        notes = [self.info_label.text()]
         missing = getattr(report, "missing", ())
         if missing:
-            text = self.info_label.text()
-            extra = tr("panel.missing", sources=", ".join(missing))
-            self.info_label.setText(f"{text} · {extra}" if text else extra)
+            notes.append(tr("panel.missing", sources=", ".join(missing)))
+        if getattr(report, "notice_key", ""):
+            notes.append(tr(report.notice_key))
+        self.info_label.setText(" · ".join(n for n in notes if n))
 
     def _clear(self):
         while self.content_layout.count():

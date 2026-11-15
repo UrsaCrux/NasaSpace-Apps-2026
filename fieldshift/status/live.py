@@ -1,6 +1,8 @@
 """The Status report of a field from the real sources: NASA POWER daily
 weather and top-soil wetness, MODIS NDVI, the soil values stored with the
 field (SoilGrids or typed by the farmer) and the Open-Meteo 7-day forecast.
+The panel shows the "today" tiles; the rest (sections, warnings) is kept in
+the report for later views.
 
 A source that fails only leaves its rows out (its name goes to
 report.missing); when NASA POWER fails the whole report fails.
@@ -10,7 +12,6 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 
 from fieldshift.analysis.models import TextureFigure
-from fieldshift.fields.zone_data import usda_texture
 from fieldshift.status import rules, sources
 from fieldshift.status.models import (
     CHART_BARS, StatusReport, StatusRow, StatusSection, SummaryTile)
@@ -63,8 +64,7 @@ def live_report(field, days, forecast=None, crop=None):
     today = sources.today()
     start = today - timedelta(days=days + POWER_LAG_DAYS)
     missing = []
-    with ThreadPoolExecutor(max_workers=4) as pool:
-        soil_job = pool.submit(sources.soilgrids_topsoil, tuple(field.vertices))
+    with ThreadPoolExecutor(max_workers=3) as pool:
         daily_job = pool.submit(sources.power_daily, lon, lat, start, today)
         ndvi_job = pool.submit(sources.modis_ndvi, lon, lat,
                                today - timedelta(days=max(days, NDVI_LOOKBACK_DAYS)), today)
@@ -78,14 +78,6 @@ def live_report(field, days, forecast=None, crop=None):
             coming = forecast_job.result()
         except Exception:
             coming, _ = None, missing.append("Open-Meteo")
-        try:
-            grids = soil_job.result()
-        except Exception:
-            grids = {}
-        if not grids:
-            missing.append("SoilGrids")
-        elif not all(k in grids for k in ("sand", "silt", "clay")):
-            missing.append("SoilGrids (texture)")
     series = _weather_series(daily, days)
     if not series["temp_max"]:
         raise ValueError("NASA POWER returned no values")
@@ -94,10 +86,8 @@ def live_report(field, days, forecast=None, crop=None):
     soil_values = {}
     for key, _, _, _ in SOIL_FIXED:
         item = data.get(key) or {}
-        if item.get("value") is not None:              # stored with the field first
+        if item.get("value") is not None:              # stored with the field
             soil_values[key] = (item["value"], item.get("source"))
-        elif key in grids:
-            soil_values[key] = (grids[key], "soilgrids")
 
     values = {k: [v for _, v in pairs] for k, pairs in series.items()}
     values["ndvi"] = [v for _, v in ndvi]
@@ -133,14 +123,9 @@ def live_report(field, days, forecast=None, crop=None):
             soil_rows.append(row(row_key, unit, [(series["temp_max"][-1][0], value)], decimals,
                                  fixed=True, source="status.source.farmer"
                                  if source == "user" else "SoilGrids"))
-    # the texture triangle: the point from SoilGrids sand / silt / clay, the
-    # class stored with the field (else computed from the point)
     texture_item = data.get("soil_texture") or {}
-    sand, silt, clay = (grids.get(k) for k in ("sand", "silt", "clay"))
-    point = None not in (sand, silt, clay)
-    texture_class = texture_item.get("value") or (usda_texture(sand, silt, clay) if point else None)
-    texture = TextureFigure(round(clay, 1) if point else None, round(sand, 1) if point else None,
-                            round(silt, 1) if point else None, texture_class)
+    texture = (TextureFigure(texture=texture_item["value"])
+               if texture_item.get("value") else None)
     soil = StatusSection("soil", "status.section.soil", "🟫",
                          tuple(r for r in soil_rows if r.values),
                          tuple(a for a in observed if a.text_key in _SOIL_ALERTS),

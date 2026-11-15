@@ -11,7 +11,6 @@ from unittest import mock
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from fieldshift import i18n  # noqa: E402
-from fieldshift.i18n import tr  # noqa: E402
 from fieldshift.analysis import ANALYSES, get_analysis  # noqa: E402
 from fieldshift.analysis.models import AnalysisResult  # noqa: E402
 from fieldshift.fields.store import Field  # noqa: E402
@@ -124,14 +123,9 @@ class AnalyzeDialogTest(_WithFields):
         self.assertEqual(panel.layer_id, self.b)
         self.assertIs(self.window.right_stack.currentWidget(), panel)
         self.assertTrue(self.window.fields_bar.status_button.isChecked())
-        upcoming = panel.upcoming
-        upcoming.slider.setValue(1)
-        upcoming.set_variable("rain")
-        self.assertIn(tr("status.when.tomorrow"), upcoming.detail.text())
-        self.assertEqual(set(panel.sections), {"weather", "growth", "soil"})
+        self.assertEqual(len(panel.tiles), len(panel.report.summary))
         panel.set_days(PERIODS[-1])
         self.assertEqual(len(panel.report.section("weather").rows[0].values), PERIODS[-1])
-        panel.show_row("soil", "soil_moisture")
         self.window.fields_bar.fields_button.click()
         self.assertIs(self.window.right_stack.currentWidget(), self.window.panel)
         self.assertTrue(self.window.open_trends(self.a))

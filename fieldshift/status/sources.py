@@ -109,38 +109,6 @@ def modis_ndvi(lon, lat, start, end):
     return _cached(("ndvi", round(lon, 4), round(lat, 4), start, end), make)
 
 
-# (list vertices)
-# SoilGrids top-soil (0-30 cm) values of a field: {"sand", "silt", "clay" (%),
-# "ph", "organic_carbon", "nitrogen" (g/kg), "cec"} for the ones that answer
-def soilgrids_topsoil(vertices):
-    def make():
-        from fieldshift.api import Period, SiteData
-        from fieldshift.api.providers.soilgrids import SoilGridsProvider
-        from fieldshift.fields.zone_data import TOPSOIL, area_of, topsoil_mean
-        area = area_of(vertices)
-        site = SiteData(area, Period.make())
-        properties = ("clay", "sand", "silt", "phh2o", "soc", "nitrogen", "cec")
-        # SoilGrids often drops some of the requests: ask again (twice) only
-        # for the texture when sand / silt / clay are missing
-        for attempt in range(3):
-            provider = SoilGridsProvider(depths=TOPSOIL, properties=properties)
-            provider.check()
-            try:
-                provider.fetch(area, site.period, site)
-            except Exception:
-                if attempt == 2:
-                    raise
-            if all(getattr(site.soil, k) for k in ("clay", "sand", "silt")):
-                break
-            properties = ("clay", "sand", "silt")
-        soil = site.soil
-        values = {key: topsoil_mean(getattr(soil, key)) for key in (
-            "sand", "silt", "clay", "ph", "organic_carbon", "nitrogen", "cec")}
-        return {k: v for k, v in values.items() if v is not None}
-    key = ("soil",) + tuple((round(x, 4), round(y, 4)) for x, y in vertices)
-    return _cached(key, make)
-
-
 # (float tmean, float radiation)
 # reference evapotranspiration of a day, mm (Hargreaves radiation formula,
 # radiation in MJ/m²/day)
