@@ -340,6 +340,13 @@ class QgisViewTest(_ViewContract, unittest.TestCase):
         self.view.canvas().mapTool().canvasReleaseEvent(self._mouse(
             QtCore.QEvent.Type.MouseButtonRelease, pos, QtCore.Qt.MouseButton.RightButton))
 
+    def test_no_builtin_context_menu(self):
+        # regression: QGIS showed its own "Copy Coordinate" menu on right click
+        # and our field menu never opened
+        from qgis.gui import QgsMapTool
+        flags = self.view.canvas().mapTool().flags()
+        self.assertFalse(flags & QgsMapTool.Flag.ShowContextMenu)
+
     def test_double_click_on_empty_map_still_zooms_in(self):
         from fieldshift.qt import QtCore
         clicked = []

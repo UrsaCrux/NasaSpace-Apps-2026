@@ -1,6 +1,6 @@
 """QGIS pan tool that also reports a double click on a feature."""
 
-from qgis.gui import QgsMapToolPan
+from qgis.gui import QgsMapTool, QgsMapToolPan
 
 from fieldshift.qt import QtCore, QtGui
 
@@ -24,6 +24,17 @@ class PickPanTool(QgsMapToolPan):
         self._on_hover = on_hover
         self._on_right_click = on_right_click
         self._moved = False         # the mouse moved with the button held
+
+    # same as the plain pan tool, without ShowContextMenu: the map's built-in
+    # menu ("Copy Coordinate") took the right click, so layer_right_clicked
+    # (and the field menu) never happened
+    def flags(self):
+        flags = super().flags()
+        kept = QgsMapTool.Flag(0)            # PyQt6 enum flags: rebuild without it
+        for flag in QgsMapTool.Flag:
+            if flag != QgsMapTool.Flag.ShowContextMenu and flags & flag:
+                kept |= flag
+        return kept
 
     def canvasPressEvent(self, event):
         self._moved = False
