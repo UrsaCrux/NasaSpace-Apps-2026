@@ -6,6 +6,7 @@
 | [map-abstraction.md](map-abstraction.md) | `MapView` / `LayerSpec` API, adding a map backend |
 | [data-api.md](data-api.md) | `get_site_data(lon, lat, radius)`: weather, soil, water, terrain from the data sources |
 | [simulation.md](simulation.md) | Crop growth simulation (PCSE / WOFOST): hidden crop and soil data in the field file, weather, model |
+| [release.md](release.md) | Release archives for Windows, Linux and macOS, and how to make a release |
 | [cpp.md](cpp.md) | Writing C++ functions and calling them from Python |
 | [minidoc.md](minidoc.md) | How code is documented and how `docs/api/` is generated |
 | [contributing.md](contributing.md) | Workflow, adding a panel feature, tests |

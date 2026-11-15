@@ -9,6 +9,14 @@ left, a panel on the right. The map is hidden behind an abstraction layer
 performance-critical code can be written in C++ (`cpp/`) and called from
 Python.
 
+## Download
+
+Ready-to-run archives for **Windows, Linux and macOS** (everything inside,
+nothing to install) are on the
+[Releases page](https://github.com/UrsaCrux/NasaSpace-Apps-2026/releases):
+unpack and double-click `FieldShift.bat` / `FieldShift.sh` /
+`FieldShift.command`. How they are built: [docs/release.md](docs/release.md).
+
 ## Quick start
 
 ```bash
