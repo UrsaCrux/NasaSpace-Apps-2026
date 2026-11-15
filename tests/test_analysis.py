@@ -97,6 +97,14 @@ class _WithFields(unittest.TestCase):
 
 
 class AnalyzeDialogTest(_WithFields):
+    # Status / Trends open one placeholder tab each, reused on a second click
+    def test_status_and_trends_tabs(self):
+        first = self.window.open_mode("status")
+        self.assertIs(self.window.open_mode("status"), first)
+        before = self.window.tabs.count()
+        self.window.open_mode("trends")
+        self.assertEqual(self.window.tabs.count(), before + 1)
+
     def dialog(self, layer_id=None):
         from fieldshift.ui.analyze_dialog import AnalyzeDialog
         return AnalyzeDialog(self.window.fields, layer_id)

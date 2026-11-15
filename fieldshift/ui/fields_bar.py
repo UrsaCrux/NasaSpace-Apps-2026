@@ -1,4 +1,4 @@
-"""Bar under the map: "Draw field" on the left, "Export fields…" on the right.
+"""Bar under the map: "Draw field", "Status", "Trends" and "Analyze…" on the left, "Export fields…" on the right.
 
 Uses the map only through MapView and the fields through FieldsManager.
 Every text comes from fieldshift/i18n/<language>.json.
@@ -23,6 +23,13 @@ QPushButton#analyzeFields { background: #1565c0; color: white; border: none;
                             border-radius: 4px; padding: 6px 16px; font-weight: bold; }
 QPushButton#analyzeFields:hover { background: #0d47a1; }
 QPushButton#analyzeFields:disabled { background: #b0bec5; color: #eceff1; }
+QPushButton#statusMode, QPushButton#trendsMode { background: #00796b; color: white;
+    border: none; border-radius: 4px; padding: 6px 16px; font-weight: bold; }
+QPushButton#trendsMode { background: #6a1b9a; }
+QPushButton#statusMode:hover { background: #00695c; }
+QPushButton#trendsMode:hover { background: #4a148c; }
+QPushButton#statusMode:disabled, QPushButton#trendsMode:disabled { background: #b0bec5;
+    color: #eceff1; }
 QLabel#drawHint { color: #444; }
 """
 
@@ -52,12 +59,23 @@ class FieldsBar(QtWidgets.QFrame):
         self.analyze_button = QtWidgets.QPushButton(tr("analysis.button"))
         self.analyze_button.setObjectName("analyzeFields")
         self.analyze_button.clicked.connect(lambda: self.analyze_requested.emit())
+        # emitted with no arguments when the user clicks "Status" / "Trends"
+        self.status_requested = Event()
+        self.trends_requested = Event()
+        self.status_button = QtWidgets.QPushButton(tr("modes.status"))
+        self.status_button.setObjectName("statusMode")
+        self.status_button.clicked.connect(lambda: self.status_requested.emit())
+        self.trends_button = QtWidgets.QPushButton(tr("modes.trends"))
+        self.trends_button.setObjectName("trendsMode")
+        self.trends_button.clicked.connect(lambda: self.trends_requested.emit())
         self.export_button = QtWidgets.QPushButton(tr("fields.export_all"))
         self.export_button.clicked.connect(lambda: self._on_export_clicked())
 
         row = QtWidgets.QHBoxLayout(self)
         row.setContentsMargins(10, 6, 10, 6)
         row.addWidget(self.draw_button)
+        row.addWidget(self.status_button)
+        row.addWidget(self.trends_button)
         row.addWidget(self.analyze_button)
         row.addWidget(self.hint_label, 1)
         row.addStretch(0)
@@ -117,8 +135,10 @@ class FieldsBar(QtWidgets.QFrame):
                                    else tr("fields.export_all"))
         self.export_button.setEnabled(self.fields.count() > 0)
         can_analyze = self.fields.count() > 0 and not drawing
-        self.analyze_button.setEnabled(can_analyze)
-        self.analyze_button.setToolTip("" if self.fields.count() else tr("analysis.button_tooltip"))
+        tip = "" if self.fields.count() else tr("analysis.button_tooltip")
+        for button in (self.status_button, self.trends_button, self.analyze_button):
+            button.setEnabled(can_analyze)
+            button.setToolTip(tip)
 
     # (list vertices)
     # asks for the details of the field just drawn: (name, color, data), or

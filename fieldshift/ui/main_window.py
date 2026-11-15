@@ -77,6 +77,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tabs.tabCloseRequested.connect(self._close_tab)
         self.setCentralWidget(self.tabs)
         self.fields_bar.analyze_requested.connect(self.analyze)
+        self.fields_bar.status_requested.connect(lambda: self.open_mode("status"))
+        self.fields_bar.trends_requested.connect(lambda: self.open_mode("trends"))
         self.setWindowTitle(f"Field Shift {__version__}")
         self.resize(1280, 800)
         self.statusBar().showMessage(tr("status.ready"))
@@ -117,6 +119,23 @@ class MainWindow(QtWidgets.QMainWindow):
         if tabs:
             self.tabs.setCurrentWidget(tabs[0])
         return tabs
+
+    # (str mode)
+    # shows the tab of a mode ("status" or "trends"), opening it the first
+    # time. for now the tab only says the mode is coming soon. returns the tab
+    def open_mode(self, mode):
+        for index in range(1, self.tabs.count()):
+            widget = self.tabs.widget(index)
+            if widget.objectName() == f"mode_{mode}":
+                self.tabs.setCurrentIndex(index)
+                return widget
+        tab = QtWidgets.QLabel(tr(f"modes.{mode}_soon"))
+        tab.setObjectName(f"mode_{mode}")
+        tab.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        tab.setWordWrap(True)
+        tab.setStyleSheet("color: #555; font-size: 15px; padding: 40px;")
+        self.tabs.setCurrentIndex(self.tabs.addTab(tab, tr(f"modes.{mode}")))
+        return tab
 
     # the field the Analyze dialog starts with: the first checked one, else
     # the highlighted row, else none (the dialog picks the first)
