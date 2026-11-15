@@ -553,7 +553,7 @@ class MainWindowTest(unittest.TestCase):
         self.assertIs(window.tabs.widget(0), splitter)          # the map is the first tab
         self.assertTrue(splitter.widget(0).isAncestorOf(view.widget()))
         self.assertTrue(splitter.widget(0).isAncestorOf(window.fields_bar))
-        self.assertIsInstance(splitter.widget(1), SidePanel)
+        self.assertIsInstance(splitter.widget(1).currentWidget(), SidePanel)
         view.add_layer(LayerSpec.xyz("osm", "https://example/{z}/{x}/{y}.png"))
         self.assertEqual(window.panel.layer_list.count(), 1)
 

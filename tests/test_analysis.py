@@ -121,10 +121,14 @@ class AnalyzeDialogTest(_WithFields):
         panel = self.window.status_panel
         self.assertTrue(self.window.open_status(self.b))
         self.assertEqual(panel.layer_id, self.b)
+        self.assertIs(self.window.right_stack.currentWidget(), panel)
+        self.assertTrue(self.window.fields_bar.status_button.isChecked())
         self.assertEqual(set(panel.sections), {"weather", "growth", "soil"})
         panel.set_days(PERIODS[-1])
         self.assertEqual(len(panel.report.section("weather").rows[0].values), PERIODS[-1])
         panel.show_row("soil", "soil_moisture")
+        self.window.fields_bar.fields_button.click()
+        self.assertIs(self.window.right_stack.currentWidget(), self.window.panel)
         first = self.window.open_mode("trends")
         self.assertIs(self.window.open_mode("trends"), first)
 

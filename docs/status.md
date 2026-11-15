@@ -20,12 +20,15 @@ and suggestions are in **Analyze**.
 - `fieldshift.status.status_report(field, days)` — the entry point. To connect
   real data, build the same `StatusReport` from NASA POWER, GPM IMERG, SMAP,
   MODIS and SoilGrids and set `example=False`.
-- `fieldshift/ui/status_panel.py` — the panel over the right part of the map
-  (field chooser, period, close; scrolling content). Clicking another field on
-  the map shows it.
+- `fieldshift/ui/status_panel.py` — the right column of the map tab while
+  **Status** is chosen in the bar (it swaps with **My fields**; field chooser
+  and period on top, scrolling content). Clicking another field on the map
+  shows it; choosing one in the list also moves the map to it.
 - `fieldshift/ui/status_widgets.py` — summary tiles (click → jumps to the row),
   section table (click a row → chart), chart with hover read-out, alert rows,
   USDA texture triangle (reused from `analysis_widgets.TextureTriangle`).
 
-Opened from the **Status** button of the bar under the map or from the right-click
+The bar under the map switches the right column: **My fields** | **Status**.
+**Draw field** floats over the bottom-right corner of the map. Status opens from
+the bar or from the right-click
 menu of a field (`MainWindow.open_status(layer_id)`).

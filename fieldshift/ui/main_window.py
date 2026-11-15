@@ -21,11 +21,14 @@ from fieldshift.ui.weather_card import WeatherCard
 # relative widths of the map and the panel inside the splitter
 MAP_STRETCH = 3
 PANEL_STRETCH = 1
+# share of the map tab the right column takes while it shows Status
+STATUS_SHARE = 0.45
 
 
 # top-level window, made of tabs. The first tab ("Map", always there) holds
 # the MapView with the FieldsBar under it (left) and the SidePanel (right),
-# which share one FieldsManager. "Analyze…" adds one closable tab per
+# which share one FieldsManager. The bar switches the right column between
+# "My fields" and "Status". "Analyze…" adds one closable tab per
 # analysis result
 class MainWindow(QtWidgets.QMainWindow):
 
@@ -59,12 +62,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.weather_card = WeatherCard(view)
         # Status of one field over the right part of the map (hidden at start)
         self.status_panel = StatusPanel(view, self.fields)
+        # right column: "My fields" (SidePanel) or "Status", as the bar says
+        self.right_stack = QtWidgets.QStackedWidget()
+        self.right_stack.addWidget(self.panel)
+        self.right_stack.addWidget(self.status_panel)
         self.status_panel.suggestion_requested.connect(
             lambda layer_id: QtCore.QTimer.singleShot(0, lambda: self.analyze(layer_id)))
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         splitter.addWidget(map_area)
-        splitter.addWidget(self.panel)
+        splitter.addWidget(self.right_stack)
         splitter.setStretchFactor(0, MAP_STRETCH)
         splitter.setStretchFactor(1, PANEL_STRETCH)
         splitter.setCollapsible(0, False)
@@ -83,6 +90,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(self.tabs)
         self.fields_bar.analyze_requested.connect(self.analyze)
         self.fields_bar.status_requested.connect(lambda: self.open_status())
+        self.fields_bar.fields_requested.connect(self.show_fields)
         self.fields_bar.trends_requested.connect(lambda: self.open_mode("trends"))
         self.setWindowTitle(f"Field Shift {__version__}")
         self.resize(1280, 800)
@@ -132,7 +140,28 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.view.is_drawing():
             return False
         self.tabs.setCurrentIndex(0)
-        return self.status_panel.open(layer_id or self._field_to_preselect())
+        if not self.status_panel.open(layer_id or self._field_to_preselect()):
+            self.fields_bar.set_mode(self.fields_bar.mode)
+            return False
+        if self.right_stack.currentWidget() is not self.status_panel:
+            sizes = self.map_splitter.sizes()
+            self._fields_sizes = sizes
+            total = sum(sizes)
+            right = max(self.status_panel.minimumWidth(), int(total * STATUS_SHARE))
+            self.right_stack.setCurrentWidget(self.status_panel)
+            self.map_splitter.setSizes([max(1, total - right), right])
+        self.fields_bar.set_mode("status")
+        return True
+
+    # ()
+    # shows the map with the "My fields" list in the right column
+    def show_fields(self):
+        self.tabs.setCurrentIndex(0)
+        if self.right_stack.currentWidget() is not self.panel:
+            self.right_stack.setCurrentWidget(self.panel)
+            if getattr(self, "_fields_sizes", None):
+                self.map_splitter.setSizes(self._fields_sizes)
+        self.fields_bar.set_mode("fields")
 
     # (str mode)
     # shows the tab of a mode ("trends"), opening it the first

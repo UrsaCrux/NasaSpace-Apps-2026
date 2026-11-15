@@ -1,9 +1,10 @@
-"""Status panel: a wide card over the right part of the map with how one
-field is now. Top: field chooser, period (7 / 14 / 30 days) and close.
+"""Status panel: the right column of the map tab while "Status" is chosen,
+with how one field is now. Top: field chooser and period (7 / 14 / 30 days).
 Below, scrolling: the "today" tiles, then the Weather, Growth and Soil
 sections (table left, chart right, alerts under them).
 
-Clicking another field on the map shows that field. Uses the map only
+Clicking another field on the map shows that field; choosing one in the
+list also moves the map to it. Uses the map only
 through MapView (clicked, layer_hovered) and the fields through
 FieldsManager. Every text comes from fieldshift/i18n/<language>.json.
 """
@@ -15,32 +16,25 @@ from fieldshift.status import PERIODS, status_report
 from fieldshift.ui.analysis_widgets import format_date
 from fieldshift.ui.status_widgets import SectionCard, SummaryTile
 
-# share of the map width the panel takes, and its smallest width (pixels)
-WIDTH_SHARE = 0.56
-MIN_WIDTH_PX = 560
-# gap to the map edges (pixels)
-MARGIN_PX = 8
+# smallest width of the panel (pixels)
+MIN_WIDTH_PX = 480
 
 _STYLE = """
-QFrame#statusPanel { background: rgba(244, 246, 244, 245); border: 1px solid #9aa39a;
-                     border-radius: 10px; }
+QFrame#statusPanel { background: #f4f6f4; }
 QScrollArea, QWidget#statusContent { background: transparent; border: none; }
 QPushButton#period { border: 1px solid #9aa39a; padding: 3px 10px; background: white; }
 QPushButton#period:checked { background: #00796b; color: white; border-color: #00796b; }
-QPushButton#closeStatus { border: none; font-size: 16px; padding: 2px 6px; }
-QPushButton#closeStatus:hover { background: #e0e0e0; border-radius: 4px; }
 QLabel#exampleBanner { background: #fff8e1; border: 1px solid #ffe082; border-radius: 4px;
                        padding: 4px 8px; color: #6d4c00; }
 """
 
 
-# the panel. it starts hidden; open(layer_id) shows a field
+# the panel. open(layer_id) shows a field
 class StatusPanel(QtWidgets.QFrame):
 
-    # (MapView view, FieldsManager fields)
-    # puts the panel over view.widget(), hidden
-    def __init__(self, view, fields):
-        super().__init__(view.widget())
+    # (MapView view, FieldsManager fields, QWidget parent = None)
+    def __init__(self, view, fields, parent=None):
+        super().__init__(parent)
         self.view = view
         self.fields = fields
         self.layer_id = None           # field shown
@@ -58,7 +52,7 @@ class StatusPanel(QtWidgets.QFrame):
         self.field_box = QtWidgets.QComboBox()
         self.field_box.setMinimumWidth(160)
         self.field_box.setToolTip(tr("status.field_tooltip"))
-        self.field_box.activated.connect(lambda i: self.open(self.field_box.itemData(i)))
+        self.field_box.activated.connect(self._on_field_chosen)
         self.period_buttons = {}
         periods = QtWidgets.QHBoxLayout()
         periods.setSpacing(0)
@@ -73,17 +67,12 @@ class StatusPanel(QtWidgets.QFrame):
             group.addButton(button)
             periods.addWidget(button)
             self.period_buttons[days] = button
-        close = QtWidgets.QPushButton("✕")
-        close.setObjectName("closeStatus")
-        close.setToolTip(tr("status.close"))
-        close.clicked.connect(self.hide)
         header = QtWidgets.QHBoxLayout()
         header.addWidget(title)
         header.addSpacing(8)
         header.addWidget(self.field_box, 1)
         header.addSpacing(8)
         header.addLayout(periods)
-        header.addWidget(close)
 
         self.info_label = QtWidgets.QLabel()
         self.info_label.setStyleSheet("color: #666; font-size: 11px;")
@@ -108,25 +97,22 @@ class StatusPanel(QtWidgets.QFrame):
         layout.addWidget(self.info_label)
         layout.addWidget(self.example_label)
         layout.addWidget(self.scroll, 1)
-        self.hide()
+        self.setMinimumWidth(MIN_WIDTH_PX)
 
-        view.widget().installEventFilter(self)
         view.layer_hovered.connect(self._on_hover)
         view.clicked.connect(self._on_map_click)
         fields.fields_changed.connect(self._on_fields_changed)
 
     # (str layer_id)
-    # shows the panel with that field (the first one when None). returns
-    # True when a field is shown
+    # shows that field (the first one when None). returns True when a field
+    # is shown
     def open(self, layer_id=None):
         ids = self.fields.layer_ids()
         if not ids:
-            self.hide()
             return False
         self.layer_id = layer_id if layer_id in ids else ids[0]
         self._fill_fields()
         self.refresh()
-        self._place()
         return True
 
     # (int days)
@@ -197,6 +183,11 @@ class StatusPanel(QtWidgets.QFrame):
         self.field_box.setCurrentIndex(max(0, self.field_box.findData(self.layer_id)))
         self.field_box.blockSignals(False)
 
+    def _on_field_chosen(self, index):
+        layer_id = self.field_box.itemData(index)
+        self.open(layer_id)
+        self.fields.zoom_to(layer_id)
+
     def _on_hover(self, layer_id, lon, lat):
         self._hovered = layer_id if self.fields.is_field(layer_id) else None
 
@@ -211,18 +202,3 @@ class StatusPanel(QtWidgets.QFrame):
             self._fill_fields()
         else:
             self.open(None)            # the field shown was deleted
-
-    def _place(self):
-        parent = self.parentWidget()
-        width = min(parent.width() - 2 * MARGIN_PX,
-                    max(MIN_WIDTH_PX, int(parent.width() * WIDTH_SHARE)))
-        self.setGeometry(parent.width() - width - MARGIN_PX, MARGIN_PX, width,
-                         parent.height() - 2 * MARGIN_PX)
-        self.show()
-        self.raise_()
-
-    def eventFilter(self, watched, event):
-        if (watched is self.parentWidget() and event.type() == QtCore.QEvent.Type.Resize
-                and self.isVisible()):
-            self._place()
-        return False

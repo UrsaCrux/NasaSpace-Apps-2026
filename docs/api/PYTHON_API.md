@@ -4603,7 +4603,7 @@ the menu for this field; each action runs after the menu has closed
 class FieldsBar(QtWidgets.QFrame)
 ```
 
-- **Line:** 39
+- **Line:** 53
 
 bar placed under the map: draws new fields and exports the checked ones (all of them when none is checked)
 
@@ -4616,17 +4616,33 @@ def __init__(self, view, fields, parent=None)
 ```
 
 - **Arguments:** `(MapView view, FieldsManager fields, QWidget parent = None)`
-- **Line:** 43
+- **Line:** 57
 
 builds the bar and listens to the drawing events of the view
+
+#### `FieldsBar.set_mode`
+
+```python
+def set_mode(self, mode)
+```
+
+- **Arguments:** `(str mode)`
+- **Line:** 121
+
+marks "My fields" ("fields") or "Status" ("status") as the one shown
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
-| `BAR_STYLE` | look of the bar and of its main button | 16 |
-| `FieldsBar.analyze_requested` | emitted with no arguments when the user clicks "Analyze…" | 58 |
-| `FieldsBar.status_requested` | emitted with no arguments when the user clicks "Status" / "Trends" | 63 |
+| `BAR_STYLE` | look of the bar and of its main button | 18 |
+| `DRAW_STYLE` | the floating "Draw field" button | 41 |
+| `DRAW_MARGIN_PX` | distance (pixels) of the "Draw field" button from the bottom-right corner | 48 |
+| `FieldsBar.draw_button` | over the bottom-right corner of the map | 65 |
+| `FieldsBar.mode` | what the right column shows: "My fields" or "Status" (one at a time) | 73 |
+| `FieldsBar.fields_requested` | emitted with no arguments when the user clicks "My fields" | 75 |
+| `FieldsBar.analyze_requested` | emitted with no arguments when the user clicks "Analyze…" | 85 |
+| `FieldsBar.status_requested` | emitted with no arguments when the user clicks "Status" / "Trends" | 90 |
 
 ## `fieldshift/ui/fields_data.py`
 
@@ -4754,9 +4770,9 @@ shows the card for this field (None or a non-field layer hides it)
 class MainWindow(QtWidgets.QMainWindow)
 ```
 
-- **Line:** 30
+- **Line:** 33
 
-top-level window, made of tabs. The first tab ("Map", always there) holds the MapView with the FieldsBar under it (left) and the SidePanel (right), which share one FieldsManager. "Analyze…" adds one closable tab per analysis result
+top-level window, made of tabs. The first tab ("Map", always there) holds the MapView with the FieldsBar under it (left) and the SidePanel (right), which share one FieldsManager. The bar switches the right column between "My fields" and "Status". "Analyze…" adds one closable tab per analysis result
 
 ### Functions
 
@@ -4767,7 +4783,7 @@ def __init__(self, view, parent=None, basemaps=None)
 ```
 
 - **Arguments:** `(MapView view, QWidget parent = None, dict basemaps = None)`
-- **Line:** 35
+- **Line:** 38
 
 builds the splitter layout around an already created map view. basemaps maps "satellite" / "streets" to layer ids for the background switch
 
@@ -4778,7 +4794,7 @@ def analyze(self, layer_id=None)
 ```
 
 - **Arguments:** `(str layer_id = None)`
-- **Line:** 102
+- **Line:** 110
 
 asks for a field (layer_id first, if given) and analyses, runs them with a progress window and opens one tab per result. returns the new tabs (empty if cancelled)
 
@@ -4789,7 +4805,7 @@ def open_results(self, field, results)
 ```
 
 - **Arguments:** `(Field field, list results)`
-- **Line:** 117
+- **Line:** 125
 
 adds a tab for each AnalysisResult and shows the first one; returns the tabs
 
@@ -4800,9 +4816,20 @@ def open_status(self, layer_id=None)
 ```
 
 - **Arguments:** `(str layer_id = None)`
-- **Line:** 131
+- **Line:** 139
 
 shows the map with the Status panel of a field (layer_id, else the one the Analyze dialog would start with). returns True when it opened
+
+#### `MainWindow.show_fields`
+
+```python
+def show_fields(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 158
+
+shows the map with the "My fields" list in the right column
 
 #### `MainWindow.open_mode`
 
@@ -4811,7 +4838,7 @@ def open_mode(self, mode)
 ```
 
 - **Arguments:** `(str mode)`
-- **Line:** 140
+- **Line:** 169
 
 shows the tab of a mode ("trends"), opening it the first time. for now the tab only says the mode is coming soon. returns the tab
 
@@ -4820,15 +4847,17 @@ shows the tab of a mode ("trends"), opening it the first time. for now the tab o
 | Name | Description | Line |
 |------|-------------|------|
 | `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 22 |
-| `MainWindow.scale_bar` | scale bar over the bottom-left corner of the map | 49 |
-| `MainWindow.map_controls` | zoom, "my fields" and background buttons over the top-left corner | 51 |
-| `MainWindow.map_search` | place search: opens from the magnifier of the controls | 53 |
-| `MainWindow.hover_card` | card with the field under the mouse, and its outline highlighted | 55 |
-| `MainWindow.field_menu` | right click on a field: edit, analyze, zoom, check, delete | 57 |
-| `MainWindow.weather_card` | weather of the zone (now and 7 days) over the top-right corner | 59 |
-| `MainWindow.status_panel` | Status of one field over the right part of the map (hidden at start) | 61 |
-| `MainWindow.map_splitter` | the map tab; analysis results open as more tabs next to it | 74 |
-| `MainWindow.attribution_label` | credit of the visible layers (basemap licences require it) | 91 |
+| `STATUS_SHARE` | share of the map tab the right column takes while it shows Status | 25 |
+| `MainWindow.scale_bar` | scale bar over the bottom-left corner of the map | 52 |
+| `MainWindow.map_controls` | zoom, "my fields" and background buttons over the top-left corner | 54 |
+| `MainWindow.map_search` | place search: opens from the magnifier of the controls | 56 |
+| `MainWindow.hover_card` | card with the field under the mouse, and its outline highlighted | 58 |
+| `MainWindow.field_menu` | right click on a field: edit, analyze, zoom, check, delete | 60 |
+| `MainWindow.weather_card` | weather of the zone (now and 7 days) over the top-right corner | 62 |
+| `MainWindow.status_panel` | Status of one field over the right part of the map (hidden at start) | 64 |
+| `MainWindow.right_stack` | right column: "My fields" (SidePanel) or "Status", as the bar says | 66 |
+| `MainWindow.map_splitter` | the map tab; analysis results open as more tabs next to it | 81 |
+| `MainWindow.attribution_label` | credit of the visible layers (basemap licences require it) | 99 |
 
 ## `fieldshift/ui/map_controls.py`
 
@@ -5207,22 +5236,20 @@ asks for the new details of a field and applies them
 class StatusPanel(QtWidgets.QFrame)
 ```
 
-- **Line:** 38
+- **Line:** 33
 
-the panel. it starts hidden; open(layer_id) shows a field
+the panel. open(layer_id) shows a field
 
 ### Functions
 
 #### `StatusPanel.__init__`
 
 ```python
-def __init__(self, view, fields)
+def __init__(self, view, fields, parent=None)
 ```
 
-- **Arguments:** `(MapView view, FieldsManager fields)`
-- **Line:** 42
-
-puts the panel over view.widget(), hidden
+- **Arguments:** `(MapView view, FieldsManager fields, QWidget parent = None)`
+- **Line:** 36
 
 #### `StatusPanel.open`
 
@@ -5231,9 +5258,9 @@ def open(self, layer_id=None)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 121
+- **Line:** 109
 
-shows the panel with that field (the first one when None). returns True when a field is shown
+shows that field (the first one when None). returns True when a field is shown
 
 #### `StatusPanel.set_days`
 
@@ -5242,7 +5269,7 @@ def set_days(self, days)
 ```
 
 - **Arguments:** `(int days)`
-- **Line:** 134
+- **Line:** 120
 
 shows the last days (one of PERIODS)
 
@@ -5253,7 +5280,7 @@ def refresh(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 142
+- **Line:** 128
 
 builds the report of the field and period shown again
 
@@ -5264,7 +5291,7 @@ def show_row(self, section_id, row_key)
 ```
 
 - **Arguments:** `(str section_id, str row_key)`
-- **Line:** 182
+- **Line:** 168
 
 scrolls to a section and shows that row in its chart
 
@@ -5272,9 +5299,8 @@ scrolls to a section and shows that row in its chart
 
 | Name | Description | Line |
 |------|-------------|------|
-| `WIDTH_SHARE` | share of the map width the panel takes, and its smallest width (pixels) | 19 |
-| `MARGIN_PX` | gap to the map edges (pixels) | 22 |
-| `StatusPanel.suggestion_requested` | emitted with (str layer_id) when an alert's "See suggestion" is clicked | 52 |
+| `MIN_WIDTH_PX` | smallest width of the panel (pixels) | 20 |
+| `StatusPanel.suggestion_requested` | emitted with (str layer_id) when an alert's "See suggestion" is clicked | 46 |
 
 ## `fieldshift/ui/status_widgets.py`
 
