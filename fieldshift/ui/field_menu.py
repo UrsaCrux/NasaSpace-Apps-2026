@@ -27,6 +27,7 @@ class FieldMenu:
         checked = fields.is_selected(layer_id)
         actions = (
             ("edit", tr("menu.edit"), lambda: panel.edit_field(layer_id)),
+            ("status", tr("menu.status"), lambda: self.window.open_status(layer_id)),
             ("analyze", tr("menu.analyze"), lambda: self.window.analyze(layer_id)),
             ("zoom", tr("menu.zoom"), lambda: fields.zoom_to(layer_id)),
             ("check", tr("menu.uncheck") if checked else tr("menu.check"),

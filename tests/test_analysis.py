@@ -105,13 +105,18 @@ class _WithFields(unittest.TestCase):
 
 
 class AnalyzeDialogTest(_WithFields):
-    # Status / Trends open one placeholder tab each, reused on a second click
-    def test_status_and_trends_tabs(self):
-        first = self.window.open_mode("status")
-        self.assertIs(self.window.open_mode("status"), first)
-        before = self.window.tabs.count()
-        self.window.open_mode("trends")
-        self.assertEqual(self.window.tabs.count(), before + 1)
+    # Status opens its panel over the map; Trends one tab, reused on a second click
+    def test_status_panel_and_trends_tab(self):
+        from fieldshift.status import PERIODS
+        panel = self.window.status_panel
+        self.assertTrue(self.window.open_status(self.b))
+        self.assertEqual(panel.layer_id, self.b)
+        self.assertEqual(set(panel.sections), {"weather", "growth", "soil"})
+        panel.set_days(PERIODS[-1])
+        self.assertEqual(len(panel.report.section("weather").rows[0].values), PERIODS[-1])
+        panel.show_row("soil", "soil_moisture")
+        first = self.window.open_mode("trends")
+        self.assertIs(self.window.open_mode("trends"), first)
 
     def dialog(self, layer_id=None):
         from fieldshift.ui.analyze_dialog import AnalyzeDialog
