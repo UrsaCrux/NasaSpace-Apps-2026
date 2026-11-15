@@ -182,6 +182,22 @@ class LoadingTest(_DialogCase):
         self.assertEqual(dialog.row_state("ph"), "missing")
 
 
+class DialogSizeTest(_DialogCase):
+    def test_scrolls_and_opens_as_tall_as_the_window_minus_a_margin(self):
+        from fieldshift.map import create_map_view
+        from fieldshift.ui import MainWindow
+        from fieldshift.ui.field_dialog import WINDOW_MARGIN_PX
+        with mock.patch.dict(os.environ, {"FIELDSHIFT_FIELDS_DIR": self._tmp.name}):
+            window = MainWindow(create_map_view("placeholder"))
+        window.resize(1200, 760)
+        dialog = self.dialog(vertices=SQUARE, parent=window.fields_bar)
+        self.assertEqual(dialog.height(), 760 - WINDOW_MARGIN_PX)
+        self.assertIs(dialog.scroll_area.widget().parent(), dialog.scroll_area.viewport())
+        # Save / Cancel are outside the scrolled part: always visible
+        self.assertFalse(dialog.scroll_area.widget().isAncestorOf(dialog.save_button))
+        self.assertTrue(dialog.scroll_area.widget().isAncestorOf(dialog.name_edit))
+
+
 class CropSearchTest(_DialogCase):
     def test_suggestions_follow_the_language(self):
         from fieldshift.ui.field_dialog import CropSearch

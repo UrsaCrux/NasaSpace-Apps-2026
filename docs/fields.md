@@ -78,6 +78,10 @@ Opened after drawing a field (and by **Edit**). It asks for:
 Save stays disabled until the name and crop are valid **and** every data
 source has answered or run out of time.
 
+The dialog opens as tall as the main window minus a margin
+(`WINDOW_MARGIN_PX`, never taller than the screen); everything but Save /
+Cancel scrolls.
+
 ## Zone data: one list
 
 The data of the zone are described by `DATA_FIELDS` in

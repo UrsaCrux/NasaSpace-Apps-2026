@@ -3862,7 +3862,7 @@ shows a message with an OK button
 class ZoneDataLoader(QtCore.QObject)
 ```
 
-- **Line:** 77
+- **Line:** 81
 
 runs zone_data groups in background threads and reports each result on the GUI thread through group_done(name, values or None, error text)
 
@@ -3872,7 +3872,7 @@ runs zone_data groups in background threads and reports each result on the GUI t
 class FieldDialog(CenteredDialog)
 ```
 
-- **Line:** 120
+- **Line:** 124
 
 dialog with the details of a field. needs a name (required, unique) and a crop (required: a catalogue variety or an EcoCrop plant, whose picture and description appear under the search); colour and zone data are optional. with field= it edits that saved field (its own name is not a duplicate), otherwise it asks for a new one drawn with vertices=. zone data that has no value yet is loaded from the data sources. For tests: fetch= replaces zone_data.fetch_group, crop_info_fetch= the EcoCrop crop download and load_ecocrop= the EcoCrop list download
 
@@ -3885,7 +3885,7 @@ def format_value(spec, value)
 ```
 
 - **Arguments:** `(DataField spec, any value)`
-- **Line:** 58
+- **Line:** 62
 
 text of a datum's value in the current language ("Clay", "6.5", "Yes"); "—" when there is no value
 
@@ -3896,7 +3896,7 @@ def data_label(key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 71
+- **Line:** 75
 
 translated name of a datum ("Soil texture")
 
@@ -3907,7 +3907,7 @@ def __init__(self, area, fetch=None, parent=None)
 ```
 
 - **Arguments:** `(Area area, callable fetch = zone_data.fetch_group, QObject parent = None)`
-- **Line:** 81
+- **Line:** 85
 
 #### `ZoneDataLoader.start`
 
@@ -3916,7 +3916,7 @@ def start(self, groups)
 ```
 
 - **Arguments:** `(list groups)`
-- **Line:** 89
+- **Line:** 93
 
 starts one daemon thread per group
 
@@ -3927,7 +3927,7 @@ def cancel(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 96
+- **Line:** 100
 
 results arriving after this are dropped (the dialog was closed)
 
@@ -3937,9 +3937,20 @@ results arriving after this are dropped (the dialog was closed)
 def __init__(self, store, vertices=None, field=None, parent=None, fetch=None, crop_info_fetch=None, load_ecocrop=None)
 ```
 
-- **Line:** 126
+- **Line:** 130
 
 (FieldStore store, list vertices = None, Field field = None, QWidget parent = None, callable fetch = None, callable crop_info_fetch = None, callable load_ecocrop = None) builds the dialog and starts loading the zone data
+
+#### `FieldDialog.default_height`
+
+```python
+def default_height(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 246
+
+height the dialog opens with: the main window's height minus WINDOW_MARGIN_PX, never more than the screen's free height (the screen's when there is no main window)
 
 #### `FieldDialog.name`
 
@@ -3948,7 +3959,7 @@ def name(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 226
+- **Line:** 259
 
 the name typed, without surrounding spaces
 
@@ -3959,7 +3970,7 @@ def color(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 231
+- **Line:** 264
 
 the chosen colour as "#rrggbb" (grey when none was chosen)
 
@@ -3970,7 +3981,7 @@ def crop(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 236
+- **Line:** 269
 
 id of the chosen crop variety, or None
 
@@ -3981,7 +3992,7 @@ def is_loading(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 241
+- **Line:** 274
 
 True while some data source has not answered yet
 
@@ -3992,7 +4003,7 @@ def data(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 247
+- **Line:** 280
 
 the data: {key: {"value", "source"[, "prefilled"]}} for DATA_FIELDS, plus CROP_KEY
 
@@ -4003,7 +4014,7 @@ def is_modified(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 269
+- **Line:** 302
 
 True when the user changed this datum (it is not the loaded one)
 
@@ -4014,7 +4025,7 @@ def row_state(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 274
+- **Line:** 307
 
 state of a row: loading, prefilled, edited, missing or farmer
 
@@ -4025,7 +4036,7 @@ def set_value(self, key, value)
 ```
 
 - **Arguments:** `(str key, any value)`
-- **Line:** 279
+- **Line:** 312
 
 sets a datum as if the user had typed it (marks it edited)
 
@@ -4036,7 +4047,7 @@ def reset_value(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 286
+- **Line:** 319
 
 puts the loaded value back and marks the datum as not edited
 
@@ -4046,7 +4057,7 @@ puts the loaded value back and marks the datum as not edited
 def accept(self)
 ```
 
-- **Line:** 292
+- **Line:** 325
 
 refuses to close with Save while something is invalid or loading
 
@@ -4056,7 +4067,7 @@ refuses to close with Save while something is invalid or loading
 def done(self, result)
 ```
 
-- **Line:** 298
+- **Line:** 331
 
 stops the threads' results from reaching a closed dialog
 
@@ -4066,8 +4077,9 @@ stops the threads' results from reaching a closed dialog
 |------|-------------|------|
 | `SPINNER_FRAMES` | frames of the loading animation, and ms between frames | 39 |
 | `STYLE_LOADING` | looks of a row in each state | 42 |
-| `OFFLINE_ENV` | set to "1" to never contact the data sources (tests, no internet) | 52 |
-| `FieldDialog.tooltip_widgets` | every title and button has a tooltip from i18n/tooltips/tooltips.json | 158 |
+| `WINDOW_MARGIN_PX` | the dialog opens this many pixels shorter than the main window (and never taller than the screen); its content scrolls when it does not fit | 53 |
+| `OFFLINE_ENV` | set to "1" to never contact the data sources (tests, no internet) | 56 |
+| `FieldDialog.tooltip_widgets` | every title and button has a tooltip from i18n/tooltips/tooltips.json | 162 |
 
 ## `fieldshift/ui/field_list.py`
 

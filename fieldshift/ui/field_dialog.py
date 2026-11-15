@@ -48,6 +48,10 @@ STATUS_STYLE = {
     "missing": "color: #c06000; font-weight: bold;",
     "farmer": "color: #777; font-style: italic;",
 }
+# the dialog opens this many pixels shorter than the main window (and never
+# taller than the screen); its content scrolls when it does not fit
+WINDOW_MARGIN_PX = 60
+
 # set to "1" to never contact the data sources (tests, no internet)
 OFFLINE_ENV = "FIELDSHIFT_OFFLINE"
 
@@ -200,10 +204,24 @@ class FieldDialog(CenteredDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
 
+        # everything but the buttons scrolls; Save / Cancel stay visible
+        content = QtWidgets.QWidget()
+        inner = QtWidgets.QVBoxLayout(content)
+        inner.addLayout(top)
+        inner.addWidget(data_box)
+        inner.addStretch(1)
+        self.scroll_area = QtWidgets.QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        self.scroll_area.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll_area.setWidget(content)
         layout = QtWidgets.QVBoxLayout(self)
-        layout.addLayout(top)
-        layout.addWidget(data_box)
+        layout.addWidget(self.scroll_area, 1)
         layout.addWidget(buttons)
+        content_width = content.sizeHint().width() + \
+            self.scroll_area.verticalScrollBar().sizeHint().width() + 24
+        self.resize(max(self.minimumWidth(), content_width), self.default_height())
 
         self.name_edit.textChanged.connect(self._validate)
         self.crop_search.selection_changed.connect(self._validate)
@@ -220,6 +238,21 @@ class FieldDialog(CenteredDialog):
         self._started = 0.0
         self._start_loading(vertices, fetch)
         self._validate()
+
+    # ()
+    # height the dialog opens with: the main window's height minus
+    # WINDOW_MARGIN_PX, never more than the screen's free height (the
+    # screen's when there is no main window)
+    def default_height(self):
+        parent = self.parentWidget()
+        screen = (parent.screen() if parent is not None else None) or \
+            QtWidgets.QApplication.primaryScreen()
+        available = screen.availableGeometry().height() if screen is not None else 800
+        if parent is not None:
+            wanted = parent.window().height() - WINDOW_MARGIN_PX
+        else:
+            wanted = available - WINDOW_MARGIN_PX
+        return max(300, min(wanted, available - WINDOW_MARGIN_PX // 2))
 
     # ()
     # the name typed, without surrounding spaces
