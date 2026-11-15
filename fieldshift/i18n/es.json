@@ -278,5 +278,6 @@
   "fields.crop_info_loading": "Cargando información del cultivo",
   "fields.crop_info_missing": "No hay información de este cultivo en FAO EcoCrop (o no hay conexión).",
   "fields.crop_info_source": "Fuente: <a href=\"{url}\">FAO EcoCrop</a>",
-  "fields.crop_info_no_image": "sin imagen"
+  "fields.crop_info_no_image": "sin imagen",
+  "weather.title_in": "Clima en {place}"
 }

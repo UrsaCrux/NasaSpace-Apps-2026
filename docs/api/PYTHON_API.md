@@ -422,7 +422,7 @@ list of every date in the period
 class Place
 ```
 
-- **Line:** 44
+- **Line:** 49
 
 a result: name as the service writes it ("Melipilla, Región Metropolitana…"), position in degrees, bounding box (xmin, ymin, xmax, ymax) to fit the map to it, and the kind of place ("city", "house", "road"...)
 
@@ -435,9 +435,31 @@ def parse_places(items)
 ```
 
 - **Arguments:** `(list items)`
-- **Line:** 54
+- **Line:** 59
 
 Places from a Nominatim jsonv2 answer; items it cannot read are skipped
+
+#### `parse_zone`
+
+```python
+def parse_zone(response)
+```
+
+- **Arguments:** `(dict response)`
+- **Line:** 97
+
+name of the zone in a reverse answer: its city, town, village... or None
+
+#### `zone_name`
+
+```python
+def zone_name(lon, lat)
+```
+
+- **Arguments:** `(float lon, float lat)`
+- **Line:** 108
+
+name of the town or zone around a point ("Melipilla"), or None when the service knows none (open sea). cached per ~10 km cell; raises when the service cannot be reached
 
 #### `search`
 
@@ -446,7 +468,7 @@ def search(text)
 ```
 
 - **Arguments:** `(str text)`
-- **Line:** 87
+- **Line:** 123
 
 up to LIMIT places matching text, Chile first; [] when nothing is found. raises when the service cannot be reached
 
@@ -457,7 +479,7 @@ def clear_cache()
 ```
 
 - **Arguments:** `()`
-- **Line:** 105
+- **Line:** 141
 
 forgets the cached searches (tests)
 
@@ -465,11 +487,13 @@ forgets the cached searches (tests)
 
 | Name | Description | Line |
 |------|-------------|------|
-| `ATTRIBUTION` | credit required by the ODbL licence of the data | 25 |
-| `USER_AGENT` | identifies this application to the service (no personal data) | 27 |
-| `LIMIT` | most results asked for | 29 |
-| `HOME_COUNTRY` | country searched first (ISO code); None searches the whole world at once | 31 |
-| `MIN_INTERVAL_S` | shortest time between two requests, seconds (the service allows one per second) | 33 |
+| `ZONE_KEYS` | address parts tried, in order, to name the zone around a point | 26 |
+| `ZONE_CELL_DEG` | points in the same cell of this size (degrees, ~10 km) share a zone name | 28 |
+| `ATTRIBUTION` | credit required by the ODbL licence of the data | 30 |
+| `USER_AGENT` | identifies this application to the service (no personal data) | 32 |
+| `LIMIT` | most results asked for | 34 |
+| `HOME_COUNTRY` | country searched first (ISO code); None searches the whole world at once | 36 |
+| `MIN_INTERVAL_S` | shortest time between two requests, seconds (the service allows one per second) | 38 |
 
 ## `fieldshift/api/models.py`
 
@@ -4340,7 +4364,7 @@ asks for the new details of a field and applies them
 class WeatherCard(QtWidgets.QFrame)
 ```
 
-- **Line:** 43
+- **Line:** 44
 
 the floating weather card. fetch(lon, lat) -> Forecast replaces the real service (tests); without it and with FIELDSHIFT_OFFLINE=1 the card stays hidden
 
@@ -4353,20 +4377,20 @@ def weekday_name(iso_date)
 ```
 
 - **Arguments:** `(str iso_date)`
-- **Line:** 37
+- **Line:** 38
 
 short weekday name of "YYYY-MM-DD" in the current language ("Mon")
 
 #### `WeatherCard.__init__`
 
 ```python
-def __init__(self, view, fetch=None)
+def __init__(self, view, fetch=None, zone_name=None)
 ```
 
-- **Arguments:** `(MapView view, callable fetch = None)`
-- **Line:** 50
+- **Arguments:** `(MapView view, callable fetch = None, callable zone_name = None)`
+- **Line:** 53
 
-puts the card over view.widget() and follows the view
+puts the card over view.widget() and follows the view. zone_name(lon, lat) -> str names the zone for the title (default: OpenStreetMap; with a test fetch and no zone_name the title stays generic)
 
 #### `WeatherCard.reload`
 
@@ -4375,7 +4399,7 @@ def reload(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 91
+- **Line:** 95
 
 loads the forecast of the centre of the map now, unless it is the zone already shown. returns True when a load started
 
@@ -4383,7 +4407,7 @@ loads the forecast of the centre of the map now, unless it is the zone already s
 
 | Name | Description | Line |
 |------|-------------|------|
-| `MARGIN_PX` | distance (pixels) from the top-right corner of the map | 18 |
-| `SETTLE_MS` | wait this long (ms) after the last map movement before loading | 20 |
-| `OFFLINE_ENV` | when set to "1" the card never contacts the service (tests) | 22 |
-| `SKY_ICONS` | icon of each sky kind of the forecast | 25 |
+| `MARGIN_PX` | distance (pixels) from the top-right corner of the map | 19 |
+| `SETTLE_MS` | wait this long (ms) after the last map movement before loading | 21 |
+| `OFFLINE_ENV` | when set to "1" the card never contacts the service (tests) | 23 |
+| `SKY_ICONS` | icon of each sky kind of the forecast | 26 |

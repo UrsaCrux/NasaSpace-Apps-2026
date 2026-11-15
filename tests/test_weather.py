@@ -100,6 +100,24 @@ class WeatherCardTest(unittest.TestCase):
         # top-right corner of the map
         self.assertEqual(self.card.x() + self.card.width(), 900 - 12)
 
+    def test_title_names_the_zone(self):
+        from fieldshift.ui.weather_card import WeatherCard
+        names = {"value": "Melipilla"}
+
+        def zone(lon, lat):
+            if names["value"] is None:
+                raise OSError("no network")
+            return names["value"]
+        self.card = WeatherCard(self.view, fetch=lambda lon, lat: self.answer, zone_name=zone)
+        self.view.set_center(-71.02, -33.73)
+        self.load()
+        self.assertEqual(self.card.title_label.text(), "<b>Weather in Melipilla</b>")
+        names["value"] = None                                    # name service down
+        self.view.set_center(-72.50, -36.60)
+        self.load()
+        self.assertEqual(self.card.title_label.text(), "<b>Weather in this zone</b>")
+        self.assertIn("16 °C", self.card.now_label.text())      # the weather still shows
+
     def test_reloads_only_in_another_zone(self):
         self.view.set_center(-71.02, -33.73)
         self.load()

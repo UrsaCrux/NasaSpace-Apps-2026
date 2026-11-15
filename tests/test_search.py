@@ -61,6 +61,16 @@ class GeocodeTest(unittest.TestCase):
             geocode.search("Melipilla")
         self.assertEqual(calls, ["cl"])
 
+    def test_zone_name_from_a_reverse_answer(self):
+        self.assertEqual(geocode.parse_zone({"address": {"county": "X", "town": "Melipilla"}}),
+                         "Melipilla")
+        self.assertIsNone(geocode.parse_zone({"error": "Unable to geocode"}))
+        answer = {"address": {"city": "Santiago", "state": "RM"}}
+        with mock.patch.object(geocode, "_get", return_value=answer) as get:
+            self.assertEqual(geocode.zone_name(-70.62, -33.42), "Santiago")
+            self.assertEqual(geocode.zone_name(-70.63, -33.43), "Santiago")   # same cell: cached
+        self.assertEqual(get.call_count, 1)
+
     def test_requests_are_spaced_and_identified(self):
         sleeps, sent = [], {}
 

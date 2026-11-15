@@ -11,6 +11,7 @@ import threading
 from datetime import date
 
 from fieldshift.api import forecast as forecast_api
+from fieldshift.api import geocode
 from fieldshift.i18n import tr
 from fieldshift.qt import QtCore, QtWidgets
 
@@ -43,13 +44,16 @@ def weekday_name(iso_date):
 class WeatherCard(QtWidgets.QFrame):
 
     # internal: (int request number, Forecast or None), from the loader thread
-    _loaded = QtCore.pyqtSignal(int, object)
+    _loaded = QtCore.pyqtSignal(int, object, object)
 
-    # (MapView view, callable fetch = None)
-    # puts the card over view.widget() and follows the view
-    def __init__(self, view, fetch=None):
+    # (MapView view, callable fetch = None, callable zone_name = None)
+    # puts the card over view.widget() and follows the view. zone_name(lon,
+    # lat) -> str names the zone for the title (default: OpenStreetMap; with
+    # a test fetch and no zone_name the title stays generic)
+    def __init__(self, view, fetch=None, zone_name=None):
         super().__init__(view.widget())
         self.view = view
+        self._zone_name = zone_name or (geocode.zone_name if fetch is None else None)
         self._fetch = fetch or forecast_api.get_forecast
         self._enabled = fetch is not None or os.environ.get(OFFLINE_ENV) != "1"
         self._request = 0            # number of the newest request
@@ -109,12 +113,20 @@ class WeatherCard(QtWidgets.QFrame):
             result = self._fetch(lon, lat)
         except Exception:
             result = None
-        self._loaded.emit(request, result)
+        name = None
+        if result is not None and self._zone_name is not None:
+            try:
+                name = self._zone_name(lon, lat)
+            except Exception:
+                name = None                     # no name: generic title
+        self._loaded.emit(request, result, name)
 
-    def _on_loaded(self, request, result):
+    def _on_loaded(self, request, result, name):
         if request != self._request:
             return                              # the map moved on: stale answer
         self.forecast = result
+        title = tr("weather.title_in", place=name) if name else tr("weather.title")
+        self.title_label.setText(f"<b>{title}</b>")
         if result is None:
             self._cell = None                   # try again on the next movement
             self._show_message(tr("weather.unavailable"))
