@@ -117,6 +117,17 @@ class _ViewContract:
         lon, lat = clicked[0][1:]
         self.assertTrue(-70.70 <= lon <= -70.69 and -33.41 <= lat <= -33.40)
 
+    def test_marked_outlines(self):
+        layer_id = self.add_square_layer("field")
+        self.assertEqual(self.view.marked(), [])
+        other = [(-70.68, -33.40), (-70.67, -33.40), (-70.67, -33.41)]
+        self.view.set_marked([SQUARE, other])
+        self.assertEqual(self.view.marked(), [[tuple(v) for v in SQUARE], other])
+        self.view.set_marked([])
+        self.assertEqual(self.view.marked(), [])
+        self.view.set_marked([SQUARE])
+        self.view.remove_layer(layer_id)          # must not crash at exit
+
     def test_highlight(self):
         layer_id = self.add_square_layer("field")
         self.assertIsNone(self.view.highlighted())

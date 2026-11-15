@@ -77,6 +77,13 @@ class QgisMapView(MapView):
                                      self._on_right_click)
         self._hovered = None              # layer id under the mouse
         self._highlight_vertices = None
+        # outline of the checked fields; created first so the hover highlight
+        # is drawn on top of it
+        self._marked = []
+        self._marked_band = QgsRubberBand(canvas, Qgis.GeometryType.Polygon)
+        self._marked_band.setFillColor(QtGui.QColor(0, 229, 255, 30))
+        self._marked_band.setStrokeColor(QtGui.QColor("#00e5ff"))
+        self._marked_band.setWidth(3)
         self._highlight_band = QgsRubberBand(canvas, Qgis.GeometryType.Polygon)
         self._highlight_band.setFillColor(QtGui.QColor(255, 255, 255, 40))
         self._highlight_band.setStrokeColor(QtGui.QColor("#ffeb3b"))
@@ -294,6 +301,17 @@ class QgisMapView(MapView):
 
     def highlighted(self):
         return self._highlight_vertices
+
+    def set_marked(self, polygons):
+        self._marked = [[tuple(v) for v in polygon] for polygon in polygons or []]
+        self._marked_band.reset(Qgis.GeometryType.Polygon)
+        for polygon in self._marked:
+            # built from the vertices, never from layer features (see set_highlight)
+            ring = [self._to_map.transform(QgsPointXY(lon, lat)) for lon, lat in polygon]
+            self._marked_band.addGeometry(QgsGeometry.fromPolygonXY([ring + ring[:1]]))
+
+    def marked(self):
+        return [list(polygon) for polygon in self._marked]
 
     def zoom_by(self, factor):
         self._canvas.zoomByFactor(factor)

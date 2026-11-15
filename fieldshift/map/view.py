@@ -144,3 +144,16 @@ class MapView(ABC):
     @abstractmethod
     def highlighted(self):
         ...
+
+    # (list polygons)
+    # draws a thick outline around each (lon, lat) polygon of the list (the
+    # fields the user checked), under the hover highlight; [] removes them
+    @abstractmethod
+    def set_marked(self, polygons):
+        ...
+
+    # ()
+    # the polygons given to set_marked, as lists of (lon, lat) tuples
+    @abstractmethod
+    def marked(self):
+        ...

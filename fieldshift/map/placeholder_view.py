@@ -23,6 +23,7 @@ class PlaceholderMapView(MapView):
         self._ids = itertools.count(1)
         self._drawing = False
         self._highlight = None
+        self._marked = []
 
     def widget(self):
         if self._widget is None:
@@ -75,6 +76,12 @@ class PlaceholderMapView(MapView):
 
     def highlighted(self):
         return self._highlight
+
+    def set_marked(self, polygons):
+        self._marked = [[tuple(v) for v in polygon] for polygon in polygons or []]
+
+    def marked(self):
+        return [list(polygon) for polygon in self._marked]
 
     # (str layer_id, float lon = 0, float lat = 0)
     # reports a right click on a feature of this layer, as the real map would;

@@ -40,6 +40,7 @@ LayerSpec.raster("NDVI", "/path/ndvi.tif")
 | `start_polygon_drawing()` | Let the user draw a polygon (see below) |
 | `cancel_drawing()` | Stop the drawing in progress |
 | `is_drawing() -> bool` | A drawing is in progress |
+| `set_marked(polygons)` / `marked()` | Thick cyan outline around each (lon, lat) polygon (the checked fields), under the hover highlight |
 | `set_highlight(vertices)` / `highlighted()` | Bright outline around a (lon, lat) polygon over every layer; `None` removes it |
 | `zoom_by(factor)` | Zoom around the centre: visible width × factor (0.5 = twice as close) |
 | `meters_per_pixel() -> float` | Ground metres covered by one screen pixel at the centre of the view (`None` without a real map); used by the scale bar |

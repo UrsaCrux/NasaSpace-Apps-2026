@@ -45,6 +45,9 @@ class FieldsManager:
         self.selection_changed = Event()
         self._fields = {}          # layer id -> Field
         self._selected = set()     # layer ids of the fields the user checked
+        # the map outlines the checked fields
+        self.selection_changed.connect(self._show_marks)
+        self.fields_changed.connect(self._show_marks)
         for field in self.store.fields():
             try:
                 self._show(field)
@@ -177,6 +180,10 @@ class FieldsManager:
         names = None if layer_ids is None else [
             self._fields[i].name for i in layer_ids if i in self._fields]
         return self.store.export(path, names)
+
+    # outlines the checked fields on the map
+    def _show_marks(self):
+        self.view.set_marked([self._fields[i].vertices for i in self.selected()])
 
     def _show(self, field):
         fill, stroke = style_colors(field.color)

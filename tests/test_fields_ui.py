@@ -129,6 +129,19 @@ class FieldsManagerTest(_TempFields):
         self.assertEqual(self.fields.selected(), [b])
         self.assertEqual(len(changes), 3)
 
+    def test_checked_fields_are_outlined_on_the_map(self):
+        a = self.fields.add("A", SQUARE)
+        b = self.fields.add("B", [(-71.0, -33.7), (-70.99, -33.7), (-70.99, -33.71)])
+        self.assertEqual(self.view.marked(), [])
+        self.fields.set_selected(b, True)
+        self.assertEqual(self.view.marked(), [list(self.fields.field(b).vertices)])
+        self.fields.set_selected(a, True)
+        self.assertEqual(len(self.view.marked()), 2)
+        self.fields.remove(b)                       # deleted: no longer outlined
+        self.assertEqual(self.view.marked(), [list(self.fields.field(a).vertices)])
+        self.fields.set_selected(a, False)
+        self.assertEqual(self.view.marked(), [])
+
     def test_export_only_some(self):
         self.fields.add("A", SQUARE)
         b = self.fields.add("B", SQUARE)
