@@ -31,7 +31,7 @@
   "data.col_name": "Name",
   "data.col_created": "Created",
   "data.total": "{count} field(s) · {area} ha in total",
-  "header.title": "farmer-shit",
+  "header.title": "PACHI",
   "header.subtitle": "Program to adapt farmers with NASA data",
   "status.ready": "Ready",
   "status.cursor": "lon {lon}   lat {lat}",

@@ -10,7 +10,7 @@ from fieldshift.status import CHART_BARS, LEVEL_ALERT, LEVEL_OK, LEVEL_WATCH
 from fieldshift.ui.analysis_widgets import TextureTriangle
 
 # colour of each level
-LEVEL_COLORS = {LEVEL_OK: "#2e7d32", LEVEL_WATCH: "#ef8f00", LEVEL_ALERT: "#c62828"}
+LEVEL_COLORS = {LEVEL_OK: "#2e7d32", LEVEL_WATCH: "#ef8f00", LEVEL_ALERT: "#d65858"}
 # chart colours
 _LINE = QtGui.QColor("#2e7d32")
 _BARS = QtGui.QColor("#1e88e5")
@@ -70,11 +70,11 @@ class SummaryTile(QtWidgets.QFrame):
         super().__init__(parent)
         self.tile = tile
         # emitted with (str section id, str row key) on click
-        self.clicked = Event()
+        #self.clicked = Event()
         row = tile.row
         color = LEVEL_COLORS.get(row.level, LEVEL_COLORS[LEVEL_OK])
         self.setObjectName("summaryTile")
-        self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        #self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self.setStyleSheet(
             f"QFrame#summaryTile {{ background: white; border: 1px solid #d5dbd5;"
             f" border-left: 4px solid {color}; border-radius: 6px; }}"
@@ -94,8 +94,8 @@ class SummaryTile(QtWidgets.QFrame):
             layout.addWidget(label)
 
     def mouseReleaseEvent(self, event):
-        if event.button() == QtCore.Qt.MouseButton.LeftButton:
-            self.clicked.emit(self.tile.section, self.tile.row.key)
+        #if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            #self.clicked.emit(self.tile.section, self.tile.row.key)
         super().mouseReleaseEvent(event)
 
 
