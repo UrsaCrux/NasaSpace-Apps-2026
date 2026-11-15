@@ -17,7 +17,7 @@ from fieldshift.ui.analysis_widgets import format_date
 from fieldshift.ui.status_widgets import SectionCard, SummaryTile
 
 # smallest width of the panel (pixels)
-MIN_WIDTH_PX = 480
+MIN_WIDTH_PX = 520
 
 _STYLE = """
 QFrame#statusPanel { background: #f4f6f4; }
@@ -87,7 +87,7 @@ class StatusPanel(QtWidgets.QFrame):
         self.content_layout.setSpacing(10)
         self.scroll = QtWidgets.QScrollArea()
         self.scroll.setWidgetResizable(True)
-        self.scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.scroll.setWidget(self.content)
 
         layout = QtWidgets.QVBoxLayout(self)
@@ -170,7 +170,6 @@ class StatusPanel(QtWidgets.QFrame):
         if card is None:
             return
         card.table.select_key(row_key)
-        self.scroll.ensureWidgetVisible(card, 0, 0)
         QtCore.QTimer.singleShot(0, lambda: self.scroll.verticalScrollBar().setValue(card.y()))
 
     # -- helpers -----------------------------------------------------------

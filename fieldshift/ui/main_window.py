@@ -22,7 +22,7 @@ from fieldshift.ui.weather_card import WeatherCard
 MAP_STRETCH = 3
 PANEL_STRETCH = 1
 # share of the map tab the right column takes while it shows Status
-STATUS_SHARE = 0.45
+STATUS_SHARE = 0.5
 
 
 # top-level window, made of tabs. The first tab ("Map", always there) holds

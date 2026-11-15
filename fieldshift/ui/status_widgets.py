@@ -7,7 +7,7 @@ from fieldshift.i18n import tr
 from fieldshift.map import Event
 from fieldshift.qt import QtCore, QtGui, QtWidgets
 from fieldshift.status import CHART_BARS, LEVEL_ALERT, LEVEL_OK, LEVEL_WATCH
-from fieldshift.ui.analysis_widgets import TextureTriangle, format_date
+from fieldshift.ui.analysis_widgets import TextureTriangle
 
 # colour of each level
 LEVEL_COLORS = {LEVEL_OK: "#2e7d32", LEVEL_WATCH: "#ef8f00", LEVEL_ALERT: "#c62828"}
@@ -25,6 +25,24 @@ _CURSOR = QtGui.QColor("#f9a825")
 def format_value(row, value):
     text = f"{value:.{row.decimals}f}"
     return f"{text} {row.unit}" if row.unit else text
+
+
+# (str iso_date)
+# short date for charts and tables: "8 Nov" / "8 nov"
+def short_date(iso_date):
+    return f"{int(iso_date[8:10])} {tr(f'month_short.{int(iso_date[5:7])}')}"
+
+
+# (StatusRow row, float value)
+# the value with the row's decimals, without unit ("23.4")
+def format_number(row, value):
+    return f"{value:.{row.decimals}f}"
+
+
+# (StatusRow row)
+# the row name with its unit: "Rain (mm)"
+def row_title(row):
+    return f"{tr(row.label_key)} ({row.unit})" if row.unit else tr(row.label_key)
 
 
 # (StatusRow row)
@@ -85,7 +103,7 @@ class SummaryTile(QtWidgets.QFrame):
 class StatusTable(QtWidgets.QTableWidget):
 
     COLUMNS = ("status.col.variable", "status.col.latest", "status.col.mean",
-               "status.col.min", "status.col.max", "status.col.trend")
+               "status.col.range", "status.col.trend")
 
     # (tuple rows)
     def __init__(self, rows, parent=None):
@@ -101,22 +119,23 @@ class StatusTable(QtWidgets.QTableWidget):
         self.setStyleSheet("QTableWidget { border: 1px solid #d5dbd5; border-radius: 4px; }"
                            " QTableWidget::item:selected { background: #c8e6c9; color: black; }")
         header = self.horizontalHeader()
-        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        for column in range(1, len(self.COLUMNS)):
+        for column in range(len(self.COLUMNS)):
             header.setSectionResizeMode(column,
                                         QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        header.setStretchLastSection(True)
         for i, row in enumerate(rows):
             dot = QtGui.QColor(LEVEL_COLORS.get(row.level, LEVEL_COLORS[LEVEL_OK]))
-            name = QtWidgets.QTableWidgetItem(f"● {tr(row.label_key)}")
+            name = QtWidgets.QTableWidgetItem(f"● {row_title(row)}")
             name.setForeground(QtGui.QBrush(dot))
             name.setToolTip(tr("status.source", source=source_text(row.source))
                             + (f"\n{tr('status.fixed_tooltip')}" if row.fixed else ""))
-            cells = [name, format_value(row, row.latest())]
+            cells = [name, format_number(row, row.latest())]
             if row.fixed:
-                cells += ["—", "—", "—", tr("status.fixed")]
+                cells += ["—", "—", tr("status.fixed")]
             else:
-                cells += [format_value(row, row.mean()), format_value(row, min(row.values)),
-                          format_value(row, max(row.values)), trend_text(row)]
+                cells += [format_number(row, row.mean()),
+                          f"{format_number(row, min(row.values))} – "
+                          f"{format_number(row, max(row.values))}", trend_text(row)]
             for column, cell in enumerate(cells):
                 item = cell if isinstance(cell, QtWidgets.QTableWidgetItem) \
                     else QtWidgets.QTableWidgetItem(cell)
@@ -124,6 +143,11 @@ class StatusTable(QtWidgets.QTableWidget):
                     item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
                 self.setItem(i, column, item)
         self.resizeRowsToContents()
+        self.resizeColumnsToContents()
+        # wide enough to never cut a text
+        self.setMinimumWidth(sum(header.sectionSize(c) for c in range(len(self.COLUMNS)))
+                             + 2 * self.frameWidth() + 4)
+        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         height = self.horizontalHeader().height() + sum(
             self.rowHeight(i) for i in range(len(rows))) + 4
         self.setFixedHeight(height)
@@ -147,7 +171,7 @@ class TimeChart(QtWidgets.QWidget):
         self.row = row
         self.hover = None              # index of the day under the mouse
         self.setMouseTracking(True)
-        self.setMinimumSize(240, 170)
+        self.setMinimumSize(220, 170)
 
     # (StatusRow row)
     # shows another row
@@ -155,9 +179,21 @@ class TimeChart(QtWidgets.QWidget):
         self.row, self.hover = row, None
         self.update()
 
+    # (low, high) of the value axis
+    def _range(self):
+        values, bars = self.row.values, self.row.chart == CHART_BARS
+        low, high = (0.0 if bars else min(values)), max(values)
+        if high == low:
+            high, low = high + 1, low - (0 if bars else 1)
+        if not bars:
+            pad = (high - low) * 0.1
+            low, high = low - pad, high + pad
+        return low, high
+
     def _plot(self):
         metrics = self.fontMetrics()
-        left = metrics.horizontalAdvance("-000.0") + 8
+        left = max(metrics.horizontalAdvance(format_number(self.row, v))
+                   for v in self._range()) + 12
         top = metrics.height() + 10
         return QtCore.QRectF(left, top, self.width() - left - 10,
                              self.height() - top - metrics.height() - 8)
@@ -191,21 +227,16 @@ class TimeChart(QtWidgets.QWidget):
             return
         values, plot, metrics = row.values, self._plot(), self.fontMetrics()
         bars = row.chart == CHART_BARS
-        low, high = (0.0 if bars else min(values)), max(values)
-        if high == low:
-            high, low = high + 1, low - (0 if bars else 1)
-        if not bars:
-            pad = (high - low) * 0.1
-            low, high = low - pad, high + pad
+        low, high = self._range()
 
         def y(v):
             return plot.bottom() - plot.height() * (v - low) / (high - low)
 
         # title, frame, scale, dates
         painter.setPen(_INK)
-        unit = f" ({row.unit})" if row.unit else ""
-        painter.drawText(QtCore.QPointF(plot.left(), metrics.ascent() + 2),
-                         f"{tr(row.label_key)}{unit}")
+        title = metrics.elidedText(row_title(row), QtCore.Qt.TextElideMode.ElideRight,
+                                   int(self.width() - 4))
+        painter.drawText(QtCore.QPointF(2, metrics.ascent() + 2), title)
         painter.setPen(QtGui.QPen(_GRID, 1))
         painter.drawRect(plot)
         painter.setPen(_INK)
@@ -214,10 +245,11 @@ class TimeChart(QtWidgets.QWidget):
                                            metrics.height()),
                              QtCore.Qt.AlignmentFlag.AlignRight
                              | QtCore.Qt.AlignmentFlag.AlignVCenter, f"{v:.{row.decimals}f}")
-        first, last = format_date(row.dates[0]), format_date(row.dates[-1])
-        painter.drawText(QtCore.QPointF(plot.left(), self.height() - 4), first)
-        painter.drawText(QtCore.QPointF(plot.right() - metrics.horizontalAdvance(last),
-                                        self.height() - 4), last)
+        first, last = short_date(row.dates[0]), short_date(row.dates[-1])
+        last_x = plot.right() - metrics.horizontalAdvance(last)
+        if plot.left() + metrics.horizontalAdvance(first) + 12 < last_x:
+            painter.drawText(QtCore.QPointF(plot.left(), self.height() - 4), first)
+        painter.drawText(QtCore.QPointF(last_x, self.height() - 4), last)
 
         # the values
         if bars:
@@ -252,7 +284,7 @@ class TimeChart(QtWidgets.QWidget):
             if not bars:
                 painter.setBrush(_CURSOR)
                 painter.drawEllipse(QtCore.QPointF(x, y(v)), 4, 4)
-            text = f"{format_date(row.dates[self.hover])}: {format_value(row, v)}"
+            text = f"{short_date(row.dates[self.hover])}: {format_value(row, v)}"
             box = QtCore.QRectF(0, 0, metrics.horizontalAdvance(text) + 12, metrics.height() + 6)
             box.moveTopLeft(QtCore.QPointF(min(x + 8, plot.right() - box.width()),
                                            plot.top() + 4))
@@ -331,8 +363,8 @@ class SectionCard(QtWidgets.QFrame):
         self.table = StatusTable(section.rows)
         self.chart = TimeChart()
         body = QtWidgets.QHBoxLayout()
-        body.addWidget(self.table, 3)
-        body.addWidget(self.chart, 2)
+        body.addWidget(self.table, 0)
+        body.addWidget(self.chart, 1)
         layout.addLayout(body)
         self.table.itemSelectionChanged.connect(self._show_selected)
         first = next((r for r in section.rows if not r.fixed), section.rows[0])
