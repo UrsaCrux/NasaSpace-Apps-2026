@@ -59,6 +59,13 @@ class MapControlsTest(unittest.TestCase):
         self.controls.satellite_button.click()
         self.assertEqual(self.controls.basemap(), "satellite")
 
+    def test_order_background_fields_zoom(self):
+        c = self.controls
+        c.adjustSize()
+        tops = [c.satellite_button.y(), c.fit_button.y(), c.zoom_in_button.y(), c.zoom_out_button.y()]
+        self.assertEqual(tops, sorted(tops))
+        self.assertEqual(len(set(tops)), 4)
+
     def test_no_switch_without_both_backgrounds(self):
         from fieldshift.ui import MainWindow
         window = MainWindow(create_map_view("placeholder"))

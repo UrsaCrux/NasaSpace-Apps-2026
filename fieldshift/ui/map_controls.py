@@ -1,5 +1,5 @@
-"""Buttons floating over the top-left corner of the map: zoom in / out, fit
-all the fields, and switch the background between satellite and street map.
+"""Buttons floating over the top-left corner of the map, top to bottom: switch
+the background between satellite and street map, fit all the fields, zoom in / out.
 
 Uses the map only through MapView and the fields through FieldsManager.
 """
@@ -46,13 +46,10 @@ class MapControls(QtWidgets.QFrame):
         self.fit_button = self._button(tr("map.fit_fields"), tr("map.fit_fields_tooltip"),
                                        fields.zoom_to_all)
 
+        # top to bottom: background switch, "My fields", then + / -
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
-        layout.addWidget(self.zoom_in_button, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
-        layout.addWidget(self.zoom_out_button, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
-        layout.addSpacing(6)
-        layout.addWidget(self.fit_button, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
 
         self.satellite_button = self.streets_button = None
         if "satellite" in self.basemaps and "streets" in self.basemaps:
@@ -66,9 +63,14 @@ class MapControls(QtWidgets.QFrame):
                 button.setCheckable(True)
                 row.addWidget(button)
             row.addStretch(1)
-            layout.addSpacing(6)
             layout.addLayout(row)
+            layout.addSpacing(6)
             self.show_basemap("satellite")
+
+        layout.addWidget(self.fit_button, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
+        layout.addSpacing(6)
+        layout.addWidget(self.zoom_in_button, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
+        layout.addWidget(self.zoom_out_button, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
 
         fields.fields_changed.connect(self._update_buttons)
         self._update_buttons()
