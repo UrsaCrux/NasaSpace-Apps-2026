@@ -546,6 +546,16 @@ class FieldDialog(CenteredDialog):
         reload = QtWidgets.QToolButton()
         reload.setText("⬇")
         self._tip(reload, "field_dialog.reload_button", unique=False)
+
+        # Parent the widgets to data_box first so setVisible(True) never
+        # flashes them as top-level windows.
+        grid.addWidget(self._titled(f"field_dialog.data.{spec.key}", data_label(spec.key)),
+                       row_index, 0)
+        grid.addWidget(widget, row_index, 1)
+        grid.addWidget(status, row_index, 2)
+        grid.addWidget(reset, row_index, 3)
+        grid.addWidget(reload, row_index, 4)
+
         reload.setVisible(zone_data.group_of(spec.key) is not None)
         reload.clicked.connect(lambda: self.reload_value(spec.key))
         row = {"spec": spec, "editor": editor, "status": status, "reset": reset,
@@ -563,12 +573,6 @@ class FieldDialog(CenteredDialog):
             editor.textEdited.connect(lambda *_: self._on_user_edit(spec.key))
         else:
             editor.activated.connect(lambda *_: self._on_user_edit(spec.key))
-        grid.addWidget(self._titled(f"field_dialog.data.{spec.key}", data_label(spec.key)),
-                       row_index, 0)
-        grid.addWidget(widget, row_index, 1)
-        grid.addWidget(status, row_index, 2)
-        grid.addWidget(reset, row_index, 3)
-        grid.addWidget(reload, row_index, 4)
 
     # the editor of a datum and the widget to put in the grid (the editor
     # plus its unit, for numbers)
