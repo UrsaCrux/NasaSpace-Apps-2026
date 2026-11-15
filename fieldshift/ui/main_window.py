@@ -173,6 +173,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.fields_bar.set_mode(mode)
         return True
 
+    # (str layer_id)
+    # opens the measurements window of a field
+    def open_records(self, layer_id):
+        from fieldshift.ui.records_dialog import RecordsDialog
+        if self.fields.field(layer_id) is not None:
+            RecordsDialog(self.fields, layer_id, self).exec()
+
     # ()
     # shows the map with the "My fields" list in the right column
     def show_fields(self):

@@ -21,22 +21,31 @@ def _centroid(field):
 
 # (Field field, callable forecast = None)
 # today and the coming days of the field; forecast(lon, lat, days=) ->
-# Forecast (default: Open-Meteo). raises when the forecast fails
+# Forecast (default: Open-Meteo). raises api.errors.DataError when the
+# forecast fails
 def live_report(field, forecast=None):
     from fieldshift.api import forecast as forecast_api
+    from fieldshift.api.errors import classify
     lon, lat = _centroid(field)
-    coming = (forecast or forecast_api.get_forecast)(lon, lat, days=FORECAST_DAYS)
-    return StatusReport(field.name, today_tiles(coming), coming,
+    try:
+        coming = (forecast or forecast_api.get_forecast)(lon, lat, days=FORECAST_DAYS)
+    except Exception as exc:
+        raise classify(exc, "Open-Meteo") from exc
+    return StatusReport(field.name, today_tiles(coming, field.records), coming,
                         tuple(rules.forecast_alerts(coming.days)))
 
 
 # (Field field, str crop)
 # the crop follow-up from the two newest NDVI images, or None when MODIS has
-# none; raises when MODIS fails
+# none; raises api.errors.DataError when MODIS fails
 def live_tracking(field, crop):
+    from fieldshift.api.errors import classify
     lon, lat = _centroid(field)
     today = sources.today()
-    images = sources.modis_ndvi(lon, lat, today - timedelta(days=NDVI_LOOKBACK_DAYS), today)
+    try:
+        images = sources.modis_ndvi(lon, lat, today - timedelta(days=NDVI_LOOKBACK_DAYS), today)
+    except Exception as exc:
+        raise classify(exc, "MODIS") from exc
     if not images:
         return None
     date, ndvi = images[-1]

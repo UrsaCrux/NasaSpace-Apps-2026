@@ -36,9 +36,33 @@ in Status.
 | Trends: normals | NASA POWER climatology | rain, humidity, sun |
 | Trends: NDVI | MODIS | monthly means of the images |
 
-Series are cached in memory. Offline (`FIELDSHIFT_OFFLINE=1`, tests) or when the
-forecast / NASA POWER fails, the panels show example data and the info line
-says so.
+Series are cached in memory. **No made-up numbers are ever shown**: when a
+source fails the panel says why (`api/errors.py`: no internet connection,
+timeout, the service failed — HTTP code —, no data, offline) with a **Try
+again** button; when only some sources fail (Trends: normals, MODIS) the rest
+shows with a red box naming the missing ones. The example generators
+(`status/example.py`, `trends/example.py`) are only used by the tests
+(`FIELDSHIFT_OFFLINE=1` + `FIELDSHIFT_EXAMPLE_DATA=1`).
+
+## Measurements (records)
+
+Farmers and agronomists can record measurements and events with **date and
+time** (`fields/records.py`): soil probe moisture, soil temperature, pH, EC,
+nitrogen, organic carbon, CEC, plant height, pods, sowing, fertiliser,
+irrigation, harvest. They are kept in the field's GeoJSON file (property
+`records`), so they travel with it (a SQLite database could replace this when
+there are many; not needed yet).
+
+- Added from **Measurements…** (right-click menu of a field) or "Add or see
+  measurements →" in Status (`ui/records_dialog.py`).
+- Values typed in **Edit field** become records too ("edited"), and the newest
+  pH / nitrogen / organic carbon / CEC record becomes the field's datum, so both
+  places agree and Analyze uses the measured value.
+- **Status**: a soil moisture / temperature measured today replaces the
+  forecast's tile ("measured at 10:20"); the follow-up shows days since sowing
+  and the plant height (and its change).
+- **Trends**: a "Your measurements" section, month by month.
+- Without records, the satellite / model values are used.
 
 ## Code
 

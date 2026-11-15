@@ -45,7 +45,7 @@ def example_forecast(field, today=None):
 # (Field field, date today = None)
 def example_report(field, today=None):
     coming = example_forecast(field, today)
-    return StatusReport(field.name, today_tiles(coming), coming,
+    return StatusReport(field.name, today_tiles(coming, field.records), coming,
                         tuple(rules.forecast_alerts(coming.days)), example=True)
 
 

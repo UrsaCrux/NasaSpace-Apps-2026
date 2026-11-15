@@ -27,6 +27,33 @@ SECTIONS = (("weather", "status.section.weather", "🌤️"),
             ("soil", "trends.section.soil", "🟫"))
 
 
+# record kinds whose months add up (the rest are means)
+SUM_KINDS = ("fertilizer", "irrigation", "harvest")
+
+
+# (tuple records, tuple months)
+# the farmer's records with a value, month by month: {kind: [value or None
+# per month]} (sums for SUM_KINDS, means for the rest); kinds without any
+# record in the months are left out
+def measured_series(records, months):
+    from fieldshift.fields.records import KINDS
+    out = {}
+    for kind, (_, _, _, has_value) in KINDS.items():
+        if not has_value:
+            continue
+        values = []
+        for month in months:
+            found = [r.value for r in records
+                     if r.kind == kind and r.value is not None and r.time.startswith(month)]
+            if not found:
+                values.append(None)
+            else:
+                values.append(sum(found) if kind in SUM_KINDS else sum(found) / len(found))
+        if any(v is not None for v in values):
+            out[kind] = values
+    return out
+
+
 # (str month, float lat)
 # season key of "YYYY-MM" at that latitude
 def season_of(month, lat):
@@ -44,7 +71,7 @@ def _pick(values, months, best):
 # series / previous / normal: {row key: [value or None per month]}; sources:
 # {row key: source name}; counts: {"frost_days": n, "heavy_rain_days": n}
 def make_report(field_name, months, lat, series, previous, normal, sources, counts,
-                crop=None, example=False, missing=()):
+                crop=None, example=False, missing=(), measured=None):
     rows = {}
     for key, unit, aggregate, chart, decimals, _ in ROWS:
         values = series.get(key)
@@ -59,6 +86,18 @@ def make_report(field_name, months, lat, series, previous, normal, sources, coun
     sections = tuple(TrendSection(sid, title, icon, tuple(
         rows[k] for k, *_rest, section in ROWS if section == sid and k in rows))
         for sid, title, icon in SECTIONS)
+    if measured:
+        # the farmer's own measurements, apart from the satellite rows
+        from fieldshift.fields.records import KINDS
+        own = []
+        for kind, values in measured.items():
+            unit, decimals = KINDS[kind][0], KINDS[kind][1]
+            own.append(TrendRow(kind, f"records.kind.{kind}", unit, months,
+                                tuple(None if v is None else round(v, decimals) for v in values),
+                                aggregate=AGG_SUM if kind in SUM_KINDS else AGG_MEAN,
+                                chart=CHART_BARS if kind in SUM_KINDS else "line",
+                                decimals=decimals, source="status.source.farmer"))
+        sections += (TrendSection("measured", "trends.section.measured", "", tuple(own)),)
 
     milestones = []
 

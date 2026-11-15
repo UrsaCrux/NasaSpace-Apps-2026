@@ -22,6 +22,11 @@ class TrendsPanel(FieldPanel):
     def __init__(self, view, fields, parent=None):
         self.sections = {}             # section id -> TrendSectionCard
         super().__init__(view, fields, parent)
+        fields.records_changed.connect(self._on_records_changed)
+
+    def _on_records_changed(self, layer_id):
+        if layer_id == self.layer_id and self.report is not None:
+            self.refresh()
 
     def make_report(self, field):
         return trends_report(field)

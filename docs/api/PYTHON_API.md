@@ -475,6 +475,48 @@ list of (name, title, status) for every provider: implemented or planned
 |------|-------------|------|
 | `WEATHER_PRIORITY` | weather sources from best to worst resolution; the first one that has a value fills SiteData.weather (each source's values stay in weather_by_source) | 12 |
 
+## `fieldshift/api/errors.py`
+
+### Classes
+
+#### `DataError`
+
+```python
+class DataError(Exception)
+```
+
+- **Line:** 22
+
+a failed download: kind (one of the above), the source ("NASA POWER") and a short detail ("HTTP 503")
+
+### Functions
+
+#### `DataError.__init__`
+
+```python
+def __init__(self, kind, source='', detail='')
+```
+
+- **Arguments:** `(str kind, str source = "", str detail = "")`
+- **Line:** 25
+
+#### `classify`
+
+```python
+def classify(exc, source='')
+```
+
+- **Arguments:** `(Exception exc, str source = "")`
+- **Line:** 35
+
+the DataError that explains exc (a DataError is returned as it is, with its source filled in when it had none)
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `NO_CONNECTION` | kinds of failure | 13 |
+
 ## `fieldshift/api/forecast.py`
 
 ### Classes
@@ -1923,7 +1965,7 @@ def count(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 62
+- **Line:** 64
 
 how many fields are on the map
 
@@ -1934,7 +1976,7 @@ def is_field(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 67
+- **Line:** 69
 
 True when the layer is a saved field
 
@@ -1945,7 +1987,7 @@ def field(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 72
+- **Line:** 74
 
 the Field shown by this layer, or None
 
@@ -1956,7 +1998,7 @@ def layer_ids(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 77
+- **Line:** 79
 
 layer ids of every field, oldest first
 
@@ -1967,7 +2009,7 @@ def selected(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 82
+- **Line:** 84
 
 layer ids of the fields the user chose, oldest first
 
@@ -1978,7 +2020,7 @@ def is_selected(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 87
+- **Line:** 89
 
 True when the user chose this field
 
@@ -1989,7 +2031,7 @@ def set_selected(self, layer_id, selected)
 ```
 
 - **Arguments:** `(str layer_id, bool selected)`
-- **Line:** 92
+- **Line:** 94
 
 adds a field to the chosen ones or takes it out
 
@@ -2000,7 +2042,7 @@ def add(self, name, vertices, color=None, data=None)
 ```
 
 - **Arguments:** `(str name, list vertices, str color = None, dict data = None)`
-- **Line:** 104
+- **Line:** 106
 
 saves a new field and shows it on the map; returns its layer id. raises ValueError (bad name or polygon, layer cannot load) or OSError
 
@@ -2011,9 +2053,42 @@ def update(self, layer_id, name, color=None, data=None)
 ```
 
 - **Arguments:** `(str layer_id, str name, str color = None, dict data = None)`
-- **Line:** 119
+- **Line:** 121
 
 changes name, colour and data of a field: the file, the map layer and the lists follow, and the field stays checked if it was. the layer gets a new id, which is returned. raises ValueError (not a field, bad name, layer cannot load) or OSError; then nothing has changed
+
+#### `FieldsManager.records`
+
+```python
+def records(self, layer_id)
+```
+
+- **Arguments:** `(str layer_id)`
+- **Line:** 145
+
+the records (fields.records.Record) of a field, oldest first
+
+#### `FieldsManager.add_record`
+
+```python
+def add_record(self, layer_id, record)
+```
+
+- **Arguments:** `(str layer_id, Record record)`
+- **Line:** 153
+
+adds a measurement or event to a field (saved in its file). a kind that is also a datum (pH, nitrogen, ...) becomes the field's datum when it is the newest of its kind
+
+#### `FieldsManager.remove_record`
+
+```python
+def remove_record(self, layer_id, record)
+```
+
+- **Arguments:** `(str layer_id, Record record)`
+- **Line:** 160
+
+removes a record of a field
 
 #### `FieldsManager.remove`
 
@@ -2022,7 +2097,7 @@ def remove(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 141
+- **Line:** 178
 
 removes a field from the map and deletes its file; returns False when the layer is not a field
 
@@ -2033,7 +2108,7 @@ def zoom_to(self, layer_id)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 156
+- **Line:** 193
 
 centres and zooms the map on a field, with some margin around it
 
@@ -2044,7 +2119,7 @@ def zoom_to_all(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 164
+- **Line:** 201
 
 fits the map to all the fields at once (does nothing without fields); returns True when it moved the map
 
@@ -2055,7 +2130,7 @@ def export(self, path, layer_ids=None)
 ```
 
 - **Arguments:** `(str path, list layer_ids = None)`
-- **Line:** 182
+- **Line:** 219
 
 writes these fields (all when None) to one GeoJSON file; returns how many. raises OSError
 
@@ -2069,6 +2144,7 @@ writes these fields (all when None) to one GeoJSON file; returns how many. raise
 | `ZOOM_MARGIN` | extra space around a field when zooming to it (fraction of its size) | 23 |
 | `FieldsManager.fields_changed` | emitted with no arguments after a field is added or removed | 46 |
 | `FieldsManager.selection_changed` | emitted with no arguments when the set of chosen fields changes | 48 |
+| `FieldsManager.records_changed` | emitted with (str layer_id) after a field's records change | 50 |
 
 ## `fieldshift/fields/model_inputs.py`
 
@@ -2084,6 +2160,106 @@ def with_model_inputs(data)
 - **Line:** 20
 
 data (already normalized) with the hidden model inputs recomputed
+
+## `fieldshift/fields/records.py`
+
+### Classes
+
+#### `Record`
+
+```python
+class Record
+```
+
+- **Line:** 43
+
+one record: time "YYYY-MM-DDTHH:MM" (local), kind (a KINDS key), value (None for events such as sowing), a free note and how it was made
+
+### Functions
+
+#### `Record.date`
+
+```python
+def date(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 52
+
+the date part, "YYYY-MM-DD"
+
+#### `Record.unit`
+
+```python
+def unit(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 57
+
+the unit of the kind
+
+#### `now`
+
+```python
+def now()
+```
+
+- **Arguments:** `()`
+- **Line:** 63
+
+the current local time as a record time
+
+#### `parse_records`
+
+```python
+def parse_records(raw)
+```
+
+- **Arguments:** `(any raw)`
+- **Line:** 69
+
+Records read from a file (bad entries are skipped), oldest first
+
+#### `dump_records`
+
+```python
+def dump_records(records)
+```
+
+- **Arguments:** `(tuple records)`
+- **Line:** 88
+
+list of plain dicts for the file
+
+#### `latest`
+
+```python
+def latest(records, kind, date=None)
+```
+
+- **Arguments:** `(tuple records, str kind, str date = None)`
+- **Line:** 94
+
+the newest record of a kind (on that date "YYYY-MM-DD", when given), or None
+
+#### `of_kind`
+
+```python
+def of_kind(records, kind)
+```
+
+- **Arguments:** `(tuple records, str kind)`
+- **Line:** 101
+
+the records of a kind, oldest first
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `KINDS` | record kinds: key -> (unit, decimals, DATA_FIELDS key or None, has a value) | 20 |
+| `MEASURED` | how a record was made | 36 |
 
 ## `fieldshift/fields/schema.py`
 
@@ -2169,9 +2345,9 @@ raw (data read from a file or from the dialog) as a complete, valid data dict: u
 class Field
 ```
 
-- **Line:** 42
+- **Line:** 44
 
-a saved field. vertices are (lon, lat) tuples in EPSG:4326, counter- clockwise, first vertex not repeated at the end. color is "#rrggbb" (grey by default); data maps each key of schema.DATA_FIELDS to {"value": ..., "source": "prefilled" | "user"}
+a saved field. vertices are (lon, lat) tuples in EPSG:4326, counter- clockwise, first vertex not repeated at the end. color is "#rrggbb" (grey by default); data maps each key of schema.DATA_FIELDS to {"value": ..., "source": "prefilled" | "user"}; records are the dated measurements and events (fields.records.Record), oldest first
 
 #### `FieldStore`
 
@@ -2179,7 +2355,7 @@ a saved field. vertices are (lon, lat) tuples in EPSG:4326, counter- clockwise, 
 class FieldStore
 ```
 
-- **Line:** 54
+- **Line:** 57
 
 reads and writes the fields of one folder. every field is a GeoJSON file with one Feature whose properties hold name, area_ha, created, color and data
 
@@ -2192,7 +2368,7 @@ def __init__(self, folder=None)
 ```
 
 - **Arguments:** `(Path folder = None)`
-- **Line:** 60
+- **Line:** 63
 
 uses folder for the files (default: $FIELDSHIFT_FIELDS_DIR, else DEFAULT_FIELDS_DIR); it is created on the first save. with the default folder, fields saved in LEGACY_FIELDS_DIR are moved into it first
 
@@ -2203,7 +2379,7 @@ def fields(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 69
+- **Line:** 72
 
 saved fields, oldest first; unreadable files are skipped with a warning
 
@@ -2214,7 +2390,7 @@ def get(self, name)
 ```
 
 - **Arguments:** `(str name)`
-- **Line:** 80
+- **Line:** 83
 
 the field with this name (case-insensitive), or None
 
@@ -2225,7 +2401,7 @@ def suggest_name(self, base)
 ```
 
 - **Arguments:** `(str base)`
-- **Line:** 86
+- **Line:** 89
 
 first free name of the form "<base> 1", "<base> 2"...
 
@@ -2236,7 +2412,7 @@ def name_problem(self, name, ignore=None)
 ```
 
 - **Arguments:** `(str name, str ignore = None)`
-- **Line:** 97
+- **Line:** 100
 
 why name cannot be used: "empty", "duplicate", or None when it is fine. the field called ignore (case-insensitive) does not count as a duplicate: pass the field's own name when editing it
 
@@ -2247,7 +2423,7 @@ def create(self, name, vertices, created=None, color=None, data=None)
 ```
 
 - **Arguments:** `(str name, list vertices, str created = None, str color = None, dict data = None)`
-- **Line:** 111
+- **Line:** 114
 
 saves a new field from (lon, lat) vertices and returns it. color is grey when None or invalid; data (see schema.py) is completed with prefilled values. raises ValueError for a bad name or fewer than MIN_VERTICES distinct vertices
 
@@ -2258,9 +2434,20 @@ def update(self, name, new_name, color=None, data=None)
 ```
 
 - **Arguments:** `(str name, str new_name, str color = None, dict data = None)`
-- **Line:** 135
+- **Line:** 138
 
 changes name, colour and data of the saved field called name; None keeps the current colour or data. the file is renamed when the name changes; shape, area and creation date stay. returns the updated Field. raises ValueError when the field does not exist or new_name is empty or taken by another field (the field's own name is fine)
+
+#### `FieldStore.save_records`
+
+```python
+def save_records(self, name, records, data=None)
+```
+
+- **Arguments:** `(str name, tuple records, dict data = None)`
+- **Line:** 160
+
+saves the records (and, when given, the data as it is) of the field called name, keeping its name and file. returns the updated Field
 
 #### `FieldStore.delete`
 
@@ -2269,7 +2456,7 @@ def delete(self, name)
 ```
 
 - **Arguments:** `(str name)`
-- **Line:** 159
+- **Line:** 171
 
 deletes the field file; returns False when there is no such field
 
@@ -2280,7 +2467,7 @@ def export(self, path, names=None)
 ```
 
 - **Arguments:** `(str path, list names = None)`
-- **Line:** 169
+- **Line:** 181
 
 writes the fields with these names (all when None) to one GeoJSON FeatureCollection (EPSG:4326); returns how many fields were written
 
@@ -2291,7 +2478,7 @@ def migrate_fields(old_folder, new_folder)
 ```
 
 - **Arguments:** `(Path old_folder, Path new_folder)`
-- **Line:** 198
+- **Line:** 210
 
 moves the .geojson files of old_folder into new_folder (created if needed) and removes old_folder when it ends up empty. a file whose name already exists in new_folder stays where it is, with a warning. returns how many files were moved
 
@@ -2302,7 +2489,7 @@ def to_feature(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 223
+- **Line:** 235
 
 GeoJSON Feature (dict) of a field, with a closed polygon ring
 
@@ -2313,7 +2500,7 @@ def polygon_area_ha(vertices)
 ```
 
 - **Arguments:** `(list vertices)`
-- **Line:** 236
+- **Line:** 248
 
 area in hectares of a lon/lat polygon, on a sphere (error well under 1 %)
 
@@ -2321,11 +2508,11 @@ area in hectares of a lon/lat polygon, on a sphere (error well under 1 %)
 
 | Name | Description | Line |
 |------|-------------|------|
-| `REPO_DIR` | root of the repository | 17 |
-| `DEFAULT_FIELDS_DIR` | default folder for saved fields: terrenos/ in the repository root, ignored by git. one .geojson per field, named after the field. the FIELDSHIFT_FIELDS_DIR environment variable overrides it (tests, demos) | 22 |
-| `LEGACY_FIELDS_DIR` | folder used by earlier versions; its files are moved to DEFAULT_FIELDS_DIR | 25 |
-| `MIN_VERTICES` | fewest vertices a field polygon can have | 28 |
-| `EARTH_RADIUS_M` | equatorial radius of the WGS84 ellipsoid, in metres | 31 |
+| `REPO_DIR` | root of the repository | 18 |
+| `DEFAULT_FIELDS_DIR` | default folder for saved fields: terrenos/ in the repository root, ignored by git. one .geojson per field, named after the field. the FIELDSHIFT_FIELDS_DIR environment variable overrides it (tests, demos) | 23 |
+| `LEGACY_FIELDS_DIR` | folder used by earlier versions; its files are moved to DEFAULT_FIELDS_DIR | 26 |
+| `MIN_VERTICES` | fewest vertices a field polygon can have | 29 |
+| `EARTH_RADIUS_M` | equatorial radius of the WGS84 ellipsoid, in metres | 32 |
 
 ## `fieldshift/fields/zone_data.py`
 
@@ -3506,6 +3693,17 @@ a PCSE WeatherDataProvider serving the series (with reference evapotranspiration
 
 ### Functions
 
+#### `offline_mode`
+
+```python
+def offline_mode()
+```
+
+- **Arguments:** `()`
+- **Line:** 23
+
+None when the services may be contacted; "example" (tests) or raises DataError(OFFLINE) when the app runs offline
+
 #### `crop_of`
 
 ```python
@@ -3513,7 +3711,7 @@ def crop_of(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 24
+- **Line:** 35
 
 name of the field's crop in the current language, or None
 
@@ -3524,9 +3722,9 @@ def status_report(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 41
+- **Line:** 52
 
-the StatusReport of the field (today and the next FORECAST_DAYS days). a network call: run it outside the UI thread. offline, or when the forecast fails, made-up example numbers (report.example is True, report.notice_key says why)
+the StatusReport of the field (today and the next FORECAST_DAYS days), with the farmer's measurements of today in place of the forecast's. a network call: run it outside the UI thread. raises api.errors.DataError (no connection, timeout, ...) when the forecast cannot be downloaded
 
 #### `crop_tracking`
 
@@ -3535,15 +3733,16 @@ def crop_tracking(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 57
+- **Line:** 64
 
-the crop follow-up (Tracking) of the field, or None when there is no NDVI. slow (MODIS, up to a minute): run it outside the UI thread. raises when MODIS fails (offline: example)
+the crop follow-up (Tracking) of the field: NDVI images, sowing date and measured plant height. slow (MODIS, up to a minute): run it outside the UI thread. raises api.errors.DataError when MODIS fails
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
-| `OFFLINE_ENV` | when set to "1" nothing contacts the data services (tests): example data | 14 |
+| `OFFLINE_ENV` | when set to "1" nothing contacts the data services: the reports fail with errors.OFFLINE (the tests also set EXAMPLE_ENV to get example numbers) | 15 |
+| `EXAMPLE_ENV` | when set to "1" (tests only) offline reports are made-up example numbers | 17 |
 
 ## `fieldshift/status/build.py`
 
@@ -3552,13 +3751,19 @@ the crop follow-up (Tracking) of the field, or None when there is no NDVI. slow 
 #### `today_tiles`
 
 ```python
-def today_tiles(forecast)
+def today_tiles(forecast, records=())
 ```
 
-- **Arguments:** `(api.forecast.Forecast forecast)`
-- **Line:** 10
+- **Arguments:** `(api.forecast.Forecast forecast, tuple records = ())`
+- **Line:** 19
 
-the tiles of today: temperature, rain, humidity, wind, sun, water use and top soil
+the tiles of today: temperature, rain, humidity, wind, sun, water use and top soil; a tile with a measurement of today (records) shows it instead
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `MEASURED_KINDS` | tile key -> record kind measured in the field | 13 |
 
 ## `fieldshift/status/example.py`
 
@@ -3604,9 +3809,9 @@ def live_report(field, forecast=None)
 ```
 
 - **Arguments:** `(Field field, callable forecast = None)`
-- **Line:** 25
+- **Line:** 26
 
-today and the coming days of the field; forecast(lon, lat, days=) -> Forecast (default: Open-Meteo). raises when the forecast fails
+today and the coming days of the field; forecast(lon, lat, days=) -> Forecast (default: Open-Meteo). raises api.errors.DataError when the forecast fails
 
 #### `live_tracking`
 
@@ -3615,9 +3820,9 @@ def live_tracking(field, crop)
 ```
 
 - **Arguments:** `(Field field, str crop)`
-- **Line:** 36
+- **Line:** 41
 
-the crop follow-up from the two newest NDVI images, or None when MODIS has none; raises when MODIS fails
+the crop follow-up from the two newest NDVI images, or None when MODIS has none; raises api.errors.DataError when MODIS fails
 
 ### Variables
 
@@ -3635,9 +3840,9 @@ the crop follow-up from the two newest NDVI images, or None when MODIS has none;
 class TodayTile
 ```
 
-- **Line:** 28
+- **Line:** 30
 
-one value of today: label_key + value in unit, and a short note under it (note_key filled with note_params). value None: not available
+one value of today: label_key + value in unit, and a short note under it (note_key filled with note_params). value None: not available. measured is the time ("HH:MM") of the farmer's measurement used instead of the forecast's value, "" when the value is the forecast's
 
 #### `StatusAlert`
 
@@ -3645,7 +3850,7 @@ one value of today: label_key + value in unit, and a short note under it (note_k
 class StatusAlert
 ```
 
-- **Line:** 43
+- **Line:** 46
 
 a light warning about a coming day (date "YYYY-MM-DD"): text_key filled with params
 
@@ -3655,7 +3860,7 @@ a light warning about a coming day (date "YYYY-MM-DD"): text_key filled with par
 class Tracking
 ```
 
-- **Line:** 53
+- **Line:** 56
 
 follow-up of the crop: its name and the two newest NDVI images (value and date "YYYY-MM-DD"; previous None when there is only one)
 
@@ -3665,9 +3870,9 @@ follow-up of the crop: its name and the two newest NDVI images (value and date "
 class StatusReport
 ```
 
-- **Line:** 73
+- **Line:** 75
 
-everything shown for one field: today's tiles, the forecast (api.forecast.Forecast: days, today first, and hours) and the warnings of the coming days. example True when the numbers are made up; notice_key says why
+everything shown for one field: today's tiles, the forecast (api.forecast.Forecast: days, today first, and hours) and the warnings of the coming days. example True when the numbers are made up (tests)
 
 ### Functions
 
@@ -3678,7 +3883,7 @@ def change_pct(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 62
+- **Line:** 65
 
 change of the NDVI against the image before, %, or None
 
@@ -3700,6 +3905,33 @@ the warnings of the first days of the forecast
 | `LEVEL_OK` | how a value or a warning looks: decides its colour in the UI | 11 |
 | `CHART_LINE` | how a series is drawn in a chart (Trends) | 16 |
 | `HORIZONS` | how many coming days the user can choose to see (the forecast service gives at most 16) | 21 |
+
+## `fieldshift/status/progress.py`
+
+### Classes
+
+#### `Progress`
+
+```python
+class Progress
+```
+
+- **Line:** 13
+
+what the records tell about the crop; None where there is no record
+
+### Functions
+
+#### `crop_progress`
+
+```python
+def crop_progress(records, today=None)
+```
+
+- **Arguments:** `(tuple records, date today = None)`
+- **Line:** 23
+
+the Progress of a field's records
 
 ## `fieldshift/status/rules.py`
 
@@ -3813,11 +4045,22 @@ def trends_report(field)
 - **Arguments:** `(Field field)`
 - **Line:** 16
 
-the TrendsReport of the field, from the satellite sources. slow: call it outside the UI thread. offline, or when NASA POWER fails, example numbers (report.example is True, report.notice_key says why)
+the TrendsReport of the field, from the satellite sources. slow: call it outside the UI thread. raises api.errors.DataError when NASA POWER cannot be downloaded; other sources that fail are listed in report.missing
 
 ## `fieldshift/trends/build.py`
 
 ### Functions
+
+#### `measured_series`
+
+```python
+def measured_series(records, months)
+```
+
+- **Arguments:** `(tuple records, tuple months)`
+- **Line:** 38
+
+the farmer's records with a value, month by month: {kind: [value or None per month]} (sums for SUM_KINDS, means for the rest); kinds without any record in the months are left out
 
 #### `season_of`
 
@@ -3826,17 +4069,17 @@ def season_of(month, lat)
 ```
 
 - **Arguments:** `(str month, float lat)`
-- **Line:** 32
+- **Line:** 59
 
 season key of "YYYY-MM" at that latitude
 
 #### `make_report`
 
 ```python
-def make_report(field_name, months, lat, series, previous, normal, sources, counts, crop=None, example=False, missing=())
+def make_report(field_name, months, lat, series, previous, normal, sources, counts, crop=None, example=False, missing=(), measured=None)
 ```
 
-- **Line:** 46
+- **Line:** 73
 
 (str field_name, tuple months, float lat, dict series, dict previous, dict normal, dict sources, dict counts, str crop, bool example, tuple missing) series / previous / normal: {row key: [value or None per month]}; sources: {row key: source name}; counts: {"frost_days": n, "heavy_rain_days": n}
 
@@ -3845,6 +4088,7 @@ def make_report(field_name, months, lat, series, previous, normal, sources, coun
 | Name | Description | Line |
 |------|-------------|------|
 | `ROWS` | rows: key, unit, aggregate, chart, decimals, section | 13 |
+| `SUM_KINDS` | record kinds whose months add up (the rest are means) | 31 |
 
 ## `fieldshift/trends/example.py`
 
@@ -3870,15 +4114,15 @@ def live_report(field, crop=None)
 ```
 
 - **Arguments:** `(Field field, str crop = None)`
-- **Line:** 45
+- **Line:** 46
 
-the TrendsReport of the last 12 complete months; raises when NASA POWER does not answer
+the TrendsReport of the last 12 complete months; raises api.errors.DataError when NASA POWER does not answer (the other sources go to report.missing)
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
-| `MIN_DAYS` | a month counts when it has at least this many days of data | 14 |
+| `MIN_DAYS` | a month counts when it has at least this many days of data | 15 |
 
 ## `fieldshift/trends/models.py`
 
@@ -3932,7 +4176,7 @@ class TrendsReport
 
 - **Line:** 87
 
-everything shown for one field. example / notice_key / missing work as in StatusReport
+everything shown for one field. example True for made-up numbers (tests); missing: api.errors.DataError of the sources that did not answer
 
 ### Functions
 
@@ -3976,7 +4220,7 @@ def section(self, section_id)
 ```
 
 - **Arguments:** `(str section_id)`
-- **Line:** 100
+- **Line:** 99
 
 the section with that id, or None
 
@@ -4965,17 +5209,47 @@ the menu for this field; each action runs after the menu has closed
 
 ### Classes
 
+#### `ErrorBox`
+
+```python
+class ErrorBox(QtWidgets.QFrame)
+```
+
+- **Line:** 36
+
+a box that says why data is missing, with a "Try again" button
+
 #### `FieldPanel`
 
 ```python
 class FieldPanel(QtWidgets.QFrame)
 ```
 
-- **Line:** 33
+- **Line:** 64
 
 the panel. subclasses set title_key and implement make_report(field) (any thread) and build(report) (UI thread, fills content_layout)
 
 ### Functions
+
+#### `error_text`
+
+```python
+def error_text(error)
+```
+
+- **Arguments:** `(DataError error)`
+- **Line:** 26
+
+the user's text for a failed download: "NASA POWER: no internet connection"
+
+#### `ErrorBox.__init__`
+
+```python
+def __init__(self, text, retry, compact=False, parent=None)
+```
+
+- **Arguments:** `(str text, callable retry, bool compact = False)`
+- **Line:** 39
 
 #### `FieldPanel.__init__`
 
@@ -4984,7 +5258,7 @@ def __init__(self, view, fields, parent=None)
 ```
 
 - **Arguments:** `(MapView view, FieldsManager fields, QWidget parent = None)`
-- **Line:** 43
+- **Line:** 74
 
 #### `FieldPanel.open`
 
@@ -4993,7 +5267,7 @@ def open(self, layer_id=None)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 97
+- **Line:** 129
 
 shows that field (the first one when None). returns True when a field is shown (its report may still be loading)
 
@@ -5004,7 +5278,7 @@ def refresh(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 110
+- **Line:** 142
 
 loads the report of the field shown again
 
@@ -5015,7 +5289,7 @@ def make_report(self, field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 132
+- **Line:** 168
 
 the report of the field (runs in a background thread)
 
@@ -5026,7 +5300,7 @@ def build(self, report)
 ```
 
 - **Arguments:** `(report)`
-- **Line:** 137
+- **Line:** 173
 
 fills content_layout with the report (UI thread)
 
@@ -5035,9 +5309,9 @@ fills content_layout with the report (UI thread)
 | Name | Description | Line |
 |------|-------------|------|
 | `MIN_WIDTH_PX` | smallest width of the panel (pixels) | 18 |
-| `OFFLINE_ENV` | when set to "1" reports are built at once in the UI thread (tests: the reports are then example data, which is fast) | 21 |
-| `FieldPanel.loading_key` | i18n key of the "loading" text, filled with {field} | 37 |
-| `FieldPanel.suggestion_requested` | emitted with (str layer_id) when a "See suggestion" link is clicked | 52 |
+| `OFFLINE_ENV` | when set to "1" reports are built at once in the UI thread (offline: they fail at once, or are example numbers in the tests) | 21 |
+| `FieldPanel.loading_key` | i18n key of the "loading" text, filled with {field} | 68 |
+| `FieldPanel.suggestion_requested` | emitted with (str layer_id) when a "See suggestion" link is clicked | 84 |
 
 ## `fieldshift/ui/fields_bar.py`
 
@@ -5277,6 +5551,17 @@ def open_trends(self, layer_id=None)
 
 the same with the Trends panel
 
+#### `MainWindow.open_records`
+
+```python
+def open_records(self, layer_id)
+```
+
+- **Arguments:** `(str layer_id)`
+- **Line:** 178
+
+opens the measurements window of a field
+
 #### `MainWindow.show_fields`
 
 ```python
@@ -5284,7 +5569,7 @@ def show_fields(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 178
+- **Line:** 185
 
 shows the map with the "My fields" list in the right column
 
@@ -5507,6 +5792,70 @@ takes the map to result number index, drops the pin and closes the list
 | `GAP_PX` | distance (pixels) between the controls column and the panel | 21 |
 | `WIDTH_PX` | width (pixels) of the panel, and tallest the result list may be | 23 |
 
+## `fieldshift/ui/records_dialog.py`
+
+### Classes
+
+#### `RecordsDialog`
+
+```python
+class RecordsDialog(CenteredDialog)
+```
+
+- **Line:** 15
+
+the records window of a field
+
+### Functions
+
+#### `RecordsDialog.__init__`
+
+```python
+def __init__(self, fields, layer_id, parent=None)
+```
+
+- **Arguments:** `(FieldsManager fields, str layer_id, QWidget parent = None)`
+- **Line:** 18
+
+#### `RecordsDialog.fill`
+
+```python
+def fill(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 79
+
+shows the field's records, newest first
+
+#### `RecordsDialog.add_from_form`
+
+```python
+def add_from_form(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 94
+
+adds the record of the form; returns it
+
+#### `RecordsDialog.delete_selected`
+
+```python
+def delete_selected(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 107
+
+deletes the selected records, after asking
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `RecordsDialog.kind_box` | the form of a new record | 42 |
+
 ## `fieldshift/ui/scale_bar.py`
 
 ### Classes
@@ -5683,7 +6032,7 @@ asks for the new details of a field and applies them
 class StatusPanel(FieldPanel)
 ```
 
-- **Line:** 23
+- **Line:** 24
 
 the panel. open(layer_id) shows a field
 
@@ -5696,13 +6045,24 @@ def __init__(self, view, fields, parent=None)
 ```
 
 - **Arguments:** `(MapView view, FieldsManager fields, QWidget parent = None)`
-- **Line:** 31
+- **Line:** 32
+
+#### `StatusPanel.open_records`
+
+```python
+def open_records(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 97
+
+opens the measurements window of the field shown
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
-| `TILE_COLUMNS` | tiles per row | 19 |
+| `TILE_COLUMNS` | tiles per row | 20 |
 
 ## `fieldshift/ui/status_widgets.py`
 
@@ -5724,7 +6084,7 @@ a tile of today: icon, name, value and a short note
 class ForecastChart(QtWidgets.QWidget)
 ```
 
-- **Line:** 100
+- **Line:** 104
 
 chart of the next 7 days for one variable (temperature: max and min), with the chosen day marked. click a day to choose it
 
@@ -5734,9 +6094,9 @@ chart of the next 7 days for one variable (temperature: max and min), with the c
 class ForecastCard(QtWidgets.QFrame)
 ```
 
-- **Line:** 229
+- **Line:** 263
 
-the coming days: how many (7 / 14), a chart of the chosen variable, a slider (and play button) through the days, the chosen day's details, the light warnings and a link to Analyze for more
+the coming days: how many (7 / 14), a chart of the chosen variable, a slider through the days, the chosen day's details, the light warnings and a link to Analyze for more
 
 #### `TrackingCard`
 
@@ -5744,7 +6104,7 @@ the coming days: how many (7 / 14), a chart of the chosen variable, a slider (an
 class TrackingCard(QtWidgets.QFrame)
 ```
 
-- **Line:** 420
+- **Line:** 426
 
 the crop follow-up: crop name, newest NDVI and its change against the image before. starts "loading"; set_tracking() fills it
 
@@ -5788,7 +6148,7 @@ def day_label(index, iso_date)
 ```
 
 - **Arguments:** `(int index, str iso_date)`
-- **Line:** 80
+- **Line:** 84
 
 "Today" / "Tomorrow" / "Mon 17" for the day number index of the forecast
 
@@ -5799,7 +6159,7 @@ def day_values(day, variable)
 ```
 
 - **Arguments:** `(DayForecast day, str variable)`
-- **Line:** 91
+- **Line:** 95
 
 (main value, second value or None) of a day for a FORECAST_VARIABLES key
 
@@ -5810,7 +6170,7 @@ def __init__(self, days, parent=None)
 ```
 
 - **Arguments:** `(tuple days)`
-- **Line:** 103
+- **Line:** 107
 
 #### `ForecastChart.show_day`
 
@@ -5819,7 +6179,7 @@ def show_day(self, variable, selected, days=None)
 ```
 
 - **Arguments:** `(str variable, int selected, tuple days = None)`
-- **Line:** 115
+- **Line:** 119
 
 draws a variable with the day number selected marked (and other days)
 
@@ -5830,7 +6190,7 @@ def __init__(self, report, horizon=HORIZONS[0], parent=None)
 ```
 
 - **Arguments:** `(StatusReport report, int horizon = HORIZONS[0])`
-- **Line:** 232
+- **Line:** 266
 
 #### `ForecastCard.days`
 
@@ -5839,7 +6199,7 @@ def days(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 328
+- **Line:** 354
 
 the days shown (today first)
 
@@ -5850,7 +6210,7 @@ def set_horizon(self, days)
 ```
 
 - **Arguments:** `(int days)`
-- **Line:** 333
+- **Line:** 359
 
 shows the next days (one of HORIZONS)
 
@@ -5861,7 +6221,7 @@ def set_variable(self, variable)
 ```
 
 - **Arguments:** `(str variable)`
-- **Line:** 345
+- **Line:** 371
 
 draws another FORECAST_VARIABLES key in the chart
 
@@ -5872,38 +6232,42 @@ def show_day(self, index)
 ```
 
 - **Arguments:** `(int index)`
-- **Line:** 352
+- **Line:** 378
 
 marks the day number index and shows its details
 
-#### `ForecastCard.toggle_play`
+#### `TrackingCard.set_progress`
 
 ```python
-def toggle_play(self)
+def set_progress(self, progress)
 ```
 
-- **Arguments:** `()`
-- **Line:** 378
+- **Arguments:** `(Progress progress)`
+- **Line:** 463
 
-starts or stops moving through the days by itself
+the part from the farmer's records (days since sowing, plant height)
 
 #### `TrackingCard.set_tracking`
 
 ```python
-def set_tracking(self, tracking, failed=False)
+def set_tracking(self, tracking, error=None)
 ```
 
-- **Arguments:** `(Tracking tracking or None, bool failed = False)`
-- **Line:** 439
+- **Arguments:** `(Tracking tracking or None, Exception error = None)`
+- **Line:** 479
+
+shows the follow-up; with an error, why it failed and "Try again"
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
 | `LEVEL_COLORS` | colour of each level | 12 |
-| `FORECAST_VARIABLES` | variables of the forecast chart: key, icon, i18n label, unit, decimals | 69 |
-| `ForecastChart.day_clicked` | emitted with (int index) when the user clicks a day | 109 |
-| `ForecastCard.analyze_requested` | emitted with no arguments when "More in Analyze" is clicked | 239 |
+| `FORECAST_VARIABLES` | variables of the forecast chart: key, i18n label, unit, decimals | 73 |
+| `ForecastChart.day_clicked` | emitted with (int index) when the user clicks a day | 113 |
+| `ForecastCard.analyze_requested` | emitted with no arguments when "More in Analyze" is clicked | 273 |
+| `TrackingCard.retry_requested` | emitted with no arguments when "Try again" is clicked | 442 |
+| `TrackingCard.records_requested` | emitted with no arguments when "Measurements…" is clicked | 449 |
 
 ## `fieldshift/ui/trends_panel.py`
 
@@ -5949,7 +6313,7 @@ the notable facts of the year as small tiles (3 per row)
 class SeasonsCard(Card)
 ```
 
-- **Line:** 93
+- **Line:** 92
 
 a table of the seasons: temperature, rain, water balance, NDVI, soil
 
@@ -5959,7 +6323,7 @@ a table of the seasons: temperature, rain, water balance, NDVI, soil
 class TrendTable(QtWidgets.QTableWidget)
 ```
 
-- **Line:** 142
+- **Line:** 141
 
 table of the rows of a section: the last 12 months, the year before, the normal and the difference. picking a row shows it in the chart
 
@@ -5969,7 +6333,7 @@ table of the rows of a section: the last 12 months, the year before, the normal 
 class YearChart(QtWidgets.QWidget)
 ```
 
-- **Line:** 204
+- **Line:** 203
 
 12-month chart of a row: this year (line, or bars for sums), the year before (dashed orange) and the normal (dotted grey); hover shows a month
 
@@ -5979,7 +6343,7 @@ class YearChart(QtWidgets.QWidget)
 class TrendSectionCard(Card)
 ```
 
-- **Line:** 375
+- **Line:** 374
 
 a section: title, table (left) and 12-month chart (right)
 
@@ -5989,7 +6353,7 @@ a section: title, table (left) and 12-month chart (right)
 class CropCard(Card)
 ```
 
-- **Line:** 404
+- **Line:** 403
 
 the crop of the field and a link to the suggestions (Analyze)
 
@@ -6064,7 +6428,7 @@ def __init__(self, seasons, parent=None)
 ```
 
 - **Arguments:** `(tuple seasons)`
-- **Line:** 99
+- **Line:** 98
 
 #### `TrendTable.__init__`
 
@@ -6073,7 +6437,7 @@ def __init__(self, rows, parent=None)
 ```
 
 - **Arguments:** `(tuple rows)`
-- **Line:** 148
+- **Line:** 147
 
 #### `TrendTable.select_key`
 
@@ -6082,7 +6446,7 @@ def select_key(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 194
+- **Line:** 193
 
 selects the row with that key; returns True when found
 
@@ -6093,7 +6457,7 @@ def set_row(self, row)
 ```
 
 - **Arguments:** `(TrendRow row)`
-- **Line:** 214
+- **Line:** 213
 
 #### `TrendSectionCard.__init__`
 
@@ -6102,7 +6466,7 @@ def __init__(self, section, parent=None)
 ```
 
 - **Arguments:** `(TrendSection section)`
-- **Line:** 378
+- **Line:** 377
 
 #### `CropCard.__init__`
 
@@ -6111,13 +6475,13 @@ def __init__(self, crop, parent=None)
 ```
 
 - **Arguments:** `(str crop)`
-- **Line:** 407
+- **Line:** 406
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
-| `CropCard.suggestion_requested` | emitted with no arguments when "See suggestions" is clicked | 410 |
+| `CropCard.suggestion_requested` | emitted with no arguments when "See suggestions" is clicked | 409 |
 
 ## `fieldshift/ui/weather_card.py`
 

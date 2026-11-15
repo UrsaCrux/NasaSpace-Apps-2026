@@ -16,9 +16,40 @@ from fieldshift.qt import QtCore, QtWidgets
 
 # smallest width of the panel (pixels)
 MIN_WIDTH_PX = 480
-# when set to "1" reports are built at once in the UI thread (tests: the
-# reports are then example data, which is fast)
+# when set to "1" reports are built at once in the UI thread (offline: they
+# fail at once, or are example numbers in the tests)
 OFFLINE_ENV = "FIELDSHIFT_OFFLINE"
+
+
+# (DataError error)
+# the user's text for a failed download: "NASA POWER: no internet connection"
+def error_text(error):
+    from fieldshift.api.errors import DataError, classify
+    if not isinstance(error, DataError):
+        error = classify(error)
+    reason = tr(f"errors.{error.kind}", detail=error.detail)
+    return tr("errors.with_source", source=error.source, reason=reason) if error.source \
+        else reason
+
+
+# a box that says why data is missing, with a "Try again" button
+class ErrorBox(QtWidgets.QFrame):
+
+    # (str text, callable retry, bool compact = False)
+    def __init__(self, text, retry, compact=False, parent=None):
+        super().__init__(parent)
+        self.setObjectName("errorBox")
+        self.setStyleSheet("QFrame#errorBox { background: #fdecea; border: 1px solid #f5c2bd;"
+                           " border-radius: 6px; } QLabel { border: none; background:"
+                           " transparent; color: #8a1c13; }")
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(10, 6 if compact else 10, 10, 6 if compact else 10)
+        self.label = QtWidgets.QLabel(text)
+        self.label.setWordWrap(True)
+        self.retry_button = QtWidgets.QPushButton(tr("errors.retry"))
+        self.retry_button.clicked.connect(retry)
+        layout.addWidget(self.label, 1)
+        layout.addWidget(self.retry_button)
 
 _STYLE = """
 QFrame#fieldPanel { background: #f4f6f4; }
@@ -45,7 +76,8 @@ class FieldPanel(QtWidgets.QFrame):
         self.view = view
         self.fields = fields
         self.layer_id = None           # field shown
-        self.report = None             # report shown (None while loading)
+        self.report = None             # report shown (None while loading or failed)
+        self.error_box = None          # ErrorBox shown, if any
         self._request = 0
         self._hovered = None           # field under the mouse on the map
         # emitted with (str layer_id) when a "See suggestion" link is clicked
@@ -116,7 +148,11 @@ class FieldPanel(QtWidgets.QFrame):
         self._clear()
         self.info_label.setText("")
         if os.environ.get(OFFLINE_ENV) == "1":
-            self._on_loaded(self._request, self.make_report(field))
+            try:
+                report = self.make_report(field)
+            except Exception as exc:
+                report = exc
+            self._on_loaded(self._request, report)
             return
         waiting = QtWidgets.QLabel(tr(self.loading_key, field=field.name))
         waiting.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
@@ -142,28 +178,30 @@ class FieldPanel(QtWidgets.QFrame):
     def _run(self, request, field):
         try:
             report = self.make_report(field)
-        except Exception:
-            report = None
+        except Exception as exc:
+            report = exc                        # shown as an error with "Try again"
         self._loaded.emit(request, report)
 
     def _on_loaded(self, request, report):
         if request != self._request:
             return                              # another field was chosen meanwhile
         self._clear()
-        self.report = report
-        if report is None:
-            self.content_layout.addWidget(QtWidgets.QLabel(tr("panel.failed")))
+        if isinstance(report, Exception):
+            # nothing to show: say why, never made-up numbers
+            self.report = None
+            self.error_box = ErrorBox(error_text(report), self.refresh)
+            self.content_layout.addWidget(self.error_box)
+            self.content_layout.addStretch(1)
             return
-        self.build(report)
-        # why the numbers may be partial: sources that did not answer, or no
-        # connection at all (a short note in the info line)
-        notes = [self.info_label.text()]
+        self.report = report
+        self.error_box = None
         missing = getattr(report, "missing", ())
         if missing:
-            notes.append(tr("panel.missing", sources=", ".join(missing)))
-        if getattr(report, "notice_key", ""):
-            notes.append(tr(report.notice_key))
-        self.info_label.setText(" · ".join(n for n in notes if n))
+            # some sources did not answer: say which and why, above the rest
+            text = tr("errors.partial") + "<br>" + "<br>".join(error_text(e) for e in missing)
+            self.error_box = ErrorBox(text, self.refresh, compact=True)
+            self.content_layout.addWidget(self.error_box)
+        self.build(report)
 
     def _clear(self):
         while self.content_layout.count():

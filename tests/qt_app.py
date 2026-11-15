@@ -6,6 +6,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 # field dialogs must not contact the data sources from the tests (tests that
 # need loading pass their own fetch= function)
 os.environ.setdefault("FIELDSHIFT_OFFLINE", "1")
+# ... and the Status / Trends panels show example numbers instead of "offline"
+os.environ.setdefault("FIELDSHIFT_EXAMPLE_DATA", "1")
 
 from fieldshift.qt import HAS_QGIS, QtWidgets  # noqa: E402
 

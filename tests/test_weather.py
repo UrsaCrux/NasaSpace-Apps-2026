@@ -135,7 +135,8 @@ class WeatherCardTest(unittest.TestCase):
         self.answer = None
         self.view.set_center(-71.02, -33.73)
         self.load()
-        self.assertEqual(self.card.now_label.text(), "Weather not available")
+        self.assertIn("Weather not available: no internet connection",
+                      self.card.now_label.text())
         self.assertTrue(self.card.hours_label.isHidden())
         self.answer = api.parse_forecast(ANSWER, -71.02, -33.73)
         self.assertTrue(self.load())                             # same zone: tries again

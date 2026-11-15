@@ -54,9 +54,13 @@ class TodayTile(QtWidgets.QFrame):
             text = f"{tile.value:.{tile.decimals}f}" + (f" {tile.unit}" if tile.unit else "")
         self.value_label = QtWidgets.QLabel(f"<b>{text}</b>")
         self.value_label.setStyleSheet("font-size: 16px; color: #1b1b1b;")
-        note = QtWidgets.QLabel(tr(tile.note_key, **tile.note_params) if tile.note_key else "")
-        note.setStyleSheet(f"color: {color if tile.level != LEVEL_OK else '#666'};"
-                           " font-size: 11px;")
+        params = dict(tile.note_params, time=tile.measured) if tile.measured else tile.note_params
+        note = QtWidgets.QLabel(tr(tile.note_key, **params) if tile.note_key else "")
+        note_color = "#1565c0" if tile.measured else \
+            (color if tile.level != LEVEL_OK else "#666")
+        note.setStyleSheet(f"color: {note_color}; font-size: 11px;")
+        if tile.measured:
+            self.setToolTip(tr("status.tile.measured_tooltip"))
         note.setWordWrap(True)
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(8, 6, 8, 6)
@@ -434,13 +438,54 @@ class TrackingCard(QtWidgets.QFrame):
         self.text = QtWidgets.QLabel(tr("status.tracking_loading"))
         self.text.setWordWrap(True)
         self.text.setStyleSheet("color: #555;")
+        # emitted with no arguments when "Try again" is clicked
+        self.retry_requested = Event()
+        self.retry_button = QtWidgets.QPushButton(tr("errors.retry"))
+        self.retry_button.clicked.connect(lambda: self.retry_requested.emit())
+        self.retry_button.hide()
+        self.progress = QtWidgets.QLabel()
+        self.progress.setWordWrap(True)
+        # emitted with no arguments when "Measurements…" is clicked
+        self.records_requested = Event()
+        records = QtWidgets.QPushButton(tr("status.add_measurement"))
+        records.setFlat(True)
+        records.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        records.setStyleSheet(_LINK)
+        records.clicked.connect(lambda: self.records_requested.emit())
         layout.addWidget(title)
+        layout.addWidget(self.progress)
         layout.addWidget(self.text)
+        layout.addWidget(self.retry_button, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
+        layout.addWidget(records, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
 
-    # (Tracking tracking or None, bool failed = False)
-    def set_tracking(self, tracking, failed=False):
+    # (Progress progress)
+    # the part from the farmer's records (days since sowing, plant height)
+    def set_progress(self, progress):
+        lines = []
+        if progress.days_since_sowing is not None:
+            lines.append(tr("status.progress_sowing", days=progress.days_since_sowing,
+                            date=short_date(progress.sowing_date)))
+        if progress.height is not None:
+            text = tr("status.progress_height", cm=f"{progress.height:.0f}",
+                      date=short_date(progress.height_date))
+            if progress.height_change_pct is not None:
+                text += f" ({progress.height_change_pct:+.0f}%)"
+            lines.append(text)
+        self.progress.setText("<br>".join(lines) if lines else tr("status.progress_none"))
+        self.progress.setStyleSheet("color: #1b1b1b;" if lines else "color: #777;")
+
+    # (Tracking tracking or None, Exception error = None)
+    # shows the follow-up; with an error, why it failed and "Try again"
+    def set_tracking(self, tracking, error=None):
+        if error is not None:
+            from fieldshift.ui.field_panel import error_text
+            self.text.setStyleSheet("color: #8a1c13;")
+            self.text.setText(error_text(error))
+            self.retry_button.show()
+            return
+        self.retry_button.hide()
         if tracking is None:
-            self.text.setText(tr("status.tracking_failed" if failed else "status.tracking_none"))
+            self.text.setText(tr("status.tracking_none"))
             return
         crop = tracking.crop or tr("status.tracking_no_crop")
         lines = [tr("status.tracking_ndvi", crop=crop, ndvi=f"{tracking.ndvi:.2f}",
@@ -450,7 +495,5 @@ class TrackingCard(QtWidgets.QFrame):
             color = "#2e7d32" if change >= 0 else LEVEL_COLORS[LEVEL_WATCH]
             lines.append(f"<span style='color:{color}'><b>{change:+.0f}%</b></span> "
                          + tr("status.tracking_change", date=short_date(tracking.previous_date)))
-        lines.append(f"<span style='color:#777; font-size:11px'>"
-                     f"{tr('status.tracking_hint')}</span>")
         self.text.setStyleSheet("color: #1b1b1b;")
         self.text.setText("<br>".join(lines))

@@ -7,8 +7,9 @@ import calendar
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 
+from fieldshift.api.errors import NO_DATA, DataError, classify
 from fieldshift.status import sources
-from fieldshift.trends.build import make_report
+from fieldshift.trends.build import make_report, measured_series
 
 # a month counts when it has at least this many days of data
 MIN_DAYS = 20
@@ -40,8 +41,8 @@ def _shift(month, years):
 
 
 # (Field field, str crop = None)
-# the TrendsReport of the last 12 complete months; raises when NASA POWER
-# does not answer
+# the TrendsReport of the last 12 complete months; raises api.errors.DataError
+# when NASA POWER does not answer (the other sources go to report.missing)
 def live_report(field, crop=None):
     lon, lat = _centroid(field)
     today = sources.today()
@@ -52,15 +53,18 @@ def live_report(field, crop=None):
         climate_job = pool.submit(sources.power_climatology, lon, lat)
         ndvi_job = pool.submit(sources.modis_ndvi, lon, lat,
                                date(today.year - 1, today.month, 1) - timedelta(days=16), today)
-        daily = daily_job.result()
+        try:
+            daily = daily_job.result()
+        except Exception as exc:
+            raise classify(exc, "NASA POWER") from exc
         try:
             climate = climate_job.result()
-        except Exception:
-            climate, _ = {}, missing.append("NASA POWER climatology")
+        except Exception as exc:
+            climate, _ = {}, missing.append(classify(exc, "NASA POWER (normals)"))
         try:
             ndvi = ndvi_job.result()
-        except Exception:
-            ndvi, _ = [], missing.append("MODIS")
+        except Exception as exc:
+            ndvi, _ = [], missing.append(classify(exc, "MODIS"))
 
     monthly = {key: _by_month([(d, v * scale) for d, v in daily.get(param, [])])
                for key, (param, scale) in _DAILY.items()}
@@ -70,7 +74,7 @@ def live_report(field, crop=None):
     complete = sorted(m for m, vals in monthly["temp_max"].items() if len(vals) >= MIN_DAYS)
     months = complete[-12:]
     if len(months) < 6:
-        raise ValueError("NASA POWER returned too few months")
+        raise DataError(NO_DATA, "NASA POWER")
 
     def value(key, month):
         vals = monthly[key].get(month)
@@ -105,4 +109,5 @@ def live_report(field, crop=None):
     names.update(et0="NASA POWER (Hargreaves)", water_balance="NASA POWER",
                  ndvi="MODIS")
     return make_report(field.name, months, lat, series, previous, normal, names, counts,
-                       crop=crop, missing=missing)
+                       crop=crop, missing=missing,
+                       measured=measured_series(field.records, months))

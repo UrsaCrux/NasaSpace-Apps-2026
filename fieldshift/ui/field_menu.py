@@ -29,6 +29,7 @@ class FieldMenu:
             ("edit", tr("menu.edit"), lambda: panel.edit_field(layer_id)),
             ("status", tr("menu.status"), lambda: self.window.open_status(layer_id)),
             ("trends", tr("menu.trends"), lambda: self.window.open_trends(layer_id)),
+            ("records", tr("menu.records"), lambda: self.window.open_records(layer_id)),
             ("analyze", tr("menu.analyze"), lambda: self.window.analyze(layer_id)),
             ("zoom", tr("menu.zoom"), lambda: fields.zoom_to(layer_id)),
             ("check", tr("menu.uncheck") if checked else tr("menu.check"),

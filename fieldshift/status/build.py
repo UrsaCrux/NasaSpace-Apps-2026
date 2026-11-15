@@ -1,13 +1,35 @@
-"""Today's tiles from a forecast (shared by the real and the example report)."""
+"""Today's tiles from a forecast (shared by the real and the example report),
+with the farmer's measurements of today in place of the forecast's values.
+"""
 
+from dataclasses import replace
+
+from fieldshift.fields.records import latest
 from fieldshift.status.models import LEVEL_ALERT, LEVEL_OK, LEVEL_WATCH, TodayTile
 from fieldshift.status.rules import FROST_C, HEAT_C, RAIN_MM, UV_HIGH, WIND_KMH
 
 
-# (api.forecast.Forecast forecast)
+# tile key -> record kind measured in the field
+MEASURED_KINDS = {"soil_moisture": "soil_moisture", "soil_temp": "soil_temp"}
+
+
+# (api.forecast.Forecast forecast, tuple records = ())
 # the tiles of today: temperature, rain, humidity, wind, sun, water use and
-# top soil
-def today_tiles(forecast):
+# top soil; a tile with a measurement of today (records) shows it instead
+def today_tiles(forecast, records=()):
+    tiles = _forecast_tiles(forecast)
+    today = forecast.days[0].date
+    out = []
+    for tile in tiles:
+        record = latest(records, MEASURED_KINDS.get(tile.key, ""), today)
+        if record is not None and record.value is not None:
+            tile = replace(tile, value=record.value, measured=record.time[11:16],
+                           note_key="status.tile.measured_note", note_params={})
+        out.append(tile)
+    return tuple(out)
+
+
+def _forecast_tiles(forecast):
     day = forecast.days[0]
     hour = forecast.current_hour() or (forecast.hours[0] if forecast.hours else None)
     hot = day.tmax >= HEAT_C or day.tmin <= FROST_C

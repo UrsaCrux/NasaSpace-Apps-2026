@@ -81,8 +81,8 @@ class SeasonRow:
     values: dict
 
 
-# everything shown for one field. example / notice_key / missing work as in
-# StatusReport
+# everything shown for one field. example True for made-up numbers (tests);
+# missing: api.errors.DataError of the sources that did not answer
 @dataclass(frozen=True)
 class TrendsReport:
     field_name: str
@@ -92,7 +92,6 @@ class TrendsReport:
     seasons: tuple
     crop: str = None
     example: bool = True
-    notice_key: str = ""
     missing: tuple = ()
 
     # (str section_id)

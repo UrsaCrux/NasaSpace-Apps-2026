@@ -23,7 +23,9 @@ FORECAST_DAYS = 16
 
 
 # one value of today: label_key + value in unit, and a short note under it
-# (note_key filled with note_params). value None: not available
+# (note_key filled with note_params). value None: not available. measured
+# is the time ("HH:MM") of the farmer's measurement used instead of the
+# forecast's value, "" when the value is the forecast's
 @dataclass(frozen=True)
 class TodayTile:
     key: str
@@ -35,6 +37,7 @@ class TodayTile:
     note_key: str = ""
     note_params: dict = field(default_factory=dict)
     level: str = LEVEL_OK
+    measured: str = ""
 
 
 # a light warning about a coming day (date "YYYY-MM-DD"): text_key filled
@@ -67,8 +70,7 @@ class Tracking:
 
 # everything shown for one field: today's tiles, the forecast
 # (api.forecast.Forecast: days, today first, and hours) and the warnings of
-# the coming days. example True when the numbers are made up; notice_key
-# says why
+# the coming days. example True when the numbers are made up (tests)
 @dataclass(frozen=True)
 class StatusReport:
     field_name: str
@@ -76,8 +78,6 @@ class StatusReport:
     forecast: object
     alerts: tuple
     example: bool = False
-    notice_key: str = ""
-    missing: tuple = ()
 
     # (int days)
     # the warnings of the first days of the forecast

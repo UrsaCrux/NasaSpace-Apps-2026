@@ -115,7 +115,9 @@ class WeatherCard(QtWidgets.QFrame):
     def _run(self, request, lon, lat):
         try:
             result = self._fetch(lon, lat)
-        except Exception:
+        except Exception as exc:
+            from fieldshift.api.errors import classify
+            self._error = classify(exc)
             result = None
         name = None
         if result is not None and self._zone_name is not None:
@@ -133,7 +135,11 @@ class WeatherCard(QtWidgets.QFrame):
         self.title_label.setText(f"<b>{title}</b>")
         if result is None:
             self._cell = None                   # try again on the next movement
-            self._show_message(tr("weather.unavailable"))
+            error = getattr(self, "_error", None)
+            reason = tr(f"errors.{error.kind}", detail=error.detail) if error else ""
+            self._show_message(tr("weather.unavailable") + (f": {reason}" if reason else "")
+                               + "<br><span style='color:#777; font-size:10px'>"
+                               + tr("weather.retry_hint") + "</span>")
             return
         self.now_label.setText(tr("weather.now", icon=SKY_ICONS.get(result.sky, ""),
                                   temp=f"{result.temperature:.0f}",

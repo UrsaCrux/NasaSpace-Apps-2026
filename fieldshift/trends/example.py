@@ -7,7 +7,7 @@ import random
 import zlib
 from datetime import date
 
-from fieldshift.trends.build import make_report
+from fieldshift.trends.build import make_report, measured_series
 
 
 def _months(today):
@@ -53,4 +53,5 @@ def example_report(field, crop=None, today=None):
     sources["ndvi"] = "MODIS"
     return make_report(field.name, months, lat, series, previous, normal, sources,
                        {"frost_days": rng.randint(0, 12), "heavy_rain_days": rng.randint(1, 8)},
-                       crop=crop, example=True)
+                       crop=crop, example=True,
+                       measured=measured_series(field.records, months))

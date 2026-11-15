@@ -46,6 +46,8 @@ class FieldsManager:
         self.fields_changed = Event()
         # emitted with no arguments when the set of chosen fields changes
         self.selection_changed = Event()
+        # emitted with (str layer_id) after a field's records change
+        self.records_changed = Event()
         self._fields = {}          # layer id -> Field
         self._selected = set()     # layer ids of the fields the user checked
         # the map outlines the checked fields
@@ -121,6 +123,9 @@ class FieldsManager:
         if old is None:
             raise ValueError(f"layer {layer_id!r} is not a field")
         new = self.store.update(old.name, name, color, data)
+        edits = _edited_records(old.data, new.data)
+        if edits:                            # values typed in "Edit field" go to the records
+            new = self.store.save_records(new.name, new.records + edits)
         try:
             new_id = self._show(new)
         except ValueError:
@@ -134,6 +139,38 @@ class FieldsManager:
         self.view.remove_layer(layer_id)
         self.fields_changed.emit()
         return new_id
+
+    # (str layer_id)
+    # the records (fields.records.Record) of a field, oldest first
+    def records(self, layer_id):
+        field = self._fields.get(layer_id)
+        return field.records if field else ()
+
+    # (str layer_id, Record record)
+    # adds a measurement or event to a field (saved in its file). a kind that
+    # is also a datum (pH, nitrogen, ...) becomes the field's datum when it is
+    # the newest of its kind
+    def add_record(self, layer_id, record):
+        field = self._fields[layer_id]
+        records = tuple(sorted(field.records + (record,), key=lambda r: r.time))
+        self._save_records(layer_id, records)
+
+    # (str layer_id, Record record)
+    # removes a record of a field
+    def remove_record(self, layer_id, record):
+        field = self._fields[layer_id]
+        self._save_records(layer_id, tuple(r for r in field.records if r != record))
+
+    def _save_records(self, layer_id, records):
+        from fieldshift.fields.records import KINDS, latest
+        field = self._fields[layer_id]
+        data = {k: dict(v) if isinstance(v, dict) else v for k, v in field.data.items()}
+        for kind, (_, _, key, _) in KINDS.items():
+            newest = latest(records, kind) if key else None
+            if newest is not None and newest.value is not None and key in data:
+                data[key] = {**data[key], "value": newest.value, "source": "user"}
+        self._fields[layer_id] = self.store.save_records(field.name, records, data)
+        self.records_changed.emit(layer_id)
 
     # (str layer_id)
     # removes a field from the map and deletes its file; returns False when
@@ -200,3 +237,19 @@ class FieldsManager:
         layer_id = self.view.add_layer(spec)
         self._fields[layer_id] = field
         return layer_id
+
+
+# (dict old, dict new)
+# Records for the data values the user typed or changed in "Edit field"
+def _edited_records(old, new):
+    from fieldshift.fields.records import EDITED, KINDS, Record, now
+    time, records = now(), []
+    for kind, (_, _, key, _) in KINDS.items():
+        if not key:
+            continue
+        before = ((old or {}).get(key) or {}).get("value")
+        item = (new or {}).get(key) or {}
+        if item.get("source") == "user" and item.get("value") is not None \
+                and item["value"] != before:
+            records.append(Record(time, kind, float(item["value"]), origin=EDITED))
+    return tuple(records)

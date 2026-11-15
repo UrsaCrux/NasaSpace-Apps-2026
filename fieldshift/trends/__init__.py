@@ -11,18 +11,13 @@ from fieldshift.trends.models import (  # noqa: F401
 
 # (Field field)
 # the TrendsReport of the field, from the satellite sources. slow: call it
-# outside the UI thread. offline, or when NASA POWER fails, example numbers
-# (report.example is True, report.notice_key says why)
+# outside the UI thread. raises api.errors.DataError when NASA POWER cannot
+# be downloaded; other sources that fail are listed in report.missing
 def trends_report(field):
-    import os
-    from dataclasses import replace
-    from fieldshift.status import OFFLINE_ENV, crop_of
-    from fieldshift.trends.example import example_report
+    from fieldshift.status import crop_of, offline_mode
     crop = crop_of(field)
-    if os.environ.get(OFFLINE_ENV) == "1":
-        return replace(example_report(field, crop), notice_key="status.offline")
-    try:
-        from fieldshift.trends.live import live_report
-        return live_report(field, crop)
-    except Exception:
-        return replace(example_report(field, crop), notice_key="status.no_connection")
+    if offline_mode() == "example":
+        from fieldshift.trends.example import example_report
+        return example_report(field, crop)
+    from fieldshift.trends.live import live_report
+    return live_report(field, crop)
