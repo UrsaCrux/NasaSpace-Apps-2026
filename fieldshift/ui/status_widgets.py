@@ -276,8 +276,12 @@ class AlertRow(QtWidgets.QFrame):
         self.suggestion_requested = Event()
         color = LEVEL_COLORS.get(alert.level, LEVEL_COLORS[LEVEL_WATCH])
         self.setObjectName("alertRow")
+        # a very light tint of the level colour (Qt reads "#rrggbbaa" as
+        # "#aarrggbb", so use rgba)
+        tint = QtGui.QColor(color)
         self.setStyleSheet(
-            f"QFrame#alertRow {{ background: {color}14; border-left: 4px solid {color};"
+            f"QFrame#alertRow {{ background: rgba({tint.red()}, {tint.green()}, {tint.blue()},"
+            f" 22); border-left: 4px solid {color};"
             f" border-radius: 4px; }} QLabel {{ background: transparent; border: none; }}")
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(8, 5, 8, 5)
