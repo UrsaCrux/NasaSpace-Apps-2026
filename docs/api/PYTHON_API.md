@@ -3236,6 +3236,155 @@ a PCSE WeatherDataProvider serving the series (with reference evapotranspiration
 |------|-------------|------|
 | `WIND_10M_TO_2M` | wind at 10 m to wind at 2 m (FAO-56 logarithmic profile) | 34 |
 
+## `fieldshift/status/__init__.py`
+
+### Functions
+
+#### `status_report`
+
+```python
+def status_report(field, days=7)
+```
+
+- **Arguments:** `(Field field, int days = 7)`
+- **Line:** 16
+
+the StatusReport of the field for the last days (one of PERIODS). for now made-up example numbers (report.example is True)
+
+## `fieldshift/status/example.py`
+
+### Functions
+
+#### `example_report`
+
+```python
+def example_report(field, days=7, today=None, crop=None)
+```
+
+- **Arguments:** `(Field field, int days = 7, date today = None, str crop = None)`
+- **Line:** 128
+
+an example StatusReport of the field for the last days; crop is the crop name shown in the stage line
+
+## `fieldshift/status/models.py`
+
+### Classes
+
+#### `StatusRow`
+
+```python
+class StatusRow
+```
+
+- **Line:** 26
+
+one variable of a section ("Rain", mm): one value per day in dates ("2026-11-14"), oldest first. fixed rows (pH from a soil map) have a single value and no chart. source names the product ("GPM IMERG"), not translated
+
+#### `StatusAlert`
+
+```python
+class StatusAlert
+```
+
+- **Line:** 57
+
+a warning of a section: text_key filled with params. upcoming alerts are about the next days (short forecast); suggestion True links to Analyze
+
+#### `SummaryTile`
+
+```python
+class SummaryTile
+```
+
+- **Line:** 67
+
+one tile of the "today" summary: the row it comes from and its value
+
+#### `StatusSection`
+
+```python
+class StatusSection
+```
+
+- **Line:** 77
+
+a section of the report: "weather", "growth" or "soil". note_key / params is a line shown under the title (crop stage); texture holds the analysis.models.TextureFigure of the soil section
+
+#### `StatusReport`
+
+```python
+class StatusReport
+```
+
+- **Line:** 91
+
+everything shown for one field and period. example True while the numbers are made up
+
+### Functions
+
+#### `StatusRow.latest`
+
+```python
+def latest(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 40
+
+the newest value
+
+#### `StatusRow.mean`
+
+```python
+def mean(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 45
+
+mean of the values
+
+#### `StatusRow.change`
+
+```python
+def change(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 50
+
+change of the newest value against the mean of the period (0 when fixed)
+
+#### `StatusReport.section`
+
+```python
+def section(self, section_id)
+```
+
+- **Arguments:** `(str section_id)`
+- **Line:** 101
+
+the section with that id, or None
+
+#### `StatusReport.alerts`
+
+```python
+def alerts(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 106
+
+every alert of every section, in section order
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `LEVEL_OK` | how a value or an alert looks: decides its colour in the UI | 10 |
+| `CHART_LINE` | how a row is drawn in the chart | 15 |
+| `PERIODS` | periods (days back) the user can choose; longer periods belong to Trends | 19 |
+
 ## `fieldshift/ui/analysis_tab.py`
 
 ### Classes
@@ -3948,7 +4097,7 @@ def default_height(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 246
+- **Line:** 249
 
 height the dialog opens with: the main window's height minus WINDOW_MARGIN_PX, never more than the screen's free height (the screen's when there is no main window)
 
@@ -3959,7 +4108,7 @@ def name(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 259
+- **Line:** 262
 
 the name typed, without surrounding spaces
 
@@ -3970,7 +4119,7 @@ def color(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 264
+- **Line:** 267
 
 the chosen colour as "#rrggbb" (grey when none was chosen)
 
@@ -3981,7 +4130,7 @@ def crop(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 269
+- **Line:** 272
 
 id of the chosen crop variety, or None
 
@@ -3992,7 +4141,7 @@ def is_loading(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 274
+- **Line:** 277
 
 True while some data source has not answered yet
 
@@ -4003,7 +4152,7 @@ def data(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 280
+- **Line:** 283
 
 the data: {key: {"value", "source"[, "prefilled"]}} for DATA_FIELDS, plus CROP_KEY
 
@@ -4014,7 +4163,7 @@ def is_modified(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 302
+- **Line:** 305
 
 True when the user changed this datum (it is not the loaded one)
 
@@ -4025,7 +4174,7 @@ def row_state(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 307
+- **Line:** 310
 
 state of a row: loading, prefilled, edited, missing or farmer
 
@@ -4036,7 +4185,7 @@ def set_value(self, key, value)
 ```
 
 - **Arguments:** `(str key, any value)`
-- **Line:** 312
+- **Line:** 315
 
 sets a datum as if the user had typed it (marks it edited)
 
@@ -4047,7 +4196,7 @@ def reset_value(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 319
+- **Line:** 322
 
 puts the loaded value back and marks the datum as not edited
 
@@ -4057,9 +4206,20 @@ puts the loaded value back and marks the datum as not edited
 def accept(self)
 ```
 
-- **Line:** 325
+- **Line:** 328
 
 refuses to close with Save while something is invalid or loading
+
+#### `FieldDialog.stop_loading`
+
+```python
+def stop_loading(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 338
+
+stops waiting for the data sources: rows still loading become "not available" (their late answers are ignored)
 
 #### `FieldDialog.done`
 
@@ -4067,7 +4227,7 @@ refuses to close with Save while something is invalid or loading
 def done(self, result)
 ```
 
-- **Line:** 331
+- **Line:** 351
 
 stops the threads' results from reaching a closed dialog
 
@@ -4079,7 +4239,8 @@ stops the threads' results from reaching a closed dialog
 | `STYLE_LOADING` | looks of a row in each state | 42 |
 | `WINDOW_MARGIN_PX` | the dialog opens this many pixels shorter than the main window (and never taller than the screen); its content scrolls when it does not fit | 53 |
 | `OFFLINE_ENV` | set to "1" to never contact the data sources (tests, no internet) | 56 |
-| `FieldDialog.tooltip_widgets` | every title and button has a tooltip from i18n/tooltips/tooltips.json | 162 |
+| `FieldDialog.editing` | an existing field already has its data saved: it can be saved while the empty rows still load (saving stops the loading) | 137 |
+| `FieldDialog.tooltip_widgets` | every title and button has a tooltip from i18n/tooltips/tooltips.json | 165 |
 
 ## `fieldshift/ui/field_list.py`
 
@@ -4338,7 +4499,7 @@ shows the card for this field (None or a non-field layer hides it)
 class MainWindow(QtWidgets.QMainWindow)
 ```
 
-- **Line:** 29
+- **Line:** 30
 
 top-level window, made of tabs. The first tab ("Map", always there) holds the MapView with the FieldsBar under it (left) and the SidePanel (right), which share one FieldsManager. "Analyze…" adds one closable tab per analysis result
 
@@ -4351,7 +4512,7 @@ def __init__(self, view, parent=None, basemaps=None)
 ```
 
 - **Arguments:** `(MapView view, QWidget parent = None, dict basemaps = None)`
-- **Line:** 34
+- **Line:** 35
 
 builds the splitter layout around an already created map view. basemaps maps "satellite" / "streets" to layer ids for the background switch
 
@@ -4362,7 +4523,7 @@ def analyze(self, layer_id=None)
 ```
 
 - **Arguments:** `(str layer_id = None)`
-- **Line:** 97
+- **Line:** 102
 
 asks for a field (layer_id first, if given) and analyses, runs them with a progress window and opens one tab per result. returns the new tabs (empty if cancelled)
 
@@ -4373,9 +4534,20 @@ def open_results(self, field, results)
 ```
 
 - **Arguments:** `(Field field, list results)`
-- **Line:** 112
+- **Line:** 117
 
 adds a tab for each AnalysisResult and shows the first one; returns the tabs
+
+#### `MainWindow.open_status`
+
+```python
+def open_status(self, layer_id=None)
+```
+
+- **Arguments:** `(str layer_id = None)`
+- **Line:** 131
+
+shows the map with the Status panel of a field (layer_id, else the one the Analyze dialog would start with). returns True when it opened
 
 #### `MainWindow.open_mode`
 
@@ -4384,23 +4556,24 @@ def open_mode(self, mode)
 ```
 
 - **Arguments:** `(str mode)`
-- **Line:** 126
+- **Line:** 140
 
-shows the tab of a mode ("status" or "trends"), opening it the first time. for now the tab only says the mode is coming soon. returns the tab
+shows the tab of a mode ("trends"), opening it the first time. for now the tab only says the mode is coming soon. returns the tab
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
-| `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 21 |
-| `MainWindow.scale_bar` | scale bar over the bottom-left corner of the map | 48 |
-| `MainWindow.map_controls` | zoom, "my fields" and background buttons over the top-left corner | 50 |
-| `MainWindow.map_search` | place search: opens from the magnifier of the controls | 52 |
-| `MainWindow.hover_card` | card with the field under the mouse, and its outline highlighted | 54 |
-| `MainWindow.field_menu` | right click on a field: edit, analyze, zoom, check, delete | 56 |
-| `MainWindow.weather_card` | weather of the zone (now and 7 days) over the top-right corner | 58 |
-| `MainWindow.map_splitter` | the map tab; analysis results open as more tabs next to it | 69 |
-| `MainWindow.attribution_label` | credit of the visible layers (basemap licences require it) | 86 |
+| `MAP_STRETCH` | relative widths of the map and the panel inside the splitter | 22 |
+| `MainWindow.scale_bar` | scale bar over the bottom-left corner of the map | 49 |
+| `MainWindow.map_controls` | zoom, "my fields" and background buttons over the top-left corner | 51 |
+| `MainWindow.map_search` | place search: opens from the magnifier of the controls | 53 |
+| `MainWindow.hover_card` | card with the field under the mouse, and its outline highlighted | 55 |
+| `MainWindow.field_menu` | right click on a field: edit, analyze, zoom, check, delete | 57 |
+| `MainWindow.weather_card` | weather of the zone (now and 7 days) over the top-right corner | 59 |
+| `MainWindow.status_panel` | Status of one field over the right part of the map (hidden at start) | 61 |
+| `MainWindow.map_splitter` | the map tab; analysis results open as more tabs next to it | 74 |
+| `MainWindow.attribution_label` | credit of the visible layers (basemap licences require it) | 91 |
 
 ## `fieldshift/ui/map_controls.py`
 
@@ -4768,6 +4941,241 @@ asks for the new details of a field and applies them
 | Name | Description | Line |
 |------|-------------|------|
 | `SidePanel.data_box` | data of the checked fields (see fields_data.py) | 31 |
+
+## `fieldshift/ui/status_panel.py`
+
+### Classes
+
+#### `StatusPanel`
+
+```python
+class StatusPanel(QtWidgets.QFrame)
+```
+
+- **Line:** 38
+
+the panel. it starts hidden; open(layer_id) shows a field
+
+### Functions
+
+#### `StatusPanel.__init__`
+
+```python
+def __init__(self, view, fields)
+```
+
+- **Arguments:** `(MapView view, FieldsManager fields)`
+- **Line:** 42
+
+puts the panel over view.widget(), hidden
+
+#### `StatusPanel.open`
+
+```python
+def open(self, layer_id=None)
+```
+
+- **Arguments:** `(str layer_id)`
+- **Line:** 121
+
+shows the panel with that field (the first one when None). returns True when a field is shown
+
+#### `StatusPanel.set_days`
+
+```python
+def set_days(self, days)
+```
+
+- **Arguments:** `(int days)`
+- **Line:** 134
+
+shows the last days (one of PERIODS)
+
+#### `StatusPanel.refresh`
+
+```python
+def refresh(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 142
+
+builds the report of the field and period shown again
+
+#### `StatusPanel.show_row`
+
+```python
+def show_row(self, section_id, row_key)
+```
+
+- **Arguments:** `(str section_id, str row_key)`
+- **Line:** 182
+
+scrolls to a section and shows that row in its chart
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `WIDTH_SHARE` | share of the map width the panel takes, and its smallest width (pixels) | 19 |
+| `MARGIN_PX` | gap to the map edges (pixels) | 22 |
+| `StatusPanel.suggestion_requested` | emitted with (str layer_id) when an alert's "See suggestion" is clicked | 52 |
+
+## `fieldshift/ui/status_widgets.py`
+
+### Classes
+
+#### `SummaryTile`
+
+```python
+class SummaryTile(QtWidgets.QFrame)
+```
+
+- **Line:** 47
+
+a tile of the "today" summary: icon, name, newest value and trend. click it to jump to its row
+
+#### `StatusTable`
+
+```python
+class StatusTable(QtWidgets.QTableWidget)
+```
+
+- **Line:** 85
+
+table of the rows of a section: variable, newest, mean, min, max, trend. picking a row shows it in the chart
+
+#### `TimeChart`
+
+```python
+class TimeChart(QtWidgets.QWidget)
+```
+
+- **Line:** 143
+
+chart of one row over time: a line, or bars (rain), with the period mean dashed. moving the mouse over it shows the value of that day
+
+#### `AlertRow`
+
+```python
+class AlertRow(QtWidgets.QFrame)
+```
+
+- **Line:** 269
+
+one warning: coloured bar, icon, text and, when there is a suggestion, a "See suggestion →" link
+
+#### `SectionCard`
+
+```python
+class SectionCard(QtWidgets.QFrame)
+```
+
+- **Line:** 301
+
+a section card: title, optional note (crop stage), optional soil triangle, table (left) and chart (right), and its alerts
+
+### Functions
+
+#### `format_value`
+
+```python
+def format_value(row, value)
+```
+
+- **Arguments:** `(StatusRow row, float value)`
+- **Line:** 25
+
+the value with the row's decimals and unit ("23.4 °C")
+
+#### `trend_text`
+
+```python
+def trend_text(row)
+```
+
+- **Arguments:** `(StatusRow row)`
+- **Line:** 32
+
+"↑ 2.1" / "↓ 0.4" / "=": newest value against the period mean
+
+#### `source_text`
+
+```python
+def source_text(source)
+```
+
+- **Arguments:** `(str source)`
+- **Line:** 41
+
+a source name, translated when it is an i18n key ("status.source.farmer")
+
+#### `SummaryTile.__init__`
+
+```python
+def __init__(self, tile, parent=None)
+```
+
+- **Arguments:** `(SummaryTile tile)`
+- **Line:** 50
+
+#### `StatusTable.__init__`
+
+```python
+def __init__(self, rows, parent=None)
+```
+
+- **Arguments:** `(tuple rows)`
+- **Line:** 91
+
+#### `StatusTable.select_key`
+
+```python
+def select_key(self, key)
+```
+
+- **Arguments:** `(str key)`
+- **Line:** 133
+
+selects the row with that key; returns True when found
+
+#### `TimeChart.set_row`
+
+```python
+def set_row(self, row)
+```
+
+- **Arguments:** `(StatusRow row)`
+- **Line:** 154
+
+shows another row
+
+#### `AlertRow.__init__`
+
+```python
+def __init__(self, alert, parent=None)
+```
+
+- **Arguments:** `(StatusAlert alert)`
+- **Line:** 272
+
+#### `SectionCard.__init__`
+
+```python
+def __init__(self, section, parent=None)
+```
+
+- **Arguments:** `(StatusSection section)`
+- **Line:** 304
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `LEVEL_COLORS` | colour of each level | 13 |
+| `SummaryTile.clicked` | emitted with (str section id, str row key) on click | 54 |
+| `AlertRow.suggestion_requested` | emitted with no arguments when "See suggestion" is clicked | 276 |
+| `SectionCard.suggestion_requested` | emitted with no arguments when an alert's "See suggestion" is clicked | 308 |
 
 ## `fieldshift/ui/weather_card.py`
 

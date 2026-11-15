@@ -76,7 +76,10 @@ Opened after drawing a field (and by **Edit**). It asks for:
 - **Zone data** — loaded from the data sources (below), editable.
 
 Save stays disabled until the name and crop are valid **and** every data
-source has answered or run out of time.
+source has answered or run out of time. **Editing an existing field** does
+not wait: Save works while the empty rows load, and saving stops the
+loading (rows not loaded yet stay "not available"; values already there are
+kept).
 
 The dialog opens as tall as the main window minus a margin
 (`WINDOW_MARGIN_PX`, never taller than the screen); everything but Save /

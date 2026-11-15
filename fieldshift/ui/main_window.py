@@ -15,6 +15,7 @@ from fieldshift.ui.map_controls import MapControls
 from fieldshift.ui.map_search import MapSearch
 from fieldshift.ui.scale_bar import ScaleBar
 from fieldshift.ui.side_panel import SidePanel
+from fieldshift.ui.status_panel import StatusPanel
 from fieldshift.ui.weather_card import WeatherCard
 
 # relative widths of the map and the panel inside the splitter
@@ -56,6 +57,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.field_menu = FieldMenu(self)
         # weather of the zone (now and 7 days) over the top-right corner
         self.weather_card = WeatherCard(view)
+        # Status of one field over the right part of the map (hidden at start)
+        self.status_panel = StatusPanel(view, self.fields)
+        self.status_panel.suggestion_requested.connect(
+            lambda layer_id: QtCore.QTimer.singleShot(0, lambda: self.analyze(layer_id)))
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         splitter.addWidget(map_area)
@@ -77,7 +82,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tabs.tabCloseRequested.connect(self._close_tab)
         self.setCentralWidget(self.tabs)
         self.fields_bar.analyze_requested.connect(self.analyze)
-        self.fields_bar.status_requested.connect(lambda: self.open_mode("status"))
+        self.fields_bar.status_requested.connect(lambda: self.open_status())
         self.fields_bar.trends_requested.connect(lambda: self.open_mode("trends"))
         self.setWindowTitle(f"Field Shift {__version__}")
         self.resize(1280, 800)
@@ -120,8 +125,17 @@ class MainWindow(QtWidgets.QMainWindow):
             self.tabs.setCurrentWidget(tabs[0])
         return tabs
 
+    # (str layer_id = None)
+    # shows the map with the Status panel of a field (layer_id, else the one
+    # the Analyze dialog would start with). returns True when it opened
+    def open_status(self, layer_id=None):
+        if self.view.is_drawing():
+            return False
+        self.tabs.setCurrentIndex(0)
+        return self.status_panel.open(layer_id or self._field_to_preselect())
+
     # (str mode)
-    # shows the tab of a mode ("status" or "trends"), opening it the first
+    # shows the tab of a mode ("trends"), opening it the first
     # time. for now the tab only says the mode is coming soon. returns the tab
     def open_mode(self, mode):
         for index in range(1, self.tabs.count()):
