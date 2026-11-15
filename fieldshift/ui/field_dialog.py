@@ -178,7 +178,7 @@ class FieldDialog(CenteredDialog):
         hint = QtWidgets.QLabel(tr("fields.data_hint"))
         hint.setWordWrap(True)
         hint.setStyleSheet("color: #555;")
-        grid.addWidget(hint, 0, 0, 1, 4)
+        grid.addWidget(hint, 0, 0, 1, 5)
         row = 1
         for group in GROUPS:
             specs = [s for s in DATA_FIELDS if s.group == group]
@@ -186,7 +186,7 @@ class FieldDialog(CenteredDialog):
                 continue
             title = self._titled(f"field_dialog.group.{group}", tr(f"fields.group.{group}"))
             title.setStyleSheet("font-weight: bold; margin-top: 6px;")
-            grid.addWidget(title, row, 0, 1, 4)
+            grid.addWidget(title, row, 0, 1, 5)
             row += 1
             for spec in specs:
                 self._add_data_row(grid, row, spec, current[spec.key])
@@ -195,7 +195,7 @@ class FieldDialog(CenteredDialog):
         self.load_label = QtWidgets.QLabel()
         self.load_label.setWordWrap(True)
         self.load_label.setStyleSheet("color: #555;")
-        grid.addWidget(self.load_label, row, 0, 1, 4)
+        grid.addWidget(self.load_label, row, 0, 1, 5)
 
         Buttons = QtWidgets.QDialogButtonBox.StandardButton
         buttons = QtWidgets.QDialogButtonBox(Buttons.Save | Buttons.Cancel)
@@ -239,6 +239,9 @@ class FieldDialog(CenteredDialog):
         self._spinner.timeout.connect(self._animate)
         self._pending, self._failed = {}, []
         self._started = 0.0
+        self._fetch = fetch
+        self._area = zone_data.area_of(vertices)
+        self._reloading = {}          # key -> (loader, started, value before, state before)
         self._start_loading(vertices, fetch)
         self._validate()
 
@@ -275,7 +278,7 @@ class FieldDialog(CenteredDialog):
     # ()
     # True while some data source has not answered yet
     def is_loading(self):
-        return bool(self._pending)
+        return bool(self._pending) or bool(self._reloading)
 
     # ()
     # the data: {key: {"value", "source"[, "prefilled"]}} for DATA_FIELDS,
@@ -318,6 +321,57 @@ class FieldDialog(CenteredDialog):
         self._set_state(row, "edited")
 
     # (str key)
+    # downloads this datum again from its data source (the cache is skipped)
+    # and replaces the row's value with it; a failure keeps the value there
+    def reload_value(self, key):
+        row, group = self._rows[key], zone_data.group_of(key)
+        if group is None or key in self._reloading or row["state"] == "loading":
+            return
+        before = (self._value(row), row["state"])
+        if os.environ.get(OFFLINE_ENV) == "1" and self._fetch is None:
+            self._finish_reload_failed(row, before, tr("fields.data_missing_hint"))
+            return
+        fetch = self._fetch or (lambda g, a: zone_data.fetch_group(g, a, refresh=True))
+        loader = ZoneDataLoader(self._area, fetch, self)
+        loader.group_done.connect(lambda _name, values, error, key=key:
+                                  self._finish_reload(key, values, error))
+        self._reloading[key] = (loader, time.monotonic(), before, group)
+        self._set_state(row, "loading")
+        self._spinner.start()
+        self._animate()
+        loader.start([group])
+        self._update_load_label()
+        self._validate()
+
+    # (str key)
+    # True while that datum is being downloaded again
+    def is_reloading(self, key):
+        return key in self._reloading
+
+    def _finish_reload(self, key, values, error):
+        entry = self._reloading.pop(key, None)
+        if entry is None:                          # stopped or timed out before
+            return
+        loader, _started, before, _group = entry
+        loader.cancel()
+        row = self._rows[key]
+        value = (values or {}).get(key)
+        if value is not None:
+            row["prefilled"] = value
+            self._write(row, value)
+            self._set_state(row, "prefilled")
+            row["status"].setToolTip(tr("fields.data_reloaded"))
+        else:
+            self._finish_reload_failed(row, before, error or tr("fields.data_missing_hint"))
+        self._after_answer()
+
+    def _finish_reload_failed(self, row, before, error):
+        value, state = before
+        self._write(row, value)
+        self._set_state(row, state if value is not None else "missing")
+        row["status"].setToolTip(tr("fields.data_reload_failed", error=error))
+
+    # (str key)
     # puts the loaded value back and marks the datum as not edited
     def reset_value(self, key):
         row = self._rows[key]
@@ -336,6 +390,8 @@ class FieldDialog(CenteredDialog):
     # stops waiting for the data sources: rows still loading become "not
     # available" (their late answers are ignored)
     def stop_loading(self):
+        for key in list(self._reloading):
+            self._finish_reload(key, None, "")
         for group in self._pending.values():
             for key in group.keys:
                 row = self._rows[key]
@@ -431,9 +487,10 @@ class FieldDialog(CenteredDialog):
             self._after_answer()
 
     def _after_answer(self):
-        if not self._pending:
-            self._spinner.stop()
+        if not self._pending and self._loader is not None:
             self._loader_cancel()
+        if not self._pending and not self._reloading:
+            self._spinner.stop()
         self._update_load_label()
         self._validate()
 
@@ -452,6 +509,9 @@ class FieldDialog(CenteredDialog):
     def _animate(self):
         if self._pending:
             self._check_timeouts()
+        for key, (_loader, started, _before, group) in list(self._reloading.items()):
+            if time.monotonic() - started >= min(group.timeout_s, zone_data.DEADLINE_S):
+                self._finish_reload(key, None, tr("fields.data_missing_hint"))
         frame = SPINNER_FRAMES[self._spinner_step % len(SPINNER_FRAMES)]
         self._spinner_step += 1
         text = f"{frame}  {tr('fields.data_loading')}"
@@ -482,7 +542,14 @@ class FieldDialog(CenteredDialog):
         reset = QtWidgets.QToolButton()
         reset.setText("↺")
         self._tip(reset, "field_dialog.reset_button", unique=False)
+        # downloads this datum again (only data that comes from a source)
+        reload = QtWidgets.QToolButton()
+        reload.setText("⬇")
+        self._tip(reload, "field_dialog.reload_button", unique=False)
+        reload.setVisible(zone_data.group_of(spec.key) is not None)
+        reload.clicked.connect(lambda: self.reload_value(spec.key))
         row = {"spec": spec, "editor": editor, "status": status, "reset": reset,
+               "reload": reload,
                "state": None, "writing": False, "prefilled": item.get("prefilled")}
         self._rows[spec.key] = row
         self._write(row, item["value"])
@@ -501,6 +568,7 @@ class FieldDialog(CenteredDialog):
         grid.addWidget(widget, row_index, 1)
         grid.addWidget(status, row_index, 2)
         grid.addWidget(reset, row_index, 3)
+        grid.addWidget(reload, row_index, 4)
 
     # the editor of a datum and the widget to put in the grid (the editor
     # plus its unit, for numbers)
@@ -577,6 +645,8 @@ class FieldDialog(CenteredDialog):
         status.setStyleSheet(STATUS_STYLE[state])
         status.setToolTip(tr("fields.data_missing_hint") if state == "missing" else "")
         editor.setEnabled(state != "loading")
+        if "reload" in row:
+            row["reload"].setEnabled(state != "loading")
         if state == "loading":
             editor.setStyleSheet(STYLE_LOADING)
         elif state == "missing" and self._value(row) is None:

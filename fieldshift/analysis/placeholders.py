@@ -214,7 +214,8 @@ def run_rotation(field):
         Metric("analysis.rotation.m.benefit", f"+{rng.randint(6, 18)} %", LEVEL_GOOD),
     )
     recs = (
-        Recommendation("analysis.rotation.r.season1", {"crop": f"crop.{plan[0]}"}, PRIORITY_HIGH),
+        Recommendation("analysis.rotation.r.season1", {"crop": f"crop.{plan[0]}",
+                                                       "month": "month.4"}, PRIORITY_HIGH),
         Recommendation("analysis.rotation.r.season2", {"crop": f"crop.{plan[1]}"}, PRIORITY_MEDIUM),
         Recommendation("analysis.rotation.r.season3", {"crop": f"crop.{plan[2]}"}, PRIORITY_MEDIUM),
         Recommendation("analysis.rotation.r.avoid", {"crop": f"crop.{plan[0]}"}, PRIORITY_LOW),

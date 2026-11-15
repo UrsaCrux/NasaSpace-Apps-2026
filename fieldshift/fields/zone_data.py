@@ -154,19 +154,26 @@ SOURCE_GROUPS = (
 # DATA_FIELDS keys that some group fills (the rest are typed by the farmer)
 FETCHED_KEYS = tuple(k for g in SOURCE_GROUPS for k in g.keys)
 
+
+# (str key)
+# the SourceGroup that fills a DATA_FIELDS key, or None
+def group_of(key):
+    return next((g for g in SOURCE_GROUPS if key in g.keys), None)
+
 _SPECS = {spec.key: spec for spec in DATA_FIELDS}
 
 
-# (SourceGroup group, Area area, Period period = None)
+# (SourceGroup group, Area area, Period period = None, bool refresh = False)
 # runs one source for the area and returns {key: valid value or None} for
-# the group's keys; raises when the source fails. cached per place
-def fetch_group(group, area, period=None):
+# the group's keys; raises when the source fails. cached per place;
+# refresh=True downloads again (and updates the cache)
+def fetch_group(group, area, period=None, refresh=False):
     from fieldshift.api import Period, SiteData
     period = period or Period.make()
     key = (group.name, round(area.lon, 4), round(area.lat, 4), round(area.radius_m, -1),
            period.start, period.end)
     with _cache_lock:
-        if key in _cache:
+        if key in _cache and not refresh:
             return dict(_cache[key])
     provider = group.make_provider()
     provider.check()

@@ -4,14 +4,24 @@
 or more **analyses**. A progress window runs them, then each result opens in
 its own tab next to the "Map" tab. Tabs can be closed; the map tab cannot.
 
-Most analyses are **placeholders** for now: their numbers are made up
-(`fieldshift/analysis/placeholders.py`) and their tabs show an "Example
-data" badge. Two use real data:
+Every analysis uses **real data** (the old made-up versions stay in
+`fieldshift/analysis/placeholders.py`, only for UI tests). Time series cover
+the last 24 complete months; the map part shows real pixels or the field's
+relief. When a source cannot be reached the tab says the data is not
+available — no made-up numbers.
 
-| Analysis | What it shows |
-|----------|---------------|
-| **Soil texture** (`texture.py`) | the USDA texture triangle (12 classes, coloured, names in the current language) with the field's clay / sand / silt point and its class outlined; the fractions, class, available water and advice for that kind of soil. No time line: the tab shows the triangle instead of the chart and map |
-| **Crop growth** (`crop_growth.py`) | a WOFOST / PCSE simulation of the crop's season — see [simulation.md](simulation.md) |
+| Analysis | Data | Map |
+|----------|------|-----|
+| **Vegetation productivity** (`real.py`) | FAO WaPOR v3 net primary production, monthly | WaPOR 300 m pixels over the field |
+| **Frost** (`real.py`) | NASA POWER daily minimum (coldest of each month, frost days), Open-Meteo 7-day forecast, POWER typical frost days | temperature spread over the Copernicus DEM relief (−6.5 °C/km) |
+| **Water balance** (`real.py`) | NASA POWER rain − WaPOR actual evapotranspiration, monthly | balance per WaPOR pixel |
+| **Heat** (`real.py`) | NASA POWER daily maximum; days above the crop's optimal maximum (FAO EcoCrop) or 32 °C | temperature over the relief |
+| **Rotation** (`real.py`) | catalogue field crops scored against POWER climate normals, the field's pH and texture and irrigation, with their EcoCrop requirements; compares the **current crop**, a **diversified** rotation (cereal → legume → break crop) and a **soil-building** one, with a sowing month | temperature suitability of the season-1 crop, next 12 months |
+| **Soil texture** (`texture.py`) | the field's clay / sand / silt on the USDA triangle | (the triangle) |
+| **Crop growth** (`crop_growth.py`) | WOFOST / PCSE simulation — see [simulation.md](simulation.md) | leaf area index |
+
+Data access is in `fieldshift/analysis/sources.py` (cached per session);
+`tests/fake_sources.py` replaces it with synthetic data in the tests.
 
 Analyses run in a worker thread while the progress window is shown, so long
 ones (downloads, the simulation) do not freeze the window.

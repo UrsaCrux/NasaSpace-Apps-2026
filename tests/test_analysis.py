@@ -15,15 +15,25 @@ from fieldshift.analysis import ANALYSES, get_analysis  # noqa: E402
 from fieldshift.analysis.models import AnalysisResult  # noqa: E402
 from fieldshift.fields.store import Field  # noqa: E402
 from qt_app import get_app  # noqa: E402
+import fake_sources  # noqa: E402
 
 SQUARE = [(-70.70, -33.40), (-70.69, -33.40), (-70.69, -33.41), (-70.70, -33.41)]
 # analyses with real data (the others are placeholders)
-REAL_ANALYSES = {"texture", "crop_growth"}
+REAL_ANALYSES = {"texture", "crop_growth", "vegetation", "frost", "water", "heat", "rotation"}
 FIELD = Field("Viña", tuple(SQUARE), 100.0, "2026-01-01T00:00:00+00:00", None)
 
 
+_restore = None
+
+
 def setUpModule():
+    global _restore
     get_app()
+    _restore = fake_sources.install()          # real analyses read synthetic data
+
+
+def tearDownModule():
+    _restore()
 
 
 def _texts(code):
@@ -160,10 +170,13 @@ class ProgressTest(_WithFields):
 
 
 class AnalysisTabTest(_WithFields):
+    """The tab's layout, with the old made-up results (fixed dates, badge)."""
+
     def tab(self, analysis_id="frost"):
+        from fieldshift.analysis import placeholders
         from fieldshift.ui.analysis_tab import AnalysisTab
         field = self.window.fields.field(self.a)
-        return AnalysisTab(get_analysis(analysis_id).run(field), field)
+        return AnalysisTab(getattr(placeholders, f"run_{analysis_id}")(field), field)
 
     def test_four_parts_and_example_badge(self):
         from fieldshift.qt import QtWidgets
@@ -279,3 +292,62 @@ class AnalyzeFlowTest(_WithFields):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RealAnalysesTest(unittest.TestCase):
+    """The real analyses on the synthetic sources of fake_sources."""
+
+    def run_analysis(self, analysis_id, data=None):
+        field = Field("Viña", tuple(SQUARE), 100.0, "2026-01-01T00:00:00+00:00", None,
+                      data=data or {})
+        return get_analysis(analysis_id).run(field)
+
+    def test_two_years_of_months_and_real_grids(self):
+        for analysis_id in ("vegetation", "frost", "water", "heat"):
+            with self.subTest(analysis=analysis_id):
+                result = self.run_analysis(analysis_id)
+                self.assertFalse(result.placeholder)
+                dates = result.series.dates
+                self.assertEqual(dates[-1], "2026-10")                # last complete month
+                self.assertLessEqual(len(dates), 24)
+                self.assertEqual(result.frames.dates, dates)
+
+    def test_frost_counts_days_and_spreads_over_relief(self):
+        result = self.run_analysis("frost")
+        days = next(m.value for m in result.metrics if m.label_key == "analysis.frost.m.days")
+        self.assertGreater(int(days), 0)
+        grid = result.frames.grids[-1]
+        self.assertGreater(grid[0][0], grid[-1][-1])           # higher cells are colder
+        forecast = next(m.value for m in result.metrics if m.label_key == "analysis.frost.m.forecast")
+        self.assertEqual(forecast, "—")                        # forecast unavailable: no number
+
+    def test_heat_uses_the_crops_limit(self):
+        general = self.run_analysis("heat")
+        crop = self.run_analysis("heat", {"crop": {"value": "maize.v1", "source": "user"}})
+        limit = lambda r: next(m.value for m in r.metrics                      # noqa: E731
+                               if m.label_key == "analysis.heat.m.threshold")
+        self.assertEqual(limit(general), "32 °C")
+        self.assertEqual(limit(crop), "26 °C (EcoCrop)")       # fake crop: optimum up to 26
+
+    def test_rotation_compares_three_strategies(self):
+        result = self.run_analysis("rotation", {"crop": {"value": "maize.v1", "source": "user"},
+                                                "irrigated": {"value": True, "source": "user"}})
+        labels = [m.label_key.rsplit(".", 1)[-1] for m in result.metrics]
+        self.assertEqual(labels[:4], ["plan", "score", "alternative", "current"])
+        self.assertEqual(result.metrics[0].value.count("→"), 2)     # three seasons
+        self.assertEqual(len(result.series.dates), 12)
+
+    def test_unavailable_data_is_said_not_invented(self):
+        from fieldshift.analysis import sources
+
+        def down(*args, **kw):
+            raise ConnectionError("offline")
+        saved = sources.power_daily
+        sources.power_daily = down
+        sources.clear_cache()
+        try:
+            result = self.run_analysis("frost")
+        finally:
+            sources.power_daily = saved
+        self.assertIsNone(result.series)
+        self.assertEqual(result.summary_key, "analysis.common.summary_unavailable")

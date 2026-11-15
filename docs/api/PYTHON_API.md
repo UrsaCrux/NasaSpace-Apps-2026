@@ -180,6 +180,95 @@ PLACEHOLDER: suggested crop rotation for the next three seasons
 | `PLACEHOLDER_MONTHS` | months covered by every placeholder result | 20 |
 | `GRID_SIZE` | cells per side of the map grid | 22 |
 
+## `fieldshift/analysis/real.py`
+
+### Functions
+
+#### `unavailable`
+
+```python
+def unavailable(analysis_id, field, source_list, error)
+```
+
+- **Arguments:** `(str analysis_id, Field field, tuple sources, Exception error)`
+- **Line:** 56
+
+a result that says the data could not be obtained (no made-up numbers)
+
+#### `run_vegetation`
+
+```python
+def run_vegetation(field)
+```
+
+- **Arguments:** `(Field field)`
+- **Line:** 113
+
+vegetation productivity: WaPOR net primary production month by month over the field, with its weaker zones (real 300 m pixels)
+
+#### `run_frost`
+
+```python
+def run_frost(field)
+```
+
+- **Arguments:** `(Field field)`
+- **Line:** 166
+
+frost risk: coldest temperature of each month (NASA POWER), spread over the field's relief (DEM), frost days, and the coming week's frosts
+
+#### `run_water`
+
+```python
+def run_water(field)
+```
+
+- **Arguments:** `(Field field)`
+- **Line:** 236
+
+water balance: monthly rain (NASA POWER) minus actual evapotranspiration (WaPOR, per 300 m pixel); negative months are a deficit
+
+#### `run_heat`
+
+```python
+def run_heat(field)
+```
+
+- **Arguments:** `(Field field)`
+- **Line:** 282
+
+heat stress: hottest temperature of each month (NASA POWER) over the field's relief, and the days above the crop's limit (EcoCrop) or 32 °C
+
+#### `crop_score`
+
+```python
+def crop_score(crop, climate, soil, irrigated)
+```
+
+- **Arguments:** `(CropInfo crop, dict field_climate, dict soil, bool irrigated)`
+- **Line:** 357
+
+(score 0..100, best sowing month) of a crop for this field and climate
+
+#### `run_rotation`
+
+```python
+def run_rotation(field)
+```
+
+- **Arguments:** `(Field field)`
+- **Line:** 407
+
+crop rotation: scores the catalogue's field crops against the field's climate normals, soil pH and texture with their EcoCrop requirements, and compares three strategies: the current crop every season, a diversified cereal / legume / break-crop rotation and a soil-building one
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `LAPSE_RATE` | temperature change with height (°C per metre) used to spread the 0.5° NASA POWER temperatures over the field's relief | 20 |
+| `DEFAULT_HEAT_C` | heat-stress threshold when the field's crop has no EcoCrop limit (°C) | 22 |
+| `CEREALS` | catalogue crops considered for a rotation, by role | 328 |
+
 ## `fieldshift/analysis/registry.py`
 
 ### Functions
@@ -191,7 +280,7 @@ def get_analysis(analysis_id)
 ```
 
 - **Arguments:** `(str analysis_id)`
-- **Line:** 38
+- **Line:** 40
 
 the Analysis with this id; raises KeyError when there is none
 
@@ -199,7 +288,140 @@ the Analysis with this id; raises KeyError when there is none
 
 | Name | Description | Line |
 |------|-------------|------|
-| `ANALYSES` | in the order the dialog shows them; rotation comes last because it uses what the others find | 18 |
+| `ANALYSES` | in the order the dialog shows them; rotation comes last because it uses what the others find | 20 |
+
+## `fieldshift/analysis/sources.py`
+
+### Functions
+
+#### `last_months`
+
+```python
+def last_months(n=MONTHS)
+```
+
+- **Arguments:** `(int n = MONTHS)`
+- **Line:** 43
+
+the last n complete months, oldest first: ["2024-11", ..., "2026-10"]
+
+#### `center`
+
+```python
+def center(field)
+```
+
+- **Arguments:** `(Field field)`
+- **Line:** 56
+
+(lon, lat) of the field's centre
+
+#### `grid_points`
+
+```python
+def grid_points(field)
+```
+
+- **Arguments:** `(Field field)`
+- **Line:** 63
+
+(lon, lat) of the centres of the GRID x GRID cells, rows north to south
+
+#### `clear_cache`
+
+```python
+def clear_cache()
+```
+
+- **Arguments:** `()`
+- **Line:** 83
+
+forgets everything downloaded (tests, or to force new downloads)
+
+#### `power_daily`
+
+```python
+def power_daily(lon, lat, start, end)
+```
+
+- **Arguments:** `(float lon, float lat, dt.date start, dt.date end)`
+- **Line:** 91
+
+{"T2M_MIN" | "T2M_MAX" | "PRECTOTCORR" | "GWETROOT": {date: value}} (fill values dropped). Raises on failure
+
+#### `power_climatology`
+
+```python
+def power_climatology(lon, lat)
+```
+
+- **Arguments:** `(float lon, float lat)`
+- **Line:** 108
+
+{"T2M" | "T2M_MIN" | "T2M_MAX" | "PRECTOTCORR" | "FROST_DAYS": {"JAN".. "ANN": value}}
+
+#### `wapor_grids`
+
+```python
+def wapor_grids(mapset, field, months)
+```
+
+- **Arguments:** `(str mapset, Field field, list months)`
+- **Line:** 120
+
+{month: GRID x GRID physical values or None} of a WaPOR monthly mapset ("L1-NPP-M", "L1-AETI-M"...), months read in parallel
+
+#### `dem_grid`
+
+```python
+def dem_grid(field)
+```
+
+- **Arguments:** `(Field field)`
+- **Line:** 166
+
+GRID x GRID elevations (m) from the Copernicus DEM, or None when unavailable
+
+#### `forecast`
+
+```python
+def forecast(lon, lat)
+```
+
+- **Arguments:** `(float lon, float lat)`
+- **Line:** 189
+
+fieldshift.api.forecast.Forecast; raises when the service fails
+
+#### `crop_requirements`
+
+```python
+def crop_requirements(field)
+```
+
+- **Arguments:** `(Field field)`
+- **Line:** 196
+
+ecocrop.CropInfo of the field's crop, or None (no crop, no EcoCrop data)
+
+#### `crop_requirements_of`
+
+```python
+def crop_requirements_of(target)
+```
+
+- **Arguments:** `(int|str target)`
+- **Line:** 207
+
+ecocrop.CropInfo of an EcoCrop id or scientific name, or None on failure
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `GRID` | cells per side of the map grids | 23 |
+| `MONTHS` | months covered by the time series | 25 |
+| `TODAY` | today's date used by the analyses (tests set it) | 31 |
 
 ## `fieldshift/analysis/texture.py`
 
@@ -2121,16 +2343,27 @@ def topsoil_mean(by_depth)
 
 depth-weighted mean over TOPSOIL of {depth: Measurement}, or None
 
+#### `group_of`
+
+```python
+def group_of(key)
+```
+
+- **Arguments:** `(str key)`
+- **Line:** 160
+
+the SourceGroup that fills a DATA_FIELDS key, or None
+
 #### `fetch_group`
 
 ```python
-def fetch_group(group, area, period=None)
+def fetch_group(group, area, period=None, refresh=False)
 ```
 
-- **Arguments:** `(SourceGroup group, Area area, Period period = None)`
-- **Line:** 163
+- **Arguments:** `(SourceGroup group, Area area, Period period = None, bool refresh = False)`
+- **Line:** 170
 
-runs one source for the area and returns {key: valid value or None} for the group's keys; raises when the source fails. cached per place
+runs one source for the area and returns {key: valid value or None} for the group's keys; raises when the source fails. cached per place; refresh=True downloads again (and updates the cache)
 
 #### `clear_cache`
 
@@ -2139,7 +2372,7 @@ def clear_cache()
 ```
 
 - **Arguments:** `()`
-- **Line:** 185
+- **Line:** 192
 
 forgets the cached results (tests, or to force a new download)
 
@@ -4097,7 +4330,7 @@ def default_height(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 249
+- **Line:** 252
 
 height the dialog opens with: the main window's height minus WINDOW_MARGIN_PX, never more than the screen's free height (the screen's when there is no main window)
 
@@ -4108,7 +4341,7 @@ def name(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 262
+- **Line:** 265
 
 the name typed, without surrounding spaces
 
@@ -4119,7 +4352,7 @@ def color(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 267
+- **Line:** 270
 
 the chosen colour as "#rrggbb" (grey when none was chosen)
 
@@ -4130,7 +4363,7 @@ def crop(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 272
+- **Line:** 275
 
 id of the chosen crop variety, or None
 
@@ -4141,7 +4374,7 @@ def is_loading(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 277
+- **Line:** 280
 
 True while some data source has not answered yet
 
@@ -4152,7 +4385,7 @@ def data(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 283
+- **Line:** 286
 
 the data: {key: {"value", "source"[, "prefilled"]}} for DATA_FIELDS, plus CROP_KEY
 
@@ -4163,7 +4396,7 @@ def is_modified(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 305
+- **Line:** 308
 
 True when the user changed this datum (it is not the loaded one)
 
@@ -4174,7 +4407,7 @@ def row_state(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 310
+- **Line:** 313
 
 state of a row: loading, prefilled, edited, missing or farmer
 
@@ -4185,9 +4418,31 @@ def set_value(self, key, value)
 ```
 
 - **Arguments:** `(str key, any value)`
-- **Line:** 315
+- **Line:** 318
 
 sets a datum as if the user had typed it (marks it edited)
+
+#### `FieldDialog.reload_value`
+
+```python
+def reload_value(self, key)
+```
+
+- **Arguments:** `(str key)`
+- **Line:** 326
+
+downloads this datum again from its data source (the cache is skipped) and replaces the row's value with it; a failure keeps the value there
+
+#### `FieldDialog.is_reloading`
+
+```python
+def is_reloading(self, key)
+```
+
+- **Arguments:** `(str key)`
+- **Line:** 348
+
+True while that datum is being downloaded again
 
 #### `FieldDialog.reset_value`
 
@@ -4196,7 +4451,7 @@ def reset_value(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 322
+- **Line:** 376
 
 puts the loaded value back and marks the datum as not edited
 
@@ -4206,7 +4461,7 @@ puts the loaded value back and marks the datum as not edited
 def accept(self)
 ```
 
-- **Line:** 328
+- **Line:** 382
 
 refuses to close with Save while something is invalid or loading
 
@@ -4217,7 +4472,7 @@ def stop_loading(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 338
+- **Line:** 392
 
 stops waiting for the data sources: rows still loading become "not available" (their late answers are ignored)
 
@@ -4227,7 +4482,7 @@ stops waiting for the data sources: rows still loading become "not available" (t
 def done(self, result)
 ```
 
-- **Line:** 351
+- **Line:** 407
 
 stops the threads' results from reaching a closed dialog
 

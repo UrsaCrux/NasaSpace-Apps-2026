@@ -30,10 +30,11 @@ class TooltipFileTest(unittest.TestCase):
             self.assertTrue(texts.get("en") and texts.get("es"), key)
 
     def test_language_and_fallbacks(self):
+        data = json.loads(i18n.TOOLTIPS_PATH.read_text("utf-8"))["field_dialog.name"]
         i18n.set_language("es")
-        self.assertIn("Texto provisorio", i18n.tip("field_dialog.name"))
+        self.assertEqual(i18n.tip("field_dialog.name"), data["es"])
         i18n.set_language("en")
-        self.assertIn("Placeholder", i18n.tip("field_dialog.name"))
+        self.assertEqual(i18n.tip("field_dialog.name"), data["en"])
         self.assertEqual(i18n.tip("no.such.key"), "")
 
     def test_tooltips_are_not_a_language(self):

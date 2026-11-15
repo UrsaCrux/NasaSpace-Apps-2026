@@ -112,6 +112,12 @@ session. When editing a field, only sources with an empty row are asked
 again, and rows with a value keep it. `FIELDSHIFT_OFFLINE=1` never contacts
 the sources (the tests set it).
 
+**Reload one datum.** The ⬇ button at the right of each datum that comes
+from a data source downloads it again (skipping the cache) and replaces the
+row's value, even an edited one; if the download fails the value is kept and
+the reason is in the tooltip. Data typed only by the farmer (irrigated) has
+no button.
+
 **States of a datum.** `prefilled` (from a source, grey) · `user` (edited,
 green bold; a ↺ button restores the loaded value, kept in `"prefilled"`) ·
 `missing` (no value, orange).

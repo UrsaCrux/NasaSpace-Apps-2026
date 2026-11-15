@@ -219,6 +219,61 @@ class LoadingTest(_DialogCase):
         self.assertEqual(dialog.row_state("ph"), "missing")
 
 
+class ReloadTest(_DialogCase):
+    def test_reload_downloads_one_datum_again(self):
+        calls = []
+        answers = {"ph": 6.4}
+
+        def fetch(group, area):
+            calls.append(group.name)
+            values = dict(FAKE_VALUES[group.name])
+            values.update({k: v for k, v in answers.items() if k in values})
+            return values
+        dialog = self.dialog(vertices=SQUARE, fetch=fetch)
+        wait_until(lambda: not dialog.is_loading())
+        dialog.set_value("ph", 5.0)                              # the user's value
+        dialog.set_value("cec", 9.0)
+        answers["ph"] = 7.1                                       # the source changed
+        calls.clear()
+        dialog._rows["ph"]["reload"].click()
+        self.assertTrue(dialog.is_reloading("ph"))
+        wait_until(lambda: not dialog.is_reloading("ph"))
+        self.assertEqual(calls, ["soilgrids"])
+        self.assertEqual(dialog.data()["ph"], {"value": 7.1, "source": "prefilled",
+                                               "prefilled": 7.1})
+        self.assertEqual(dialog.data()["cec"]["value"], 9.0)      # other rows untouched
+        self.assertTrue(dialog._rows["irrigated"]["reload"].isHidden())   # farmer data
+        self.assertFalse(dialog._rows["ph"]["reload"].isHidden())
+
+    def test_failed_reload_keeps_the_value(self):
+        state = {"fail": False}
+
+        def fetch(group, area):
+            if state["fail"]:
+                raise ConnectionError("offline")
+            return dict(FAKE_VALUES[group.name])
+        dialog = self.dialog(vertices=SQUARE, fetch=fetch)
+        wait_until(lambda: not dialog.is_loading())
+        state["fail"] = True
+        dialog.reload_value("slope")
+        wait_until(lambda: not dialog.is_reloading("slope"))
+        self.assertEqual(dialog.data()["slope"]["value"], 3.5)
+        self.assertEqual(dialog.row_state("slope"), "prefilled")
+        self.assertIn("ConnectionError", dialog._rows["slope"]["status"].toolTip())
+
+    def test_reload_skips_the_cache(self):
+        dialog = self.dialog(vertices=SQUARE, fetch=fake_fetch)
+        wait_until(lambda: not dialog.is_loading())
+        dialog._fetch = None                                      # the real path
+        with mock.patch.object(zone_data, "fetch_group",
+                               return_value=dict(FAKE_VALUES["modis_ndvi"], ndvi=0.5)) as fetch, \
+                mock.patch.dict(os.environ, {"FIELDSHIFT_OFFLINE": "0"}):
+            dialog.reload_value("ndvi")
+            wait_until(lambda: not dialog.is_reloading("ndvi"))
+        self.assertTrue(fetch.call_args.kwargs.get("refresh"))
+        self.assertEqual(dialog.data()["ndvi"]["value"], 0.5)
+
+
 class DialogSizeTest(_DialogCase):
     def test_scrolls_and_opens_as_tall_as_the_window_minus_a_margin(self):
         from fieldshift.map import create_map_view
