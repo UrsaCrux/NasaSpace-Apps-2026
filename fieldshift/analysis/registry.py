@@ -7,7 +7,11 @@ follow this list.
 """
 
 from fieldshift.analysis import placeholders as ph
+from fieldshift.analysis.crop_growth import SOURCES_BASE as CROP_GROWTH_SOURCES
+from fieldshift.analysis.crop_growth import run_crop_growth
 from fieldshift.analysis.models import Analysis
+from fieldshift.analysis.texture import SOURCES as TEXTURE_SOURCES
+from fieldshift.analysis.texture import run_texture
 
 # in the order the dialog shows them; rotation comes last because it uses
 # what the others find
@@ -20,6 +24,10 @@ ANALYSES = (
              "analysis.water.description", ph.WATER_SOURCES, ph.run_water),
     Analysis("heat", "analysis.heat.title", "analysis.heat.short",
              "analysis.heat.description", ph.HEAT_SOURCES, ph.run_heat),
+    Analysis("texture", "analysis.texture.title", "analysis.texture.short",
+             "analysis.texture.description", TEXTURE_SOURCES, run_texture),
+    Analysis("crop_growth", "analysis.crop_growth.title", "analysis.crop_growth.short",
+             "analysis.crop_growth.description", CROP_GROWTH_SOURCES, run_crop_growth),
     Analysis("rotation", "analysis.rotation.title", "analysis.rotation.short",
              "analysis.rotation.description", ph.ROTATION_SOURCES, ph.run_rotation),
 )

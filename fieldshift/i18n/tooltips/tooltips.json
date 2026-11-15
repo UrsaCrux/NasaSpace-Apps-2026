@@ -44,6 +44,18 @@
     "en": "[tooltip field_dialog.data.soil_group] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
     "es": "[tooltip field_dialog.data.soil_group] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
   },
+  "field_dialog.data.clay": {
+    "en": "[tooltip field_dialog.data.clay] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.clay] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.data.sand": {
+    "en": "[tooltip field_dialog.data.sand] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.sand] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
+  "field_dialog.data.silt": {
+    "en": "[tooltip field_dialog.data.silt] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
+    "es": "[tooltip field_dialog.data.silt] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"
+  },
   "field_dialog.data.ph": {
     "en": "[tooltip field_dialog.data.ph] Placeholder: edit fieldshift/i18n/tooltips/tooltips.json",
     "es": "[tooltip field_dialog.data.ph] Texto provisorio: edita fieldshift/i18n/tooltips/tooltips.json"

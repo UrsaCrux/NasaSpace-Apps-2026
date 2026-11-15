@@ -38,6 +38,12 @@ DEFAULT_COLOR = "#9e9e9e"
 # key of the crop in the data dict (not part of DATA_FIELDS: it is required
 # and the dialog shows it on its own, with a search box)
 CROP_KEY = "crop"
+# hidden keys, computed when the field is saved and never shown: the WOFOST
+# crop model and parameters of the crop, and the PCSE soil / site
+# descriptor of the terrain (fieldshift/fields/model_inputs.py)
+WOFOST_KEY = "wofost"
+PCSE_SITE_KEY = "pcse_site"
+HIDDEN_KEYS = (WOFOST_KEY, PCSE_SITE_KEY)
 
 _COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 
@@ -77,6 +83,9 @@ WRB_GROUPS = ("acrisols", "albeluvisols", "alisols", "andosols", "anthrosols", "
 DATA_FIELDS = (
     DataField("soil_texture", KIND_CHOICE, options=TEXTURES),
     DataField("soil_group", KIND_CHOICE, options=WRB_GROUPS),
+    DataField("clay", KIND_NUMBER, unit="%", maximum=100, decimals=1),
+    DataField("sand", KIND_NUMBER, unit="%", maximum=100, decimals=1),
+    DataField("silt", KIND_NUMBER, unit="%", maximum=100, decimals=1),
     DataField("ph", KIND_NUMBER, minimum=3.0, maximum=10.0, decimals=1),
     DataField("organic_carbon", KIND_NUMBER, unit="g/kg", maximum=600, decimals=1),
     DataField("nitrogen", KIND_NUMBER, unit="g/kg", maximum=50, decimals=2),
@@ -151,4 +160,7 @@ def normalize_data(raw, vertices=None):
         data[CROP_KEY] = {"value": crop["value"], "source": SOURCE_USER}
         if isinstance(crop.get("name"), str) and crop["name"].strip():
             data[CROP_KEY]["name"] = crop["name"].strip()     # shown when offline
+    for key in HIDDEN_KEYS:                       # kept as they are (dict or None)
+        if isinstance(raw.get(key), dict) or (key in raw and raw[key] is None):
+            data[key] = raw[key]
     return data

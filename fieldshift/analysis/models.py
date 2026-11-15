@@ -69,8 +69,21 @@ class Recommendation:
     priority: str = PRIORITY_MEDIUM
 
 
+# a soil texture triangle (USDA classes) with the field's point: clay, sand
+# and silt in % (None when unknown) and its texture class key
+# (schema.TEXTURES, None when unknown)
+@dataclass(frozen=True)
+class TextureFigure:
+    clay: float = None
+    sand: float = None
+    silt: float = None
+    texture: str = None
+
+
 # everything one analysis found for one field. placeholder is True while
-# the numbers are made up (the UI says so)
+# the numbers are made up (the UI says so). series / frames may be None for
+# results without a time line (then the tab shows the figure, e.g. a
+# TextureFigure, in their place)
 @dataclass(frozen=True)
 class AnalysisResult:
     analysis_id: str
@@ -83,6 +96,7 @@ class AnalysisResult:
     summary_params: dict
     recommendations: tuple
     placeholder: bool = True
+    figure: object = None
 
 
 # an analysis the user can choose. title_key / short_key / description_key

@@ -17,6 +17,8 @@ from fieldshift.fields.store import Field  # noqa: E402
 from qt_app import get_app  # noqa: E402
 
 SQUARE = [(-70.70, -33.40), (-70.69, -33.40), (-70.69, -33.41), (-70.70, -33.41)]
+# analyses with real data (the others are placeholders)
+REAL_ANALYSES = {"texture", "crop_growth"}
 FIELD = Field("Viña", tuple(SQUARE), 100.0, "2026-01-01T00:00:00+00:00", None)
 
 
@@ -44,8 +46,12 @@ class AnalysesTest(unittest.TestCase):
                 result = analysis.run(FIELD)
                 self.assertIsInstance(result, AnalysisResult)
                 self.assertEqual((result.analysis_id, result.field_name), (analysis.id, "Viña"))
-                self.assertTrue(result.placeholder)
+                self.assertEqual(result.placeholder, analysis.id not in REAL_ANALYSES)
+                self.assertGreaterEqual(len(result.metrics), 1)
+                self.assertGreaterEqual(len(result.recommendations), 1)
                 series, frames = result.series, result.frames
+                if series is None:                    # a result without time line has a
+                    continue                          # figure or explains why not
                 self.assertEqual(len(series.dates), len(series.values))
                 self.assertEqual(frames.dates, series.dates)          # chart and map move together
                 self.assertEqual(len(frames.grids), len(series.dates))
@@ -60,12 +66,14 @@ class AnalysesTest(unittest.TestCase):
 
     def test_every_text_exists_in_both_languages(self):
         # keys named directly, and keys embedded in values ("month.7", "crop.wheat")
-        embedded = re.compile(r"\b(?:month|crop)\.[a-z0-9_]+\b")
+        embedded = re.compile(r"\b(?:month|crop)\.[a-z0-9_]+\b"
+                              r"|\b(?:data_fields|analysis)\.[a-z0-9_]+(?:\.[a-z0-9_]+)+\b")
         en, es = _texts("en"), _texts("es")
         for analysis in ANALYSES:
             result = analysis.run(FIELD)
             keys = {analysis.title_key, analysis.short_key, analysis.description_key,
-                    result.summary_key, result.series.label_key, result.frames.label_key}
+                    result.summary_key}
+            keys |= {r.label_key for r in (result.series, result.frames) if r is not None}
             keys |= {s.variable_key for s in result.sources}
             keys |= {m.label_key for m in result.metrics}
             keys |= {r.text_key for r in result.recommendations}

@@ -21,6 +21,10 @@ Each file is a FeatureCollection with one Feature (EPSG:4326). Properties:
 | `color` | `"#rrggbb"`; grey `#9e9e9e` if never chosen |
 | `data` | Zone data and crop: `{key: {"value": ..., "source": "prefilled" \| "user" \| "missing"[, "prefilled": <loaded value>]}}`; the crop is `data.crop = {"value": "<variety id>" or "ecocrop:<id>", "source": "user"[, "name": "Vitis labrusca"]}` |
 
+`data` also holds two hidden keys written on save, `wofost` (crop model and
+parameters) and `pcse_site` (soil / site parameters) — see
+[simulation.md](simulation.md).
+
 Files without `color` or `data` (older versions) open with grey, no crop and
 every datum `missing` (the dialog then loads them). Data keys of older
 versions (`soil_type`, `annual_rain_mm`) are dropped. "Export" writes the same
@@ -81,7 +85,7 @@ The data of the zone are described by `DATA_FIELDS` in
 
 | Group | Data | Source (`fieldshift/fields/zone_data.py`) |
 |-------|------|-------------------------------------------|
-| Soil (top 30 cm) | texture (USDA class from clay/sand/silt), soil group (WRB), pH, organic carbon, nitrogen, CEC, available water (field capacity − wilting point) | SoilGrids, depth-weighted 0–30 cm |
+| Soil (top 30 cm) | texture (USDA class from clay/sand/silt), soil group (WRB), clay / sand / silt %, pH, organic carbon, nitrogen, CEC, available water (field capacity − wilting point) | SoilGrids, depth-weighted 0–30 cm |
 | Relief | elevation, slope | Copernicus DEM GLO-30 |
 | Vegetation | NDVI | MODIS MOD13Q1 (ORNL) |
 | Vegetation | biomass production (NPP), actual evapotranspiration | FAO WaPOR v3 |

@@ -85,6 +85,7 @@ def _soil(site):
     return {
         "soil_texture": usda_texture(sand, silt, clay) if None not in (sand, silt, clay) else None,
         "soil_group": group if group in WRB_GROUPS else None,
+        "clay": clay, "sand": sand, "silt": silt,
         "ph": topsoil_mean(soil.ph),
         "organic_carbon": topsoil_mean(soil.organic_carbon),
         "nitrogen": topsoil_mean(soil.nitrogen),
@@ -141,8 +142,9 @@ SOURCE_GROUPS = (
                 lambda s: {"npp": _value(s.vegetation.npp),
                            "actual_et": _value(s.water.actual_et)}, timeout_s=30,
                 title="FAO WaPOR"),
-    SourceGroup("soilgrids", ("soil_texture", "soil_group", "ph", "organic_carbon",
-                              "nitrogen", "cec", "available_water"), _soilgrids, _soil,
+    SourceGroup("soilgrids", ("soil_texture", "soil_group", "clay", "sand", "silt", "ph",
+                              "organic_carbon", "nitrogen", "cec", "available_water"),
+                _soilgrids, _soil,
                 timeout_s=40, title="SoilGrids"),
     # the ORNL service answers in ~30 s, or fails after 60 s when overloaded
     SourceGroup("modis_ndvi", ("ndvi",), _ndvi, lambda s: {"ndvi": _value(s.vegetation.ndvi)},
