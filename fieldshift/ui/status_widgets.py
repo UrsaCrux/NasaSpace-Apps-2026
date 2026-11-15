@@ -379,16 +379,18 @@ class SectionCard(QtWidgets.QFrame):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(12, 10, 12, 12)
         layout.setSpacing(8)
-        dates = next((r.dates for r in section.rows if not r.fixed), section.rows[0].dates)
+        dates = next((r.dates for r in section.rows if not r.fixed),
+                     section.rows[0].dates if section.rows else ("", ""))
+        period = tr("status.period_title", days=days, start=_date_or_dash(dates[0]),
+                    end=_date_or_dash(dates[-1]))
         title = QtWidgets.QLabel(
             f"{section.icon} <b>{tr(section.title_key)}</b>"
-            f" <span style='color:#666; font-size:12px;'>· "
-            f"{tr('status.period_title', days=days, start=short_date(dates[0]), end=short_date(dates[-1]))}"
-            f"</span>")
+            f" <span style='color:#666; font-size:12px;'>· {period}</span>")
         title.setStyleSheet("font-size: 15px; border: none;")
         layout.addWidget(title)
         if section.note_key:
-            params = {k: tr(v) if isinstance(v, str) and v.startswith("status.") else v
+            params = {k: tr(v) if isinstance(v, str) and v.startswith("status.")
+                      else _date_or_dash(v) if k == "date" else v
                       for k, v in section.note_params.items()}
             note = QtWidgets.QLabel(tr(section.note_key, **params))
             note.setStyleSheet("color: #2e7d32; border: none;")
@@ -396,15 +398,21 @@ class SectionCard(QtWidgets.QFrame):
         if section.texture is not None:
             layout.addWidget(self._texture_box(section.texture))
 
-        self.table = StatusTable(section.rows)
-        self.chart = TimeChart()
-        body = QtWidgets.QHBoxLayout()
-        body.addWidget(self.table, 0)
-        body.addWidget(self.chart, 1)
-        layout.addLayout(body)
-        self.table.itemSelectionChanged.connect(self._show_selected)
-        first = next((r for r in section.rows if not r.fixed), section.rows[0])
-        self.table.select_key(first.key)
+        self.table = self.chart = None
+        if section.rows:
+            self.table = StatusTable(section.rows)
+            self.chart = TimeChart()
+            body = QtWidgets.QHBoxLayout()
+            body.addWidget(self.table, 0)
+            body.addWidget(self.chart, 1)
+            layout.addLayout(body)
+            self.table.itemSelectionChanged.connect(self._show_selected)
+            first = next((r for r in section.rows if not r.fixed), section.rows[0])
+            self.table.select_key(first.key)
+        else:
+            empty = QtWidgets.QLabel(tr("status.no_data"))
+            empty.setStyleSheet("color: #777; border: none;")
+            layout.addWidget(empty)
 
         self.alert_rows = []
         observed = [a for a in section.alerts if not a.upcoming]
@@ -427,8 +435,12 @@ class SectionCard(QtWidgets.QFrame):
         triangle.setMaximumHeight(300)
         row.addWidget(triangle, 3)
         name = tr(f"data_fields.soil_texture.{figure.texture}") if figure.texture else "—"
-        text = QtWidgets.QLabel(tr("status.texture", name=name, sand=f"{figure.sand:.0f}",
-                                   silt=f"{figure.silt:.0f}", clay=f"{figure.clay:.0f}")
+        if figure.sand is not None:
+            heading = tr("status.texture", name=name, sand=f"{figure.sand:.0f}",
+                         silt=f"{figure.silt:.0f}", clay=f"{figure.clay:.0f}")
+        else:
+            heading = f"<b>{name}</b>"
+        text = QtWidgets.QLabel(heading
                                 + "<br><br>" + tr(f"status.texture_hint.{figure.texture}"
                                                   if figure.texture in _HINTS
                                                   else "status.texture_hint.other"))
@@ -441,6 +453,12 @@ class SectionCard(QtWidgets.QFrame):
         rows = self.table.selectionModel().selectedRows()
         if rows:
             self.chart.set_row(self.section.rows[rows[0].row()])
+
+
+# (str iso_date)
+# short date, or "—" for an empty / non-date value
+def _date_or_dash(value):
+    return short_date(value) if isinstance(value, str) and len(value) >= 10 else "—"
 
 
 # texture classes with their own hint text (the rest use "other")

@@ -115,7 +115,7 @@ class _WithFields(unittest.TestCase):
 
 
 class AnalyzeDialogTest(_WithFields):
-    # Status opens its panel over the map; Trends one tab, reused on a second click
+    # Status and Trends show a field in the right column; My fields goes back
     def test_status_panel_and_trends_tab(self):
         from fieldshift.status import PERIODS
         panel = self.window.status_panel
@@ -129,8 +129,13 @@ class AnalyzeDialogTest(_WithFields):
         panel.show_row("soil", "soil_moisture")
         self.window.fields_bar.fields_button.click()
         self.assertIs(self.window.right_stack.currentWidget(), self.window.panel)
-        first = self.window.open_mode("trends")
-        self.assertIs(self.window.open_mode("trends"), first)
+        self.assertTrue(self.window.open_trends(self.a))
+        trends = self.window.trends_panel
+        self.assertIs(self.window.right_stack.currentWidget(), trends)
+        self.assertTrue(self.window.fields_bar.trends_button.isChecked())
+        self.assertEqual(set(trends.sections), {"weather", "growth", "soil"})
+        self.assertEqual(len(trends.report.months), 12)
+        self.assertTrue(trends.report.seasons and trends.report.milestones)
 
     def dialog(self, layer_id=None):
         from fieldshift.ui.analyze_dialog import AnalyzeDialog

@@ -42,7 +42,7 @@ class FieldMenuTest(unittest.TestCase):
     def test_menu_items(self):
         menu = self.window.field_menu.build(self.field)
         names = [a.objectName() for a in menu.actions() if a.objectName()]
-        self.assertEqual(names, ["edit", "status", "analyze", "zoom", "check", "delete"])
+        self.assertEqual(names, ["edit", "status", "trends", "analyze", "zoom", "check", "delete"])
         self.assertEqual(menu.actions()[0].text(), "North")      # title
 
     def test_actions(self):

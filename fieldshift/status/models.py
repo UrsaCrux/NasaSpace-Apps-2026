@@ -85,8 +85,9 @@ class StatusSection:
     texture: object = None
 
 
-# everything shown for one field and period. example True while the numbers
-# are made up
+# everything shown for one field and period. example True when the numbers
+# are made up; notice_key explains why (no connection, ...) or names the
+# sources that did not answer (missing, a tuple of source names)
 @dataclass(frozen=True)
 class StatusReport:
     field_name: str
@@ -95,6 +96,8 @@ class StatusReport:
     sections: tuple
     summary: tuple
     example: bool = True
+    notice_key: str = ""
+    missing: tuple = ()
 
     # (str section_id)
     # the section with that id, or None

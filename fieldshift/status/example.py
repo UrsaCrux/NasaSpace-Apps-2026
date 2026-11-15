@@ -10,6 +10,7 @@ from datetime import date, timedelta
 
 from fieldshift.analysis.models import TextureFigure
 from fieldshift.fields.zone_data import usda_texture
+from fieldshift.status.rules import when
 from fieldshift.status.models import (
     CHART_BARS, LEVEL_ALERT, LEVEL_WATCH, StatusAlert, StatusReport, StatusRow,
     StatusSection, SummaryTile)
@@ -63,10 +64,11 @@ def _weather(rng, days, dates):
                     suggestion=True),
         StatusAlert("status.alert.radiation", {"value": f"{radiation[-1]:.0f}"}, LEVEL_WATCH,
                     suggestion=True),
-        StatusAlert("status.alert.rain_tomorrow", {"mm": f"{rng.uniform(15, 30):.0f}"},
+        StatusAlert("status.alert.rain_upcoming", {"when": when(1),
+                                                   "mm": f"{rng.uniform(15, 30):.0f}"},
                     LEVEL_ALERT, upcoming=True, suggestion=True),
         StatusAlert("status.alert.frost_upcoming", {"temp": f"{rng.uniform(-2, 1):.0f}",
-                                                    "day": rng.randint(3, 6)},
+                                                    "when": when(rng.randint(3, 6))},
                     LEVEL_WATCH, upcoming=True),
     )
     return StatusSection("weather", "status.section.weather", "🌤️", rows, alerts)

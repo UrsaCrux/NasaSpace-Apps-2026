@@ -1,5 +1,5 @@
-"""Bar under the map: "My fields" / "Status" (what the right column shows),
-"Trends" and "Analyze…" on the left, "Export fields…" on the right. The
+"""Bar under the map: "My fields" / "Status" / "Trends" (what the right
+column shows) and "Analyze…" on the left, "Export fields…" on the right. The
 "Draw field" button floats over the bottom-right corner of the map.
 
 Uses the map only through MapView and the fields through FieldsManager.
@@ -20,9 +20,14 @@ QFrame#fieldsBar { background: #f4f6f4; border-top: 1px solid #c9d1c9; }
 QPushButton#myFields, QPushButton#statusMode { background: white; color: #2e3b2e;
     border: 1px solid #9aa39a; padding: 6px 16px; font-weight: bold; }
 QPushButton#myFields { border-top-left-radius: 4px; border-bottom-left-radius: 4px; }
-QPushButton#statusMode { border-left: none; border-top-right-radius: 4px;
-    border-bottom-right-radius: 4px; }
-QPushButton#myFields:hover, QPushButton#statusMode:hover { background: #e8f5e9; }
+QPushButton#statusMode { border-left: none; }
+QPushButton#trendsMode { background: white; color: #2e3b2e; border: 1px solid #9aa39a;
+    border-left: none; padding: 6px 16px; font-weight: bold;
+    border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
+QPushButton#myFields:hover, QPushButton#statusMode:hover,
+QPushButton#trendsMode:hover { background: #e8f5e9; }
+QPushButton#trendsMode:checked { background: #6a1b9a; color: white; border-color: #6a1b9a; }
+QPushButton#trendsMode:disabled { background: #eceff1; color: #b0bec5; }
 QPushButton#myFields:checked { background: #2e7d32; color: white; border-color: #2e7d32; }
 QPushButton#statusMode:checked { background: #00796b; color: white; border-color: #00796b; }
 QPushButton#statusMode:disabled { background: #eceff1; color: #b0bec5; }
@@ -30,10 +35,6 @@ QPushButton#analyzeFields { background: #1565c0; color: white; border: none;
                             border-radius: 4px; padding: 6px 16px; font-weight: bold; }
 QPushButton#analyzeFields:hover { background: #0d47a1; }
 QPushButton#analyzeFields:disabled { background: #b0bec5; color: #eceff1; }
-QPushButton#trendsMode { background: #6a1b9a; color: white; border: none;
-    border-radius: 4px; padding: 6px 16px; font-weight: bold; }
-QPushButton#trendsMode:hover { background: #4a148c; }
-QPushButton#trendsMode:disabled { background: #b0bec5; color: #eceff1; }
 QLabel#drawHint { color: #444; }
 """
 
@@ -69,7 +70,7 @@ class FieldsBar(QtWidgets.QFrame):
         self.draw_button.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self.draw_button.clicked.connect(self._on_draw_clicked)
         view.widget().installEventFilter(self)
-        # what the right column shows: "My fields" or "Status" (one at a time)
+        # what the right column shows: "My fields", "Status" or "Trends"
         self.mode = "fields"
         # emitted with no arguments when the user clicks "My fields"
         self.fields_requested = Event()
@@ -95,6 +96,7 @@ class FieldsBar(QtWidgets.QFrame):
         self.status_button.clicked.connect(lambda: self.status_requested.emit())
         self.trends_button = QtWidgets.QPushButton(tr("modes.trends"))
         self.trends_button.setObjectName("trendsMode")
+        self.trends_button.setCheckable(True)
         self.trends_button.clicked.connect(lambda: self.trends_requested.emit())
         self.export_button = QtWidgets.QPushButton(tr("fields.export_all"))
         self.export_button.clicked.connect(lambda: self._on_export_clicked())
@@ -103,8 +105,8 @@ class FieldsBar(QtWidgets.QFrame):
         row.setContentsMargins(10, 6, 10, 6)
         row.addWidget(self.fields_button)
         row.addWidget(self.status_button)
-        row.addSpacing(8)
         row.addWidget(self.trends_button)
+        row.addSpacing(8)
         row.addWidget(self.analyze_button)
         row.addWidget(self.hint_label, 1)
         row.addStretch(0)
@@ -117,11 +119,13 @@ class FieldsBar(QtWidgets.QFrame):
         self._show_state()
 
     # (str mode)
-    # marks "My fields" ("fields") or "Status" ("status") as the one shown
+    # marks "My fields" ("fields"), "Status" ("status") or "Trends"
+    # ("trends") as the one shown
     def set_mode(self, mode):
         self.mode = mode
         self.fields_button.setChecked(mode == "fields")
         self.status_button.setChecked(mode == "status")
+        self.trends_button.setChecked(mode == "trends")
 
     def eventFilter(self, watched, event):
         view = getattr(self, "view", None)       # None while Qt tears the bar down
