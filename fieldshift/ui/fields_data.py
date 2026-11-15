@@ -98,9 +98,11 @@ class FieldsDataBox(QtWidgets.QGroupBox):
                 [tr("data.col_created"), format_created(field.created)])
             created.setTextAlignment(1, right)
             node.addChild(created)
-            crop_id = field.data.get(CROP_KEY, {}).get("value")
-            crop = QtWidgets.QTreeWidgetItem(
-                [tr("data.crop"), crops.label(crop_id) if crop_id else tr("data.no_crop")])
+            crop_item = field.data.get(CROP_KEY, {})
+            crop_id = crop_item.get("value")
+            crop_text = (crop_item.get("name") or crops.label(crop_id)) if crop_id \
+                else tr("data.no_crop")
+            crop = QtWidgets.QTreeWidgetItem([tr("data.crop"), crop_text])
             crop.setTextAlignment(1, right)
             crop.setFont(1, bold)
             node.addChild(crop)

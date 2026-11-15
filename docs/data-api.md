@@ -178,3 +178,41 @@ Tested live: `nasa_power`, `modis_ndvi`, `soilgrids`, `copernicus_dem`,
 synthetic files in each product's format, with product names and file
 layouts checked against NASA's CMR catalogue; run them once with your keys
 before relying on them.
+
+## FAO EcoCrop (crop data)
+
+`fieldshift/crops/ecocrop.py` reads [FAO EcoCrop](https://ecocrop.apps.fao.org)
+(no key): a description and the ecological requirements of ~2 600 plants.
+
+```python
+from fieldshift.crops import ecocrop
+
+ecocrop.search("melocoton")          # [IndexEntry(id=1796, name='Prunus persica', ...)]
+crop = ecocrop.get_crop("Prunus persica")   # or a synonym/variety, common name or id
+crop.brief                           # 'A shrub or small deciduous tree ...'
+crop.temperature                     # Range(optimal_min=20, optimal_max=33, absolute_min=7, absolute_max=35)
+crop.rainfall, crop.ph, crop.soil_texture, crop.killing_temp_early_growth, crop.crop_cycle_min
+ecocrop.get_image(crop.id)           # JPEG bytes (or None)
+```
+
+```bash
+python -m fieldshift.crops.ecocrop peach
+```
+
+```bash
+python -m fieldshift.crops.ecocrop --search vitis
+```
+
+| Function | Returns |
+|----------|---------|
+| `search(text)` | plants matching the scientific name, synonyms (varieties) or common names, best first |
+| `find(name_or_id)` | the best `IndexEntry` |
+| `get_crop(name_or_id)` | `CropInfo`: names, family, authority, description (`brief`, `sections`, `description`), sources, picture URL, and the data sheet: life form, category, life span, temperature / rainfall / latitude / altitude / pH ranges, soil depth, texture, fertility, salinity, drainage, climate zone, photoperiod, killing temperatures, crop cycle, uses |
+| `get_image(id)` | the picture as JPEG bytes, or None |
+
+Pages: the plant list `srv/en/cropListDetails` (downloaded once, cached
+30 days), `srv/en/cropView?id=` (names, notes, picture) and
+`srv/en/dataSheet?id=` (requirements), cached per crop in
+`~/.cache/fieldshift/ecocrop`. The notes come in three layouts (headings
+inline, on their own line, or followed by a colon); all are parsed into
+`sections`.

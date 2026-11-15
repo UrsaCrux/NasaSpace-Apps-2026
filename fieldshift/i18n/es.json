@@ -162,7 +162,7 @@
   "month.11": "noviembre",
   "month.12": "diciembre",
   "fields.crop_label": "Cultivo:",
-  "fields.crop_placeholder": "Escribe un cultivo, p. ej. durazno",
+  "fields.crop_placeholder": "Escribe un cultivo: nombre común o científico (p. ej. durazno, Prunus persica)",
   "fields.crop_error": "Elige un cultivo y variedad de la lista (obligatorio).",
   "fields.crop_no_match": "Ningún cultivo coincide con «{text}».",
   "crops.variety_label": "{crop} – variedad {number}",
@@ -272,5 +272,11 @@
   "search.none": "No se encontró nada para «{text}»",
   "search.failed": "No se pudo buscar (revisa tu conexión)",
   "search.offline": "Búsqueda no disponible",
-  "search.remove_pin": "Quitar la marca"
+  "search.remove_pin": "Quitar la marca",
+  "crops.ecocrop_label": "Planta EcoCrop {id}",
+  "crops.ecocrop_suggestion": "{name} — {common}  (EcoCrop)",
+  "fields.crop_info_loading": "Cargando información del cultivo",
+  "fields.crop_info_missing": "No hay información de este cultivo en FAO EcoCrop (o no hay conexión).",
+  "fields.crop_info_source": "Fuente: <a href=\"{url}\">FAO EcoCrop</a>",
+  "fields.crop_info_no_image": "sin imagen"
 }

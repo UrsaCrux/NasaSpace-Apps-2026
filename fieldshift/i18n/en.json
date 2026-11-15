@@ -162,7 +162,7 @@
   "month.11": "November",
   "month.12": "December",
   "fields.crop_label": "Crop:",
-  "fields.crop_placeholder": "Type a crop, e.g. peach",
+  "fields.crop_placeholder": "Type a crop: common or scientific name (e.g. peach, Prunus persica)",
   "fields.crop_error": "Choose a crop and variety from the list (required).",
   "fields.crop_no_match": "No crop matches “{text}”.",
   "crops.variety_label": "{crop} – variety {number}",
@@ -272,5 +272,11 @@
   "search.none": "Nothing found for “{text}”",
   "search.failed": "Could not search (check your connection)",
   "search.offline": "Search not available",
-  "search.remove_pin": "Remove the marker"
+  "search.remove_pin": "Remove the marker",
+  "crops.ecocrop_label": "EcoCrop plant {id}",
+  "crops.ecocrop_suggestion": "{name} — {common}  (EcoCrop)",
+  "fields.crop_info_loading": "Loading crop information",
+  "fields.crop_info_missing": "No information for this crop in FAO EcoCrop (or no connection).",
+  "fields.crop_info_source": "Source: <a href=\"{url}\">FAO EcoCrop</a>",
+  "fields.crop_info_no_image": "no picture"
 }

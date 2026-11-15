@@ -19,7 +19,7 @@ Each file is a FeatureCollection with one Feature (EPSG:4326). Properties:
 | `area_ha` | Area in hectares |
 | `created` | Creation date (ISO 8601, UTC) |
 | `color` | `"#rrggbb"`; grey `#9e9e9e` if never chosen |
-| `data` | Zone data and crop: `{key: {"value": ..., "source": "prefilled" \| "user" \| "missing"[, "prefilled": <loaded value>]}}`; the crop is `data.crop = {"value": "<variety id>", "source": "user"}` |
+| `data` | Zone data and crop: `{key: {"value": ..., "source": "prefilled" \| "user" \| "missing"[, "prefilled": <loaded value>]}}`; the crop is `data.crop = {"value": "<variety id>" or "ecocrop:<id>", "source": "user"[, "name": "Vitis labrusca"]}` |
 
 Files without `color` or `data` (older versions) open with grey, no crop and
 every datum `missing` (the dialog then loads them). Data keys of older
@@ -40,13 +40,27 @@ the field stays as it was. The code is `FieldStore.update` and
 Opened after drawing a field (and by **Edit**). It asks for:
 
 - **Name** — required, unique.
-- **Crop** — required. A search box: typing "peach", "durazno" or
-  "melocotón" (any language, accents and case ignored) opens a dropdown with
-  the matching varieties ("Peach – variety 1", "Durazno – variedad 1"...).
-  Only a variety picked from the list (or typed exactly) counts. The list is
-  `fieldshift/crops/crops.json` — **placeholder varieties** for now (46 real
-  crop names, 3 made-up varieties each); search code in
-  `fieldshift/crops/__init__.py`.
+- **Crop** — required. A search box: typing "peach", "durazno", "melocotón"
+  or "Prunus persica" (any language, accents and case ignored) opens a
+  dropdown with:
+  - the varieties of the local catalogue ("Peach – variety 1",
+    "Durazno – variedad 1"...) — `fieldshift/crops/crops.json`, **placeholder
+    varieties** for now (46 real crops, 3 made-up varieties each);
+  - any other plant of **FAO EcoCrop** (~2 600) that matches by scientific
+    name, variety/synonym or common name, e.g. "Vitis labrusca — fox grape,
+    Isabella grape (EcoCrop)". Stored as `ecocrop:<id>`. A catalogue crop
+    found by its scientific name offers its varieties instead.
+
+  Only an entry picked from the list (or typed exactly) counts. Below the
+  search, a panel shows the chosen crop's **EcoCrop picture** (cropped to a
+  rectangle), **scientific and common names** and **description**, cut at
+  260 characters with "..." (the whole text in the tooltip). The EcoCrop list
+  loads in the background when the dialog opens (cached for 30 days); the
+  crop page and picture load when chosen (cached). Without connection only
+  the catalogue is searched and the panel says the information is not
+  available. EcoCrop texts are in English. Code: `fieldshift/crops/`
+  (`ecocrop.py`, see [data-api.md](data-api.md#fao-ecocrop-crop-data)) and
+  `fieldshift/ui/crop_widgets.py`.
 - **Colour** — optional.
 - **Zone data** — loaded from the data sources (below), editable.
 

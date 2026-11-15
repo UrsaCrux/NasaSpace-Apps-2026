@@ -32,6 +32,7 @@ from fieldshift.fields.schema import (
 )
 from fieldshift.i18n import tr
 from fieldshift.qt import QtCore, QtGui, QtWidgets
+from fieldshift.ui.crop_widgets import CropInfoPanel, CropSearch  # noqa: F401  (re-exported)
 from fieldshift.ui.dialogs import CenteredDialog
 
 # frames of the loading animation, and ms between frames
@@ -108,85 +109,22 @@ class ZoneDataLoader(QtCore.QObject):
             pass
 
 
-# line edit with a dropdown of crop varieties that match what is typed (in
-# any language, ignoring accents). a value only counts once a variety is
-# picked from the list; selection_changed fires when that changes
-class CropSearch(QtWidgets.QLineEdit):
-    selection_changed = QtCore.pyqtSignal()
-
-    # (str variety_id = None, QWidget parent = None)
-    def __init__(self, variety_id=None, parent=None):
-        super().__init__(parent)
-        self.setPlaceholderText(tr("fields.crop_placeholder"))
-        self.setClearButtonEnabled(True)
-        self._results = []
-        self._selected = None
-        self._model = QtCore.QStringListModel(self)
-        self.completer_ = QtWidgets.QCompleter(self._model, self)
-        self.completer_.setCompletionMode(
-            QtWidgets.QCompleter.CompletionMode.UnfilteredPopupCompletion)
-        self.completer_.setCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
-        self.completer_.setMaxVisibleItems(crops.MAX_RESULTS)
-        self.completer_.setWidget(self)
-        self.completer_.activated.connect(self._on_activated)
-        self.textEdited.connect(self._on_edited)
-        if crops.is_variety(variety_id):
-            self.choose(variety_id)
-
-    # ()
-    # id of the chosen variety ("peach.v1"), or None
-    def selected(self):
-        return self._selected
-
-    # ()
-    # labels currently offered in the dropdown
-    def suggestions(self):
-        return self._model.stringList()
-
-    # (str variety_id)
-    # picks a variety as if chosen from the list
-    def choose(self, variety_id):
-        self.setText(crops.label(variety_id))
-        self._set_selected(variety_id)
-
-    def _on_edited(self, text):
-        self._results = crops.search(text)
-        labels = [crops.label(v.id) for v in self._results]
-        self._model.setStringList(labels)
-        # typing the exact label of a variety also chooses it
-        exact = next((v.id for v in self._results
-                      if crops.fold(crops.label(v.id)) == crops.fold(text)), None)
-        self._set_selected(exact)
-        if labels and exact is None:
-            self.completer_.complete()
-        else:
-            self.completer_.popup().hide()
-
-    def _on_activated(self, text):
-        if not isinstance(text, str):              # QModelIndex overload
-            text = text.data()
-        match = next((v.id for v in self._results if crops.label(v.id) == text), None)
-        if match is not None:
-            self.choose(match)
-
-    def _set_selected(self, variety_id):
-        if variety_id != self._selected:
-            self._selected = variety_id
-            self.selection_changed.emit()
-
-
 # dialog with the details of a field. needs a name (required, unique) and a
-# crop (required, from the catalogue); colour and zone data are optional.
+# crop (required: a catalogue variety or an EcoCrop plant, whose picture and
+# description appear under the search); colour and zone data are optional.
 # with field= it edits that saved field (its own name is not a duplicate),
 # otherwise it asks for a new one drawn with vertices=. zone data that has no
-# value yet is loaded from the data sources (fetch= replaces
-# zone_data.fetch_group, e.g. in tests)
+# value yet is loaded from the data sources. For tests: fetch= replaces
+# zone_data.fetch_group, crop_info_fetch= the EcoCrop crop download and
+# load_ecocrop= the EcoCrop list download
 class FieldDialog(CenteredDialog):
 
     # (FieldStore store, list vertices = None, Field field = None,
-    #  QWidget parent = None, callable fetch = None)
+    #  QWidget parent = None, callable fetch = None, callable crop_info_fetch = None,
+    #  callable load_ecocrop = None)
     # builds the dialog and starts loading the zone data
-    def __init__(self, store, vertices=None, field=None, parent=None, fetch=None):
+    def __init__(self, store, vertices=None, field=None, parent=None, fetch=None,
+                 crop_info_fetch=None, load_ecocrop=None):
         super().__init__(parent)
         self.store = store
         self._own_name = field.name if field is not None else None
@@ -202,8 +140,9 @@ class FieldDialog(CenteredDialog):
         self.name_edit.selectAll()
         self.error_label = self._error_label()
 
-        self.crop_search = CropSearch(current[CROP_KEY]["value"])
+        self.crop_search = CropSearch(current[CROP_KEY]["value"], load_index=load_ecocrop)
         self.crop_error = self._error_label()
+        self.crop_info = CropInfoPanel(fetch=crop_info_fetch)
 
         self.color_button = QtWidgets.QPushButton(tr("fields.color_choose"))
         self.color_button.setSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed,
@@ -219,6 +158,7 @@ class FieldDialog(CenteredDialog):
         top.addRow(self.error_label)
         top.addRow(tr("fields.crop_label"), self.crop_search)
         top.addRow(self.crop_error)
+        top.addRow(self.crop_info)
         top.addRow(tr("fields.color_label"), self.color_button)
 
         self._rows = {}
@@ -261,6 +201,9 @@ class FieldDialog(CenteredDialog):
 
         self.name_edit.textChanged.connect(self._validate)
         self.crop_search.selection_changed.connect(self._validate)
+        self.crop_search.selection_changed.connect(
+            lambda: self.crop_info.show_crop(self.crop_search.selected()))
+        self.crop_info.show_crop(self.crop_search.selected())
         self.crop_search.textEdited.connect(lambda *_: self._validate())
 
         self._spinner_step = 0
@@ -311,6 +254,8 @@ class FieldDialog(CenteredDialog):
             result[key] = item
         crop = self.crop()
         result[CROP_KEY] = {"value": crop, "source": SOURCE_USER if crop else SOURCE_MISSING}
+        if crops.ecocrop_number(crop) is not None:
+            result[CROP_KEY]["name"] = self.crop_search.selected_name()
         return result
 
     # (str key)
@@ -347,6 +292,7 @@ class FieldDialog(CenteredDialog):
     def done(self, result):
         self._loader_cancel()
         self._spinner.stop()
+        self.crop_info.cancel()
         super().done(result)
 
     # -- loading -----------------------------------------------------------

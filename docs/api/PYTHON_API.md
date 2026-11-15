@@ -1188,7 +1188,7 @@ creates the QApplication (QgsApplication when QGIS is present), shows the main w
 class Variety
 ```
 
-- **Line:** 29
+- **Line:** 35
 
 one variety of a crop, as returned by search()
 
@@ -1201,7 +1201,7 @@ def fold(text)
 ```
 
 - **Arguments:** `(str text)`
-- **Line:** 37
+- **Line:** 43
 
 lower case, without accents and surrounding spaces ("Melocotón " -> "melocoton")
 
@@ -1212,7 +1212,7 @@ def crop_name(crop_id)
 ```
 
 - **Arguments:** `(str crop_id)`
-- **Line:** 55
+- **Line:** 61
 
 crop name in the current language (English when missing)
 
@@ -1223,9 +1223,53 @@ def label(variety_id)
 ```
 
 - **Arguments:** `(str variety_id)`
-- **Line:** 64
+- **Line:** 71
 
-"Peach – variety 1" in the current language; the id itself when unknown
+"Peach – variety 1" in the current language; for an EcoCrop plant its scientific name (when the EcoCrop list is loaded); the id itself when unknown
+
+#### `ecocrop_number`
+
+```python
+def ecocrop_number(value)
+```
+
+- **Arguments:** `(any value)`
+- **Line:** 85
+
+the EcoCrop id of an "ecocrop:<id>" value, or None
+
+#### `ecocrop_name`
+
+```python
+def ecocrop_name(variety_id)
+```
+
+- **Arguments:** `(str variety_id)`
+- **Line:** 95
+
+scientific name of the EcoCrop plant behind a catalogue variety (or None); for "ecocrop:<id>" values use ecocrop_number
+
+#### `crop_for_ecocrop`
+
+```python
+def crop_for_ecocrop(scientific_name)
+```
+
+- **Arguments:** `(str scientific_name)`
+- **Line:** 103
+
+id of the first catalogue crop linked to this EcoCrop plant, or None
+
+#### `varieties`
+
+```python
+def varieties(crop_id)
+```
+
+- **Arguments:** `(str crop_id)`
+- **Line:** 109
+
+every Variety of a catalogue crop
 
 #### `variety_by_id`
 
@@ -1234,7 +1278,7 @@ def variety_by_id(variety_id)
 ```
 
 - **Arguments:** `(str variety_id)`
-- **Line:** 73
+- **Line:** 117
 
 the Variety with this id, or None
 
@@ -1245,9 +1289,9 @@ def is_variety(variety_id)
 ```
 
 - **Arguments:** `(any variety_id)`
-- **Line:** 86
+- **Line:** 130
 
-True for an id of the catalogue
+True for an id of the catalogue or an "ecocrop:<id>" value
 
 #### `search`
 
@@ -1256,7 +1300,7 @@ def search(text, limit=MAX_RESULTS)
 ```
 
 - **Arguments:** `(str text, int limit = MAX_RESULTS)`
-- **Line:** 96
+- **Line:** 140
 
 varieties of the crops whose name (any language) or alias matches text, ignoring case and accents. crops whose name starts with the text come first, then names containing it; a trailing number ("peach 2") narrows to that variety, and extra trailing words ("peach – variety 2") are dropped until something matches. empty text gives nothing
 
@@ -1264,8 +1308,209 @@ varieties of the crops whose name (any language) or alias matches text, ignoring
 
 | Name | Description | Line |
 |------|-------------|------|
-| `CATALOG_PATH` | the catalogue file | 20 |
-| `MAX_RESULTS` | results shown in the search dropdown | 22 |
+| `CATALOG_PATH` | the catalogue file | 24 |
+| `MAX_RESULTS` | results shown in the search dropdown | 26 |
+| `ECOCROP_PREFIX` | prefix of the ids of EcoCrop plants chosen directly | 28 |
+
+## `fieldshift/crops/ecocrop.py`
+
+### Classes
+
+#### `IndexEntry`
+
+```python
+class IndexEntry
+```
+
+- **Line:** 43
+
+one plant of the EcoCrop list
+
+#### `Range`
+
+```python
+class Range
+```
+
+- **Line:** 52
+
+optimal and absolute range of a requirement (None where EcoCrop has no value)
+
+#### `CropInfo`
+
+```python
+class CropInfo
+```
+
+- **Line:** 61
+
+everything EcoCrop knows about one crop
+
+### Functions
+
+#### `CropInfo.to_dict`
+
+```python
+def to_dict(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 101
+
+plain dict, ready for json.dumps
+
+#### `CropInfo.from_dict`
+
+```python
+def from_dict(cls, data)
+```
+
+- **Arguments:** `(dict data)`
+- **Line:** 107
+
+CropInfo from to_dict() output (the cache)
+
+#### `fold`
+
+```python
+def fold(text)
+```
+
+- **Arguments:** `(str text)`
+- **Line:** 116
+
+lower case, no accents, single spaces ("Pêche " -> "peche")
+
+#### `parse_index`
+
+```python
+def parse_index(page)
+```
+
+- **Arguments:** `(str page)`
+- **Line:** 144
+
+IndexEntry list from the cropListDetails page
+
+#### `parse_sections`
+
+```python
+def parse_sections(notes)
+```
+
+- **Arguments:** `(str notes)`
+- **Line:** 162
+
+{"BRIEF DESCRIPTION": "...", "USES": "..."} from the Notes text (with "\n" for <br>). Headings are upper-case words on their own line, followed by two spaces, or followed by a colon: the three layouts exist
+
+#### `parse_crop_view`
+
+```python
+def parse_crop_view(page, crop_id)
+```
+
+- **Arguments:** `(str page, int crop_id)`
+- **Line:** 181
+
+CropInfo with the cropView data (names, description, image)
+
+#### `parse_data_sheet`
+
+```python
+def parse_data_sheet(page, info)
+```
+
+- **Arguments:** `(str page, CropInfo info)`
+- **Line:** 212
+
+adds the dataSheet data (description table, ecology ranges, cultivation, uses) to info and returns it
+
+#### `load_index`
+
+```python
+def load_index(refresh=False)
+```
+
+- **Arguments:** `(bool refresh = False)`
+- **Line:** 266
+
+the list of every EcoCrop plant (cached on disk for INDEX_MAX_AGE_DAYS)
+
+#### `set_index`
+
+```python
+def set_index(entries)
+```
+
+- **Arguments:** `(list entries)`
+- **Line:** 286
+
+uses entries as the index (tests, or a list loaded elsewhere)
+
+#### `loaded_index`
+
+```python
+def loaded_index()
+```
+
+- **Arguments:** `()`
+- **Line:** 293
+
+the index if it is already in memory (never downloads), else None
+
+#### `search`
+
+```python
+def search(text, limit=MAX_RESULTS, index=None)
+```
+
+- **Arguments:** `(str text, int limit = MAX_RESULTS, list index = None)`
+- **Line:** 302
+
+plants matching text in their scientific name, synonyms (varieties) or common names, ignoring case and accents. Best first: exact name, name starting with the text, exact common name, common name starting with the text, then names containing it
+
+#### `find`
+
+```python
+def find(name_or_id, index=None)
+```
+
+- **Arguments:** `(str|int name_or_id)`
+- **Line:** 329
+
+the IndexEntry for an id, scientific name, synonym or common name, or None
+
+#### `get_crop`
+
+```python
+def get_crop(name_or_id, data_sheet=True, refresh=False)
+```
+
+- **Arguments:** `(str|int name_or_id, bool data_sheet = True, bool refresh = False)`
+- **Line:** 340
+
+CropInfo of a crop (by id, scientific name, variety/synonym or common name); raises LookupError when nothing matches. cached on disk
+
+#### `get_image`
+
+```python
+def get_image(crop_id)
+```
+
+- **Arguments:** `(int crop_id)`
+- **Line:** 361
+
+JPEG bytes of the crop's picture (cached), or None when it has none
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `INDEX_MAX_AGE_DAYS` | the cached plant list is downloaded again after this many days | 34 |
+| `MAX_RESULTS` | results returned by search() | 36 |
+| `CropInfo.life_form` | data sheet | 75 |
+| `BRIEF_SECTIONS` | sections used as the short description, best first | 153 |
+| `NOT_DESCRIPTION` | sections that are not description | 155 |
 
 ## `fieldshift/fields/manager.py`
 
@@ -1468,7 +1713,7 @@ writes these fields (all when None) to one GeoJSON file; returns how many. raise
 class DataField
 ```
 
-- **Line:** 47
+- **Line:** 49
 
 definition of one datum. key names it in the GeoJSON "data" property and in the i18n files. options is for KIND_CHOICE; unit, minimum, maximum and decimals are for KIND_NUMBER. group names the section of the dialog
 
@@ -1481,7 +1726,7 @@ def normalize_color(text)
 ```
 
 - **Arguments:** `(str text)`
-- **Line:** 99
+- **Line:** 101
 
 "#rrggbb" in lower case; DEFAULT_COLOR when text is not a colour like that
 
@@ -1492,7 +1737,7 @@ def coerce_value(spec, raw)
 ```
 
 - **Arguments:** `(DataField spec, any raw)`
-- **Line:** 107
+- **Line:** 109
 
 raw as a valid value of this datum, or None when it is not one
 
@@ -1503,7 +1748,7 @@ def empty_data()
 ```
 
 - **Arguments:** `()`
-- **Line:** 121
+- **Line:** 123
 
 data with every datum missing (and no crop): what a new field starts with before the data sources answer
 
@@ -1514,7 +1759,7 @@ def normalize_data(raw, vertices=None)
 ```
 
 - **Arguments:** `(any raw, list vertices = None)`
-- **Line:** 131
+- **Line:** 133
 
 raw (data read from a file or from the dialog) as a complete, valid data dict: unknown keys are dropped and a missing or invalid datum becomes "missing", so files without data (or from older versions) still open
 
@@ -1522,14 +1767,14 @@ raw (data read from a file or from the dialog) as a complete, valid data dict: u
 
 | Name | Description | Line |
 |------|-------------|------|
-| `KIND_CHOICE` | kinds of datum, and what editor the dialog shows for each | 24 |
-| `SOURCE_PREFILLED` | where a value came from | 29 |
-| `DEFAULT_COLOR` | colour of a field when the user does not choose one (grey) | 34 |
-| `CROP_KEY` | key of the crop in the data dict (not part of DATA_FIELDS: it is required and the dialog shows it on its own, with a search box) | 38 |
-| `TEXTURES` | USDA soil texture classes (from the clay / sand / silt fractions) | 59 |
-| `WRB_GROUPS` | WRB reference soil groups (SoilGrids uses WRB 2006: Albeluvisols instead of Retisols) | 65 |
-| `DATA_FIELDS` | the zone data, in the order the dialog shows it: soil (SoilGrids, top 30 cm), relief (Copernicus DEM), vegetation (MODIS, WaPOR) and what only the farmer knows. No weather here: that belongs to the analyses | 75 |
-| `GROUPS` | group order and the i18n key of each group title | 94 |
+| `KIND_CHOICE` | kinds of datum, and what editor the dialog shows for each | 26 |
+| `SOURCE_PREFILLED` | where a value came from | 31 |
+| `DEFAULT_COLOR` | colour of a field when the user does not choose one (grey) | 36 |
+| `CROP_KEY` | key of the crop in the data dict (not part of DATA_FIELDS: it is required and the dialog shows it on its own, with a search box) | 40 |
+| `TEXTURES` | USDA soil texture classes (from the clay / sand / silt fractions) | 61 |
+| `WRB_GROUPS` | WRB reference soil groups (SoilGrids uses WRB 2006: Albeluvisols instead of Retisols) | 67 |
+| `DATA_FIELDS` | the zone data, in the order the dialog shows it: soil (SoilGrids, top 30 cm), relief (Copernicus DEM), vegetation (MODIS, WaPOR) and what only the farmer knows. No weather here: that belongs to the analyses | 77 |
+| `GROUPS` | group order and the i18n key of each group title | 96 |
 
 ## `fieldshift/fields/store.py`
 
@@ -2928,6 +3173,227 @@ one AnalysisResult per analysis, in order (empty until finished)
 |------|-------------|------|
 | `PLACEHOLDER_STEP_MS` | PLACEHOLDER: pause (ms) between progress steps, to show how loading data will feel. the real analyses will report their own progress | 12 |
 
+## `fieldshift/ui/crop_widgets.py`
+
+### Classes
+
+#### `BackgroundCall`
+
+```python
+class BackgroundCall(QtCore.QObject)
+```
+
+- **Line:** 62
+
+runs fn() in a daemon thread and emits done(token, result, error) on the GUI thread; results of a cancelled call are dropped
+
+#### `CropSearch`
+
+```python
+class CropSearch(QtWidgets.QLineEdit)
+```
+
+- **Line:** 100
+
+line edit with a dropdown of the crops that match what is typed: varieties of the local catalogue (any language, ignoring accents) and, once the EcoCrop list is loaded, EcoCrop plants by scientific, variety or common name. A value only counts once picked from the list (or typed exactly); selection_changed fires when that changes
+
+#### `CropInfoPanel`
+
+```python
+class CropInfoPanel(QtWidgets.QFrame)
+```
+
+- **Line:** 239
+
+box under the crop search: EcoCrop picture (cropped rectangle), scientific and common names and a shortened description of the chosen crop. Hidden while no crop is chosen; shows an animation while it loads and a short message when EcoCrop has nothing (or cannot be reached)
+
+### Functions
+
+#### `shorten`
+
+```python
+def shorten(text, limit=MAX_DESCRIPTION_CHARS)
+```
+
+- **Arguments:** `(str text, int limit = MAX_DESCRIPTION_CHARS)`
+- **Line:** 37
+
+text cut at the last whole word before limit, ending with "..."
+
+#### `cropped_pixmap`
+
+```python
+def cropped_pixmap(data, width=IMAGE_W, height=IMAGE_H)
+```
+
+- **Arguments:** `(bytes data, int width, int height)`
+- **Line:** 50
+
+QPixmap of the picture scaled to cover width x height and cropped to that rectangle around its centre; None when data is not a picture
+
+#### `BackgroundCall.start`
+
+```python
+def start(self, fn)
+```
+
+- **Arguments:** `(callable fn)`
+- **Line:** 71
+
+starts fn in a thread; returns the token its result will carry
+
+#### `BackgroundCall.cancel`
+
+```python
+def cancel(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 79
+
+drops the result of the call running now
+
+#### `CropSearch.__init__`
+
+```python
+def __init__(self, variety_id=None, parent=None, load_index=None)
+```
+
+- **Arguments:** `(str variety_id = None, QWidget parent = None, callable load_index = None)`
+- **Line:** 106
+
+load_index returns the EcoCrop list (default ecocrop.load_index, run in a background thread; not called when offline)
+
+#### `CropSearch.selected`
+
+```python
+def selected(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 131
+
+id of the chosen crop ("peach.v1" or "ecocrop:1796"), or None
+
+#### `CropSearch.selected_name`
+
+```python
+def selected_name(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 136
+
+name to store with the choice (shown when EcoCrop is not reachable)
+
+#### `CropSearch.suggestions`
+
+```python
+def suggestions(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 141
+
+labels currently offered in the dropdown
+
+#### `CropSearch.has_ecocrop`
+
+```python
+def has_ecocrop(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 146
+
+True once the EcoCrop list is available to the search
+
+#### `CropSearch.choose`
+
+```python
+def choose(self, variety_id)
+```
+
+- **Arguments:** `(str variety_id)`
+- **Line:** 151
+
+picks a crop as if chosen from the list
+
+#### `ecocrop_target`
+
+```python
+def ecocrop_target(variety_id)
+```
+
+- **Arguments:** `(str variety_id)`
+- **Line:** 219
+
+what to ask EcoCrop for a choice: its id (int) or scientific name, or None
+
+#### `fetch_crop_info`
+
+```python
+def fetch_crop_info(target)
+```
+
+- **Arguments:** `(str|int target)`
+- **Line:** 226
+
+(CropInfo, picture bytes or None) from EcoCrop; the default fetch of the panel
+
+#### `CropInfoPanel.__init__`
+
+```python
+def __init__(self, parent=None, fetch=None)
+```
+
+- **Arguments:** `(QWidget parent = None, callable fetch = None)`
+- **Line:** 243
+
+fetch(target) -> (CropInfo, image bytes) replaces fetch_crop_info
+
+#### `CropInfoPanel.state`
+
+```python
+def state(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 289
+
+"empty" (hidden), "loading", "ready" or "missing"
+
+#### `CropInfoPanel.show_crop`
+
+```python
+def show_crop(self, variety_id)
+```
+
+- **Arguments:** `(str variety_id)`
+- **Line:** 294
+
+shows the information of a crop (None hides the panel)
+
+#### `CropInfoPanel.cancel`
+
+```python
+def cancel(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 321
+
+stops a load in progress (the dialog is closing)
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `OFFLINE_ENV` | set to "1" to never contact the data sources (tests, no internet) | 19 |
+| `ECOCROP_SUGGESTIONS` | EcoCrop plants added to the suggestions | 21 |
+| `MAX_DESCRIPTION_CHARS` | longer descriptions are cut at a word and end with "..." | 25 |
+| `SPINNER_FRAMES` | frames of the loading animation, and ms between frames | 27 |
+
 ## `fieldshift/ui/dialogs.py`
 
 ### Classes
@@ -2982,19 +3448,9 @@ shows a message with an OK button
 class ZoneDataLoader(QtCore.QObject)
 ```
 
-- **Line:** 76
+- **Line:** 77
 
 runs zone_data groups in background threads and reports each result on the GUI thread through group_done(name, values or None, error text)
-
-#### `CropSearch`
-
-```python
-class CropSearch(QtWidgets.QLineEdit)
-```
-
-- **Line:** 114
-
-line edit with a dropdown of crop varieties that match what is typed (in any language, ignoring accents). a value only counts once a variety is picked from the list; selection_changed fires when that changes
 
 #### `FieldDialog`
 
@@ -3002,9 +3458,9 @@ line edit with a dropdown of crop varieties that match what is typed (in any lan
 class FieldDialog(CenteredDialog)
 ```
 
-- **Line:** 184
+- **Line:** 120
 
-dialog with the details of a field. needs a name (required, unique) and a crop (required, from the catalogue); colour and zone data are optional. with field= it edits that saved field (its own name is not a duplicate), otherwise it asks for a new one drawn with vertices=. zone data that has no value yet is loaded from the data sources (fetch= replaces zone_data.fetch_group, e.g. in tests)
+dialog with the details of a field. needs a name (required, unique) and a crop (required: a catalogue variety or an EcoCrop plant, whose picture and description appear under the search); colour and zone data are optional. with field= it edits that saved field (its own name is not a duplicate), otherwise it asks for a new one drawn with vertices=. zone data that has no value yet is loaded from the data sources. For tests: fetch= replaces zone_data.fetch_group, crop_info_fetch= the EcoCrop crop download and load_ecocrop= the EcoCrop list download
 
 ### Functions
 
@@ -3015,7 +3471,7 @@ def format_value(spec, value)
 ```
 
 - **Arguments:** `(DataField spec, any value)`
-- **Line:** 57
+- **Line:** 58
 
 text of a datum's value in the current language ("Clay", "6.5", "Yes"); "—" when there is no value
 
@@ -3026,7 +3482,7 @@ def data_label(key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 70
+- **Line:** 71
 
 translated name of a datum ("Soil texture")
 
@@ -3037,7 +3493,7 @@ def __init__(self, area, fetch=None, parent=None)
 ```
 
 - **Arguments:** `(Area area, callable fetch = zone_data.fetch_group, QObject parent = None)`
-- **Line:** 80
+- **Line:** 81
 
 #### `ZoneDataLoader.start`
 
@@ -3046,7 +3502,7 @@ def start(self, groups)
 ```
 
 - **Arguments:** `(list groups)`
-- **Line:** 88
+- **Line:** 89
 
 starts one daemon thread per group
 
@@ -3057,61 +3513,19 @@ def cancel(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 95
+- **Line:** 96
 
 results arriving after this are dropped (the dialog was closed)
-
-#### `CropSearch.__init__`
-
-```python
-def __init__(self, variety_id=None, parent=None)
-```
-
-- **Arguments:** `(str variety_id = None, QWidget parent = None)`
-- **Line:** 118
-
-#### `CropSearch.selected`
-
-```python
-def selected(self)
-```
-
-- **Arguments:** `()`
-- **Line:** 138
-
-id of the chosen variety ("peach.v1"), or None
-
-#### `CropSearch.suggestions`
-
-```python
-def suggestions(self)
-```
-
-- **Arguments:** `()`
-- **Line:** 143
-
-labels currently offered in the dropdown
-
-#### `CropSearch.choose`
-
-```python
-def choose(self, variety_id)
-```
-
-- **Arguments:** `(str variety_id)`
-- **Line:** 148
-
-picks a variety as if chosen from the list
 
 #### `FieldDialog.__init__`
 
 ```python
-def __init__(self, store, vertices=None, field=None, parent=None, fetch=None)
+def __init__(self, store, vertices=None, field=None, parent=None, fetch=None, crop_info_fetch=None, load_ecocrop=None)
 ```
 
-- **Line:** 189
+- **Line:** 126
 
-(FieldStore store, list vertices = None, Field field = None, QWidget parent = None, callable fetch = None) builds the dialog and starts loading the zone data
+(FieldStore store, list vertices = None, Field field = None, QWidget parent = None, callable fetch = None, callable crop_info_fetch = None, callable load_ecocrop = None) builds the dialog and starts loading the zone data
 
 #### `FieldDialog.name`
 
@@ -3120,7 +3534,7 @@ def name(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 277
+- **Line:** 220
 
 the name typed, without surrounding spaces
 
@@ -3131,7 +3545,7 @@ def color(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 282
+- **Line:** 225
 
 the chosen colour as "#rrggbb" (grey when none was chosen)
 
@@ -3142,7 +3556,7 @@ def crop(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 287
+- **Line:** 230
 
 id of the chosen crop variety, or None
 
@@ -3153,7 +3567,7 @@ def is_loading(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 292
+- **Line:** 235
 
 True while some data source has not answered yet
 
@@ -3164,7 +3578,7 @@ def data(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 298
+- **Line:** 241
 
 the data: {key: {"value", "source"[, "prefilled"]}} for DATA_FIELDS, plus CROP_KEY
 
@@ -3175,7 +3589,7 @@ def is_modified(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 318
+- **Line:** 263
 
 True when the user changed this datum (it is not the loaded one)
 
@@ -3186,7 +3600,7 @@ def row_state(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 323
+- **Line:** 268
 
 state of a row: loading, prefilled, edited, missing or farmer
 
@@ -3197,7 +3611,7 @@ def set_value(self, key, value)
 ```
 
 - **Arguments:** `(str key, any value)`
-- **Line:** 328
+- **Line:** 273
 
 sets a datum as if the user had typed it (marks it edited)
 
@@ -3208,7 +3622,7 @@ def reset_value(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 335
+- **Line:** 280
 
 puts the loaded value back and marks the datum as not edited
 
@@ -3218,7 +3632,7 @@ puts the loaded value back and marks the datum as not edited
 def accept(self)
 ```
 
-- **Line:** 341
+- **Line:** 286
 
 refuses to close with Save while something is invalid or loading
 
@@ -3228,7 +3642,7 @@ refuses to close with Save while something is invalid or loading
 def done(self, result)
 ```
 
-- **Line:** 347
+- **Line:** 292
 
 stops the threads' results from reaching a closed dialog
 
@@ -3236,9 +3650,9 @@ stops the threads' results from reaching a closed dialog
 
 | Name | Description | Line |
 |------|-------------|------|
-| `SPINNER_FRAMES` | frames of the loading animation, and ms between frames | 38 |
-| `STYLE_LOADING` | looks of a row in each state | 41 |
-| `OFFLINE_ENV` | set to "1" to never contact the data sources (tests, no internet) | 51 |
+| `SPINNER_FRAMES` | frames of the loading animation, and ms between frames | 39 |
+| `STYLE_LOADING` | looks of a row in each state | 42 |
+| `OFFLINE_ENV` | set to "1" to never contact the data sources (tests, no internet) | 52 |
 
 ## `fieldshift/ui/field_list.py`
 

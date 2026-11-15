@@ -14,7 +14,9 @@ is None). A datum may also keep ``"prefilled": <value>``, the value the data
 source gave, so an edited value can be restored later.
 
 The crop to plant is stored under CROP_KEY as ``{"value": "<variety id>",
-"source": "user"}`` (ids from fieldshift/crops/crops.json).
+"source": "user"[, "name": "<display name>"]}``: a variety of
+fieldshift/crops/crops.json ("peach.v1") or an FAO EcoCrop plant
+("ecocrop:1796").
 """
 
 import re
@@ -147,4 +149,6 @@ def normalize_data(raw, vertices=None):
     crop = raw.get(CROP_KEY)
     if isinstance(crop, dict) and is_variety(crop.get("value")):
         data[CROP_KEY] = {"value": crop["value"], "source": SOURCE_USER}
+        if isinstance(crop.get("name"), str) and crop["name"].strip():
+            data[CROP_KEY]["name"] = crop["name"].strip()     # shown when offline
     return data

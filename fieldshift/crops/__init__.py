@@ -7,6 +7,10 @@ id ("peach.v1") that is what a field stores.
 
     search("duraz")   -> [Variety(id="peach.v1", ...), ...]   # in Spanish too
     label("peach.v1") -> "Peach – variety 1" / "Durazno – variedad 1"
+
+A field may also store any plant of FAO EcoCrop (fieldshift.crops.ecocrop)
+as "ecocrop:<id>" ("ecocrop:1796"); each catalogue crop names its EcoCrop
+plant ("ecocrop": scientific name), used for the description and picture.
 """
 
 import json
@@ -20,6 +24,8 @@ from fieldshift.i18n import language, tr
 CATALOG_PATH = Path(__file__).resolve().parent / "crops.json"
 # results shown in the search dropdown
 MAX_RESULTS = 12
+# prefix of the ids of EcoCrop plants chosen directly
+ECOCROP_PREFIX = "ecocrop:"
 
 _catalog = None
 
@@ -60,12 +66,50 @@ def crop_name(crop_id):
 
 
 # (str variety_id)
-# "Peach – variety 1" in the current language; the id itself when unknown
+# "Peach – variety 1" in the current language; for an EcoCrop plant its
+# scientific name (when the EcoCrop list is loaded); the id itself when unknown
 def label(variety_id):
+    eco = ecocrop_number(variety_id)
+    if eco is not None:
+        from fieldshift.crops import ecocrop
+        entry = next((e for e in ecocrop.loaded_index() or () if e.id == eco), None)
+        return entry.name if entry else tr("crops.ecocrop_label", id=eco)
     variety = variety_by_id(variety_id)
     if variety is None:
         return str(variety_id)
     return tr("crops.variety_label", crop=crop_name(variety.crop), number=variety.number)
+
+
+# (any value)
+# the EcoCrop id of an "ecocrop:<id>" value, or None
+def ecocrop_number(value):
+    if isinstance(value, str) and value.startswith(ECOCROP_PREFIX):
+        rest = value[len(ECOCROP_PREFIX):]
+        return int(rest) if rest.isdigit() else None
+    return None
+
+
+# (str variety_id)
+# scientific name of the EcoCrop plant behind a catalogue variety (or None);
+# for "ecocrop:<id>" values use ecocrop_number
+def ecocrop_name(variety_id):
+    variety = variety_by_id(variety_id)
+    crop = _crop(variety.crop) if variety else None
+    return crop.get("ecocrop") if crop else None
+
+
+# (str scientific_name)
+# id of the first catalogue crop linked to this EcoCrop plant, or None
+def crop_for_ecocrop(scientific_name):
+    return next((c["id"] for c in _load() if c.get("ecocrop") == scientific_name), None)
+
+
+# (str crop_id)
+# every Variety of a catalogue crop
+def varieties(crop_id):
+    crop = _crop(crop_id)
+    return [Variety(f"{crop_id}.v{n}", crop_id, n)
+            for n in range(1, crop["varieties"] + 1)] if crop else []
 
 
 # (str variety_id)
@@ -82,9 +126,9 @@ def variety_by_id(variety_id):
 
 
 # (any variety_id)
-# True for an id of the catalogue
+# True for an id of the catalogue or an "ecocrop:<id>" value
 def is_variety(variety_id):
-    return variety_by_id(variety_id) is not None
+    return variety_by_id(variety_id) is not None or ecocrop_number(variety_id) is not None
 
 
 # (str text, int limit = MAX_RESULTS)
