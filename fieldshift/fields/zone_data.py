@@ -18,7 +18,7 @@ TOPSOIL = ("0-5cm", "5-15cm", "15-30cm")
 TOPSOIL_CM = {"0-5cm": 5, "5-15cm": 10, "15-30cm": 15}
 # longest the dialog waits for any source, seconds (each group also has its
 # own, shorter, timeout_s)
-DEADLINE_S = 60
+DEADLINE_S = 80
 
 _cache = {}
 _cache_lock = threading.Lock()
@@ -146,7 +146,7 @@ SOURCE_GROUPS = (
                 timeout_s=40, title="SoilGrids"),
     # the ORNL service answers in ~30 s, or fails after 60 s when overloaded
     SourceGroup("modis_ndvi", ("ndvi",), _ndvi, lambda s: {"ndvi": _value(s.vegetation.ndvi)},
-                timeout_s=40, title="MODIS NDVI"),
+                timeout_s=75, title="MODIS NDVI"),
 )
 
 # DATA_FIELDS keys that some group fills (the rest are typed by the farmer)
