@@ -1,0 +1,103 @@
+# Builds the Field Shift release for Windows and Linux and publishes it.
+# (macOS is not built here: it does not compile on the GitHub runners; build
+# it locally with packaging/build_release.py, see docs/release.md.)
+#
+#   * push a tag "v<version>" (e.g. v1.0.0): builds the two archives and
+#     creates the GitHub Release with them;
+#   * or run it by hand (Actions -> Release -> Run workflow): builds the two
+#     archives as workflow artifacts, without a release.
+#
+# Each archive holds QGIS 4 + Python + the data libraries (conda-forge,
+# packed with conda-pack) and the program; see packaging/build_release.py.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x64
+            os: ubuntu-22.04
+            archspec: x86_64          # generic x86-64 builds, not tuned to the runner's CPU
+          - name: windows-x64
+            os: windows-latest
+            archspec: x86_64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash -el {0}
+    env:
+      CONDA_OVERRIDE_ARCHSPEC: ${{ matrix.archspec }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Runtime environment (QGIS 4 from conda-forge)
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: packaging/environment.yml
+          environment-name: fieldshift
+          cache-environment: false
+          post-cleanup: none
+
+      - name: C++ core (optional)
+        continue-on-error: true
+        run: |
+          cmake -S cpp -B cpp/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build cpp/build --config Release
+
+      - name: Package
+        run: |
+          python -m pip install conda-pack
+          python packaging/build_release.py --env "$CONDA_PREFIX" --out dist
+
+      - name: Smoke test (the packaged program starts)
+        if: runner.os == 'Linux'
+        run: |
+          cd dist
+          tar xzf FieldShift-*-linux-x64.tar.gz
+          set +e
+          QT_QPA_PLATFORM=offscreen FIELDSHIFT_OFFLINE=1 timeout 90 ./FieldShift-*-linux-x64/FieldShift.sh
+          code=$?
+          set -e
+          echo "exit code $code (124 = still running after 90 s: it started)"
+          test "$code" -eq 124
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FieldShift-${{ matrix.name }}
+          path: |
+            dist/FieldShift-*.zip
+            dist/FieldShift-*.tar.gz
+          compression-level: 0
+          if-no-files-found: error
+
+  release:
+    name: Publish the release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          body: |
+            Field Shift ${{ github.ref_name }} — one archive per system, nothing else to install
+            (QGIS 4, Qt6 and Python are inside). Unpack it and double-click the launcher:
+            `FieldShift.bat` (Windows) or `FieldShift.sh` (Linux). The first start takes about
+            a minute. See README-RELEASE.txt inside.

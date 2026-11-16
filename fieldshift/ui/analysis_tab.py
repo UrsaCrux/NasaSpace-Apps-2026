@@ -18,13 +18,15 @@ from fieldshift.analysis.registry import get_analysis
 from fieldshift.i18n import tr
 from fieldshift.qt import QtCore, QtWidgets
 from fieldshift.ui.analysis_widgets import (
-    FieldPreview, LineChart, figure_widget, format_date, localize)
+    FieldPreview, LineChart, figure_widget, format_date, localize, series_title)
 
 # time between dates while playing (ms)
 PLAY_STEP_MS = 600
 
 _LEVEL_COLORS = {LEVEL_GOOD: "#2e7d32", LEVEL_WARNING: "#ef8f00", LEVEL_BAD: "#c62828"}
-_PRIORITY_COLORS = {PRIORITY_HIGH: "#c62828", PRIORITY_MEDIUM: "#ef8f00", PRIORITY_LOW: "#2e7d32"}
+# priority tags: neutral tones (no green / red traffic light, which read like
+# the good / bad colours of the charts and maps)
+_PRIORITY_COLORS = {PRIORITY_HIGH: "#8e2b20", PRIORITY_MEDIUM: "#7a5a00", PRIORITY_LOW: "#546e7a"}
 _PRIORITY_ORDER = {PRIORITY_HIGH: 0, PRIORITY_MEDIUM: 1, PRIORITY_LOW: 2}
 
 
@@ -63,7 +65,10 @@ class AnalysisTab(QtWidgets.QWidget):
         rows = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
         rows.addWidget(top)
         rows.addWidget(bottom)
-        rows.setSizes([480, 300])
+        # nothing to draw over time (e.g. perennial crops in Rotation): the
+        # data box only lists the sources, so it takes little room
+        empty_top = not self.has_series and result.frames is None and result.figure is None
+        rows.setSizes([110, 670] if empty_top else [480, 300])
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addLayout(self._build_header())
@@ -93,10 +98,10 @@ class AnalysisTab(QtWidgets.QWidget):
         date = format_date(series.dates[index])
         value = f"{series.values[index]:g} {series.unit}".strip()
         self.date_label.setText(date)
-        self.value_label.setText(tr("analysis.value_at", label=tr(series.label_key),
+        self.value_label.setText(tr("analysis.value_at", label=series_title(series),
                                     date=date, value=value))
         if self.result.frames is not None:
-            self.map_title.setText(f"{tr(self.result.frames.label_key)} — {date}")
+            self.map_title.setText(f"{series_title(self.result.frames)} — {date}")
 
     # ()
     # index of the date shown
@@ -118,6 +123,26 @@ class AnalysisTab(QtWidgets.QWidget):
 
     # -- building blocks ---------------------------------------------------
 
+    # (str path = None)
+    # writes this analysis (report, JSON, CSV, pictures) to a ZIP, asking
+    # where when no path is given. returns the files written, or []
+    def export(self, path=None):
+        from fieldshift.export.write import safe_name, write_analysis_zip
+        from fieldshift.ui import dialogs
+        from fieldshift.ui.export_dialog import ask_zip_path
+        if path is None:
+            path = ask_zip_path(self, f"PACHI_{safe_name(self.result.field_name)}_"
+                                      f"{self.result.analysis_id}.zip")
+            if path is None:
+                return []
+        try:
+            files = write_analysis_zip(path, self.result, self.field)
+        except OSError as exc:
+            dialogs.inform(self, tr("export.title"), tr("fields.export_failed", error=exc))
+            return []
+        dialogs.inform(self, tr("export.title"), tr("export.done_one", path=path))
+        return files
+
     def _build_header(self):
         title = QtWidgets.QLabel(f"<h2>{tr(self.analysis.title_key)} · {self.result.field_name}</h2>")
         row = QtWidgets.QHBoxLayout()
@@ -129,6 +154,9 @@ class AnalysisTab(QtWidgets.QWidget):
             period.setStyleSheet("color: #555;")
             row.addWidget(period)
         row.addStretch(1)
+        self.export_button = QtWidgets.QPushButton(tr("export.this_analysis"))
+        self.export_button.clicked.connect(lambda: self.export())
+        row.addWidget(self.export_button)
         if self.result.placeholder:
             self.example_badge = QtWidgets.QLabel(tr("analysis.example_data"))
             self.example_badge.setToolTip(tr("analysis.example_tooltip"))
@@ -233,8 +261,8 @@ class AnalysisTab(QtWidgets.QWidget):
             priority = tr(f"analysis.priority.{rec.priority}")
             text = tr(rec.text_key, **localize_params(rec.params))
             label = QtWidgets.QLabel(
-                f"<span style='color:{color}; font-size:16px'>●</span> "
-                f"<b style='color:{color}'>{priority}</b> — {text}")
+                f"<span style='color:{color}; font-size:11px; font-weight:bold'>"
+                f"[{priority.upper()}]</span>&nbsp; {text}")
             label.setWordWrap(True)
             label.setTextFormat(QtCore.Qt.TextFormat.RichText)
             rows.addWidget(label)

@@ -9,3 +9,8 @@ data/local/
 terrenos/
 *.qgs~
 .DS_Store
+
+# release builds
+dist/
+# cache PCSE writes next to the crop parameters
+fieldshift/crops/wofost_parameters/*.pkl

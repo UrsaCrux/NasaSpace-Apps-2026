@@ -23,7 +23,7 @@ from fieldshift.simulation import weather as weather_mod
 # a season sown less than this many days ago is "in progress"
 IN_SEASON_DAYS = 120
 # daily outputs kept from the model
-OUTPUT_VARS = ("DVS", "LAI", "TAGP", "TWSO", "SM", "RD")
+OUTPUT_VARS = ("DVS", "LAI", "TAGP", "TWSO", "SM", "RD", "TRA", "RFTRA")
 
 
 # raised when the field cannot be simulated (no crop, crop without model...)
@@ -39,7 +39,7 @@ class Simulation:
     match: str                 # "exact" or "proxy"
     sowing: dt.date
     in_season: bool
-    output: list               # one dict per day: day, DVS, LAI, TAGP, TWSO, SM, RD
+    output: list               # one dict per day: day and OUTPUT_VARS
     summary: dict              # PCSE summary output (one season)
     weather_counts: dict       # {"observed": n, "forecast": n, "climate": n}
     weather_providers: list
@@ -78,11 +78,14 @@ def model_inputs(field):
 
 
 # (Field field, dt.date today = None, callable build_weather = None,
-#  bool potential = None)
+#  bool potential = None, WeatherSeries series = None, list irrigation = None)
 # runs the season and returns a Simulation; raises NotSimulable, or
 # RuntimeError when there is no weather. potential=None follows the field's
-# "irrigated" value; True / False force potential / water-limited production
-def simulate(field, today=None, build_weather=None, potential=None, series=None):
+# "irrigated" value; True / False force potential / water-limited production.
+# irrigation: [(int days after sowing, float cm)] applied as PCSE irrigation
+# events (water-limited production only)
+def simulate(field, today=None, build_weather=None, potential=None, series=None,
+             irrigation=None):
     from pcse.base import ParameterProvider
     from pcse.models import Wofost72_PP, Wofost72_WLP_FD
 
@@ -109,7 +112,7 @@ def simulate(field, today=None, build_weather=None, potential=None, series=None)
                          "crop_start_date": sowing, "crop_start_type": "sowing",
                          "crop_end_date": None, "crop_end_type": "maturity",
                          "max_duration": int(info["max_duration"])},
-        "TimedEvents": None, "StateEvents": None}}]
+        "TimedEvents": _irrigation_events(sowing, irrigation), "StateEvents": None}}]
     model = (Wofost72_PP if potential else Wofost72_WLP_FD)(params, weather, agro)
     model.run_till_terminate()
     output = [{k: row.get(k) for k in ("day",) + OUTPUT_VARS} for row in model.get_output()]
@@ -118,6 +121,17 @@ def simulate(field, today=None, build_weather=None, potential=None, series=None)
                         summary, series.counts(), list(series.providers), site, potential)
     result.series = series                     # reused for a second run (potential yield)
     return result
+
+
+# (dt.date sowing, list irrigation)
+# PCSE TimedEvents of irrigation doses [(days after sowing, cm)], or None
+def _irrigation_events(sowing, irrigation):
+    if not irrigation:
+        return None
+    table = [{sowing + dt.timedelta(days=int(days)): {"amount": float(cm), "efficiency": 0.7}}
+             for days, cm in irrigation]
+    return [{"event_signal": "irrigate", "name": "Irrigation", "comment": "planned doses",
+             "events_table": table}]
 
 
 # the stored parameters as the crop data PCSE asks for (it calls

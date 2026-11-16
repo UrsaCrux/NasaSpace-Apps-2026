@@ -1,0 +1,4 @@
+# release launchers must keep their platform's line endings
+packaging/launchers/*.bat text eol=crlf
+packaging/launchers/*.sh text eol=lf
+packaging/launchers/*.command text eol=lf

@@ -14,7 +14,7 @@ from fieldshift import i18n  # noqa: E402
 from fieldshift.fields import FieldStore  # noqa: E402
 from fieldshift.fields.manager import FieldsManager  # noqa: E402
 from fieldshift.map import LayerSpec, create_map_view  # noqa: E402
-from fieldshift.qt import HAS_QGIS, QtCore  # noqa: E402
+from fieldshift.qt import HAS_QGIS, QtCore, QtWidgets  # noqa: E402
 from qt_app import get_app  # noqa: E402
 
 SQUARE = [(-70.70, -33.40), (-70.69, -33.40), (-70.69, -33.41), (-70.70, -33.41)]
@@ -368,13 +368,25 @@ class FieldsWindowTest(_WindowCase):
         self.assertEqual(self.bar.export_button.text(), "Export all fields…")
         self.check(b)
         self.assertEqual(self.bar.export_button.text(), "Export checked (1)…")
-        out = str(Path(self._tmp.name) / "chosen")
-        with mock.patch("fieldshift.qt.QtWidgets.QFileDialog.getSaveFileName",
-                        return_value=(out, "")), \
+        out = str(Path(self._tmp.name) / "chosen.zip")
+        from fieldshift.ui import export_dialog
+        accepted = QtWidgets.QDialog.DialogCode.Accepted
+
+        def run(progress):
+            progress._next()                      # offline: collects and writes at once
+            return progress.result()
+        with mock.patch.object(export_dialog.ExportDialog, "exec", return_value=accepted), \
+                mock.patch.object(export_dialog, "ask_zip_path", return_value=out), \
+                mock.patch.object(export_dialog.ExportProgress, "exec", run), \
                 mock.patch("fieldshift.ui.dialogs.inform") as inform:
-            self.bar._on_export_clicked()
+            files = self.bar._on_export_clicked()          # preset: only GeoJSON
         inform.assert_called_once()
-        data = json.loads(Path(out + ".geojson").read_text("utf-8"))
+        self.assertIn("B/terreno.geojson", files)
+        self.assertNotIn("A/terreno.geojson", files)
+        import zipfile
+        with zipfile.ZipFile(out) as archive:
+            data = json.loads(archive.read("B/terreno.geojson"))
+            self.assertTrue(archive.read("informe.pdf").startswith(b"%PDF"))
         self.assertEqual([f["properties"]["name"] for f in data["features"]], ["B"])
 
     def test_delete_checked_fields(self):
@@ -562,7 +574,7 @@ class FieldDialogTest(unittest.TestCase):
         self.store.create("Terreno 1", SQUARE)
         dialog = self.dialog(vertices=SQUARE)
         self.assertEqual(dialog.name(), "Terreno 2")
-        self.assertFalse(dialog.save_button.isEnabled())         # the crop is required
+        self.assertTrue(dialog.save_button.isEnabled())          # the crop is optional
         dialog.crop_search.choose("peach.v1")
         self.assertTrue(dialog.save_button.isEnabled())
         dialog.name_edit.setText("terreno 1")

@@ -1,0 +1,21 @@
+# Runtime of the released program: QGIS 4 (Qt6) and the data libraries, all
+# from conda-forge, plus PCSE from PyPI. Used by packaging/build_release.py
+# and .github/workflows/release.yml.
+name: fieldshift
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - qgis>=4
+  - requests
+  - rasterio
+  - xarray
+  - h5py
+  - h5netcdf
+  - netcdf4
+  - earthaccess
+  - cdsapi
+  - pyyaml
+  - pip
+  - pip:
+      - pcse

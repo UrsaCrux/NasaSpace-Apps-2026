@@ -77,7 +77,21 @@ def label(variety_id):
     variety = variety_by_id(variety_id)
     if variety is None:
         return str(variety_id)
+    name = variety_name(variety_id)
+    if name:
+        return tr("crops.variety_named", crop=crop_name(variety.crop), name=name)
     return tr("crops.variety_label", crop=crop_name(variety.crop), number=variety.number)
+
+
+# (str variety_id)
+# the cultivar name of a catalogue variety ("Cabernet Sauvignon"), or None
+# when the catalogue only numbers it
+def variety_name(variety_id):
+    variety = variety_by_id(variety_id)
+    if variety is None:
+        return None
+    names = _crop(variety.crop).get("variety_names") or []
+    return names[variety.number - 1] if variety.number <= len(names) else None
 
 
 # (any value)
@@ -141,6 +155,12 @@ def search(text, limit=MAX_RESULTS):
     words = fold(text).replace("–", " ").replace("-", " ").split()
     if not words:
         return []
+    query = " ".join(words)
+    named = [Variety(f"{crop['id']}.v{n}", crop["id"], n) for crop in _load()
+             for n, name in enumerate(crop.get("variety_names") or [], start=1)
+             if fold(name).startswith(query) or f" {query}" in f" {fold(name)}"]
+    if named:
+        return named[:limit]                       # a cultivar name: just those
     number = int(words[-1]) if len(words) > 1 and words[-1].isdigit() else None
     if number is not None:
         words = words[:-1]

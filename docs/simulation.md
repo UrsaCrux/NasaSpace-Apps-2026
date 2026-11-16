@@ -68,3 +68,40 @@ proxy models and climate-based days.
 | `fieldshift/simulation/weather.py` | weather assembly and the PCSE weather provider |
 | `fieldshift/simulation/run.py` | season dates, agromanagement, model run |
 | `fieldshift/analysis/crop_growth.py` | the analysis |
+
+## Climate shift scenarios (Field Shift)
+
+`fieldshift/simulation/scenario.py` runs the same season three times
+(`run_scenario(field)`), and the **Climate shift** analysis
+(`fieldshift/analysis/climate_shift.py`) compares them:
+
+1. **today** — the season's weather as above;
+2. **shifted** — every day +2 °C (min and max), rain × 0.85, vapour pressure
+   × 1.07 per °C (same relative humidity): `Scenario(temp_offset_c,
+   rain_scale)`, default `FIELD_SHIFT`;
+3. **shifted + regulated deficit irrigation** — the shifted weather with
+   2 cm every 14 days from day 30 after sowing, as PCSE irrigation events
+   (`simulate(..., irrigation=[(days after sowing, cm)])`); only for rain-fed
+   fields (irrigated ones already run as potential production).
+
+The result shows the yield of each run, the change, the season length and
+the water-stress days (`RFTRA` < 0.7, transpiration under 70 % of potential).
+It is a simple scenario on the season's weather, not a climate projection.
+WOFOST 7.2 has no CO2 response, so CO2 is not a scenario parameter.
+
+Perennial crops (vines, orchards, berries) have no WOFOST model: Crop growth
+says so, and Climate shift measures the same shift on climate indices of the
+last 12 months (NASA POWER daily) instead of a yield: growing degree-days base
+10 °C over the growing season (and the Winkler region for grapes), hot days
+above the crop's EcoCrop limit, spring frost days, yearly rain, and the crop's
+EcoCrop climate suitability with irrigation — no made-up crop parameters.
+
+## Cultivar names
+
+`crops.json` may give a crop `variety_names` (Chilean cultivars: Cabernet
+Sauvignon, Carménère, Merlot, Sauvignon Blanc; Thompson Seedless, Red Globe,
+Crimson Seedless; Santina, Lapins, Regina; Gala, Fuji, Pink Lady; Chandler,
+Serr; Hass; Duke, Legacy, Brigitta). Ids stay `<crop>.v<n>` (saved fields keep
+working); `crops.label()` shows the name and the crop search finds them
+("cabernet" → Wine grape – Cabernet Sauvignon). WOFOST still uses its generic
+varieties.

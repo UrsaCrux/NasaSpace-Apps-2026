@@ -323,14 +323,15 @@ class CropSearchTest(_DialogCase):
         self.assertEqual(search.selected(), "pear.v1")
         self.assertEqual(changes, ["peach.v2", None, "pear.v1"])
 
-    def test_crop_is_required_and_saved(self):
+    def test_crop_is_optional_and_saved(self):
         dialog = self.dialog(vertices=SQUARE, fetch=fake_fetch)
         wait_until(lambda: not dialog.is_loading())
-        self.assertFalse(dialog.save_button.isEnabled())
-        self.assertFalse(dialog.crop_error.isHidden())
+        self.assertTrue(dialog.save_button.isEnabled())           # no crop: fine
+        self.assertTrue(dialog.crop_error.isHidden())
         dialog.crop_search.setText("xyz")
         dialog.crop_search.textEdited.emit("xyz")
         self.assertIn("No crop matches", dialog.crop_error.text())
+        self.assertFalse(dialog.save_button.isEnabled())          # text that is no crop
         dialog.crop_search.choose("avocado.v1")
         self.assertTrue(dialog.save_button.isEnabled())
         self.assertTrue(dialog.crop_error.isHidden())

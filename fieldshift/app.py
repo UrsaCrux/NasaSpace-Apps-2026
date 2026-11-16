@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from fieldshift import i18n
-from fieldshift.qt import HAS_QGIS, QT_MAJOR, QtWidgets
+from fieldshift.qt import HAS_QGIS, QT_MAJOR, QtCore, QtGui, QtWidgets
 from fieldshift.map import LayerSpec, create_map_view
 from fieldshift.ui import MainWindow
 
@@ -66,6 +66,7 @@ def main(argv=None):
     if lang:
         i18n.set_language(lang)         # before any widget reads its texts
     app = _create_application(argv)
+    force_light_theme(app)
 
     view = create_map_view()
     basemaps = {}
@@ -87,6 +88,27 @@ def main(argv=None):
     if HAS_QGIS:
         app.exitQgis()
     return code
+
+
+# (QApplication app)
+# forces the light look whatever the system theme is (dark desktops made
+# the dark texts and white cards of the panels unreadable): Fusion style
+# with its standard light palette, the same on Linux and Windows. Qt >= 6.8
+# is also told the scheme is light, so native dialogs follow
+def force_light_theme(app):
+    hints = app.styleHints()
+    if hasattr(hints, "setColorScheme"):
+        hints.setColorScheme(QtCore.Qt.ColorScheme.Light)
+    style = QtWidgets.QStyleFactory.create("Fusion")
+    if style is None:
+        return
+    app.setStyle(style)
+    palette = style.standardPalette()
+    # tooltips: dark text on pale yellow, like the classic light theme
+    for group in (QtGui.QPalette.ColorGroup.Active, QtGui.QPalette.ColorGroup.Inactive):
+        palette.setColor(group, QtGui.QPalette.ColorRole.ToolTipBase, QtGui.QColor("#ffffdc"))
+        palette.setColor(group, QtGui.QPalette.ColorRole.ToolTipText, QtGui.QColor("#000000"))
+    app.setPalette(palette)
 
 
 # (list argv)

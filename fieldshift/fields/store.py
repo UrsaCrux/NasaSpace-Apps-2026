@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fieldshift.fields.model_inputs import with_model_inputs
+from fieldshift.fields.records import dump_records, parse_records
 from fieldshift.fields.schema import DEFAULT_COLOR, normalize_color, normalize_data
 
 # root of the repository
@@ -37,7 +38,8 @@ _UNSAFE_FILE_CHARS = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
 # a saved field. vertices are (lon, lat) tuples in EPSG:4326, counter-
 # clockwise, first vertex not repeated at the end. color is "#rrggbb" (grey
 # by default); data maps each key of schema.DATA_FIELDS to
-# {"value": ..., "source": "prefilled" | "user"}
+# {"value": ..., "source": "prefilled" | "user"}; records are the dated
+# measurements and events (fields.records.Record), oldest first
 @dataclass(frozen=True)
 class Field:
     name: str
@@ -47,6 +49,7 @@ class Field:
     path: Path
     color: str = DEFAULT_COLOR
     data: dict = dataclass_field(default_factory=dict)
+    records: tuple = ()
 
 
 # reads and writes the fields of one folder. every field is a GeoJSON file
@@ -146,12 +149,21 @@ class FieldStore:
             color=field.color if color is None else normalize_color(color),
             data=field.data if data is None else with_model_inputs(
                 normalize_data(data, field.vertices)))
-        collection = {"type": "FeatureCollection", "features": [to_feature(updated)]}
-        temp = path.with_name(path.name + ".tmp")          # never a half-written file
-        temp.write_text(json.dumps(collection, ensure_ascii=False, indent=2), encoding="utf-8")
-        os.replace(temp, path)
+        _write(updated)
         if path != field.path and not (field.path.exists() and path.samefile(field.path)):
             field.path.unlink(missing_ok=True)             # renamed: drop the old file
+        return updated
+
+    # (str name, tuple records, dict data = None)
+    # saves the records (and, when given, the data as it is) of the field
+    # called name, keeping its name and file. returns the updated Field
+    def save_records(self, name, records, data=None):
+        field = self.get(name)
+        if field is None:
+            raise ValueError(f"there is no field called {name!r}")
+        updated = replace(field, records=tuple(sorted(records, key=lambda r: r.time)),
+                          data=field.data if data is None else data)
+        _write(updated)
         return updated
 
     # (str name)
@@ -226,7 +238,7 @@ def to_feature(field):
         "type": "Feature",
         "properties": {"name": field.name, "area_ha": field.area_ha,
                        "created": field.created, "color": field.color,
-                       "data": field.data},
+                       "data": field.data, "records": dump_records(field.records)},
         "geometry": {"type": "Polygon", "coordinates": [ring + [ring[0]]]},
     }
 
@@ -271,4 +283,14 @@ def _read_field(path):
     vertices = tuple((float(x), float(y)) for x, y, *_ in ring[:-1])
     return Field(str(props["name"]), vertices, float(props.get("area_ha", 0.0)),
                  str(props.get("created", "")), path, normalize_color(props.get("color")),
-                 normalize_data(props.get("data"), vertices))
+                 normalize_data(props.get("data"), vertices),
+                 parse_records(props.get("records")))
+
+
+# (Field field)
+# writes the field's file (through a temporary file: never half-written)
+def _write(field):
+    collection = {"type": "FeatureCollection", "features": [to_feature(field)]}
+    temp = field.path.with_name(field.path.name + ".tmp")
+    temp.write_text(json.dumps(collection, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(temp, field.path)

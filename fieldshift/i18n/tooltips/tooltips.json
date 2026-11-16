@@ -2,22 +2,22 @@
   "_comment": "Tooltips of the app, per language. Change the texts freely; keys are used by the code (fieldshift.i18n.tip). A missing language falls back to English. PLACEHOLDER texts for now.",
   "field_dialog.name": {
     "en": "Name used to identify the field.",
-    "es": "Nombre usado para identificar al terreno."
+    "es": "Nombre usado para identificar el terreno."
   },
   "field_dialog.crop": {
-    "en": "Crop being sowed in the field.",
+    "en": "Crop sown in the field.",
     "es": "Cultivo a plantarse en todo el terreno."
   },
   "field_dialog.color": {
-    "en": "Color used to identify the field in the map.",
+    "en": "Color used to identify the field on the map.",
     "es": "Color usado para identificar el campo en el mapa."
   },
   "field_dialog.color_button": {
-    "en": "Click to deploy a color picker to change the field color.",
+    "en": "Click to open a color picker to change the field color.",
     "es": "Haz clic para desplegar un selector de color y cambiar el color del campo."
   },
   "field_dialog.data_box": {
-    "en": "Data used to describe the field. The data is fetched from satelite data, but can be edited if you have better information.",
+    "en": "Data used to describe the field. The data is fetched from satellite data, but can be edited if you have better information.",
     "es": "Datos usados para describir el campo. Los datos se obtienen de datos de satélite, pero pueden ser editados si tienes información mejor."
   },
   "field_dialog.group.soil": {
@@ -34,14 +34,14 @@
   },
   "field_dialog.group.farm": {
     "en": "Basic properties of the farm management.",
-    "es": "Propiedades básicas de la gestión de la granja."
+    "es": "Propiedades básicas de la gestión del predio."
   },
   "field_dialog.data.soil_texture": {
     "en": "Sandy: Chemically inert, lacking colloidal properties and nutrient supply. Physically poorly structured, well-aerated, highly permeable, and with zero water retention.\nClayey: Chemically active, adsorbing ions and molecules, and rich in nutrients. Physically well-structured and retains high volumes of water, but is impermeable and root-asphyxiating.\nSilty: Lacks structural aggregation and colloidal properties. Physically impermeable with poor aeration.\nLoamy: Texturally balanced and agriculturally optimal, with compensated physical and chemical properties.\nSelect the mixture that mostly represents your soil, or the one that is closest to the top layer of your field.",
     "es": "Arenoso: Químicamente inerte, carece de propiedades coloidales y de aporte de nutrientes. Físicamente mal estructurado, bien aireado, altamente permeable y con retención de agua nula.\nArcilloso: Químicamente activo, adsorbe iones y moléculas, y es rico en nutrientes. Físicamente bien estructurado y retiene altos volúmenes de agua, pero es impermeable y asfixiante para las raíces.\nLimoso: Carece de agregación estructural y propiedades coloidales. Físicamente impermeable con pobre aireación.\nFranco: Texturalmente equilibrado y óptimo para la agricultura, con propiedades físicas y químicas compensadas.\nSelecciona la mezcla que más represente a tu suelo, o la que esté más cercana a la capa superior de tu terreno."
   },
   "field_dialog.data.soil_group": {
-    "en": "Consult with https://wrb.isric.org/soilgroups/ for better understanding of the soil groups. Select the one that mostly represents your soil, or the one that is closest to the top layer of your field.",
+    "en": "See https://wrb.isric.org/soilgroups/ to better understand the soil groups. Select the one that mostly represents your soil, or the one that is closest to the top layer of your field.",
     "es": "Puedes consultar en https://wrb.isric.org/soilgroups/ para entender mejor los grupos de suelos. Selecciona el que más represente a tu suelo, o el que esté más cercano a la capa superior de tu terreno."
   },
   "field_dialog.data.ph": {
@@ -54,7 +54,7 @@
   },
   "field_dialog.data.nitrogen": {
     "en": "A measure of the nitrogen content in the soil. Nitrogen is an essential nutrient for plant growth and development. It is a major component of chlorophyll, amino acids, and proteins.",
-    "es": "Una medida de la cantidad de nitrógeno en el suelo. El nitrógeno es un nutriente esencial para el crecimiento y desarrollo de las plantas. Es un componente principal del clorofilo, los aminoácidos y las proteínas."
+    "es": "Una medida de la cantidad de nitrógeno en el suelo. El nitrógeno es un nutriente esencial para el crecimiento y desarrollo de las plantas. Es un componente principal de la clorofila, los aminoácidos y las proteínas."
   },
   "field_dialog.data.cec": {
     "en": "The Cation Exchange Capacity (CEC) of the soil. It is a measure of the soil's ability to hold and exchange cations (positively charged ions). Higher CEC values generally indicate better nutrient retention and availability for plants. It is an important measure of how frequently the soil can be fertilized, and how much fertilizer is needed.",
@@ -101,7 +101,7 @@
     "es": "Guarda las propiedades del campo. Los datos se guardarán en la base de datos y se utilizarán para generar recomendaciones para el campo."
   },
   "field_dialog.cancel": {
-    "en": "Cancel the creation or edition of the field. The data will not be saved and the field will not be created or modified.",
+    "en": "Cancel the creation or editing of the field. The data will not be saved and the field will not be created or modified.",
     "es": "Cancela la creación o edición del campo. Los datos no se guardarán y el campo no se modificará."
   },
   "field_dialog.data.clay": {
@@ -110,7 +110,7 @@
   },
   "field_dialog.data.sand": {
     "en": "Percentage of sand in the soil by mass. Sand is a coarse-grained soil material that is chemically inert and lacks colloidal properties and nutrient supply. It is physically poorly structured, well-aerated, highly permeable, and has zero water retention. Sandy soils can be prone to erosion and may require additional fertilization to support plant growth.",
-    "es": "Porcentaje de arena en el suelo por masa. La arena es un material del suelo de grano grueso que es químicamente inerte y carece de propiedades coloidales y suministro de nutrientes. Es físicamente mal estructurada, bien aerada, altamente permeable y tiene cero retención de agua. Los suelos arenosos pueden ser propensos a la erosión y pueden requerir fertilización adicional para soportar el crecimiento de las plantas."
+    "es": "Porcentaje de arena en el suelo por masa. La arena es un material del suelo de grano grueso que es químicamente inerte y carece de propiedades coloidales y suministro de nutrientes. Es físicamente mal estructurada, bien aireada, altamente permeable y tiene cero retención de agua. Los suelos arenosos pueden ser propensos a la erosión y pueden requerir fertilización adicional para favorecer el crecimiento de las plantas."
   },
   "field_dialog.data.silt": {
     "en": "Percentage of silt in the soil by mass. Silt is a fine-grained soil material that is between sand and clay in terms of particle size. It has a moderate capacity to retain water and nutrients, and is generally more fertile than sandy soils but less fertile than clay soils.",

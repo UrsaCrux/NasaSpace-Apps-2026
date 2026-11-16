@@ -19,7 +19,8 @@ import fake_sources  # noqa: E402
 
 SQUARE = [(-70.70, -33.40), (-70.69, -33.40), (-70.69, -33.41), (-70.70, -33.41)]
 # analyses with real data (the others are placeholders)
-REAL_ANALYSES = {"texture", "crop_growth", "vegetation", "frost", "water", "heat", "rotation"}
+REAL_ANALYSES = {"texture", "crop_growth", "vegetation", "frost", "water", "heat", "rotation",
+                 "climate_shift"}
 FIELD = Field("Viña", tuple(SQUARE), 100.0, "2026-01-01T00:00:00+00:00", None)
 
 
@@ -115,22 +116,32 @@ class _WithFields(unittest.TestCase):
 
 
 class AnalyzeDialogTest(_WithFields):
-    # Status opens its panel over the map; Trends one tab, reused on a second click
+    # Status and Trends show a field in the right column; My fields goes back
     def test_status_panel_and_trends_tab(self):
-        from fieldshift.status import PERIODS
+        from fieldshift.status import FORECAST_DAYS, HORIZONS
         panel = self.window.status_panel
         self.assertTrue(self.window.open_status(self.b))
         self.assertEqual(panel.layer_id, self.b)
         self.assertIs(self.window.right_stack.currentWidget(), panel)
         self.assertTrue(self.window.fields_bar.status_button.isChecked())
-        self.assertEqual(set(panel.sections), {"weather", "growth", "soil"})
-        panel.set_days(PERIODS[-1])
-        self.assertEqual(len(panel.report.section("weather").rows[0].values), PERIODS[-1])
-        panel.show_row("soil", "soil_moisture")
+        self.assertEqual(len(panel.tiles), len(panel.report.tiles))
+        self.assertEqual(len(panel.report.forecast.days), FORECAST_DAYS)
+        card = panel.forecast_card
+        card.set_horizon(HORIZONS[-1])
+        self.assertEqual(card.slider.maximum(), HORIZONS[-1] - 1)
+        card.slider.setValue(1)
+        card.set_variable("rain")
+        self.assertIn(i18n.tr("status.when.tomorrow"), card.detail.text())
+        self.assertIn("NDVI", panel.tracking_card.text.text())
         self.window.fields_bar.fields_button.click()
         self.assertIs(self.window.right_stack.currentWidget(), self.window.panel)
-        first = self.window.open_mode("trends")
-        self.assertIs(self.window.open_mode("trends"), first)
+        self.assertTrue(self.window.open_trends(self.a))
+        trends = self.window.trends_panel
+        self.assertIs(self.window.right_stack.currentWidget(), trends)
+        self.assertTrue(self.window.fields_bar.trends_button.isChecked())
+        self.assertEqual(set(trends.sections), {"weather", "growth", "soil"})
+        self.assertEqual(len(trends.report.months), 12)
+        self.assertTrue(trends.report.seasons and trends.report.milestones)
 
     def dialog(self, layer_id=None):
         from fieldshift.ui.analyze_dialog import AnalyzeDialog
@@ -237,8 +248,8 @@ class AnalysisTabTest(_WithFields):
     def test_recommendations_most_urgent_first(self):
         tab = self.tab("vegetation")
         texts = [label.text() for label in tab.recommendation_labels]
-        order = {"High": 0, "Medium": 1, "Low": 2}
-        ranks = [next(order[p] for p in order if f">{p}<" in t) for t in texts]
+        order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
+        ranks = [next(order[p] for p in order if f"[{p} PRIORITY]" in t) for t in texts]
         self.assertEqual(ranks, sorted(ranks))
 
 
@@ -315,6 +326,9 @@ class RealAnalysesTest(unittest.TestCase):
                 self.assertEqual(dates[-1], "2026-10")                # last complete month
                 self.assertLessEqual(len(dates), 24)
                 self.assertEqual(result.frames.dates, dates)
+                # and a look ahead: the next 3 months from the same months before
+                self.assertTrue(any(m.label_key.endswith(".m.outlook") for m in result.metrics),
+                                analysis_id)
 
     def test_frost_counts_days_and_spreads_over_relief(self):
         result = self.run_analysis("frost")
@@ -333,13 +347,34 @@ class RealAnalysesTest(unittest.TestCase):
         self.assertEqual(limit(general), "32 °C")
         self.assertEqual(limit(crop), "26 °C (EcoCrop)")       # fake crop: optimum up to 26
 
-    def test_rotation_compares_three_strategies(self):
+    def test_rotation_starts_from_the_current_crop(self):
+        from fieldshift.crops.rotation import family_of
         result = self.run_analysis("rotation", {"crop": {"value": "maize.v1", "source": "user"},
                                                 "irrigated": {"value": True, "source": "user"}})
         labels = [m.label_key.rsplit(".", 1)[-1] for m in result.metrics]
-        self.assertEqual(labels[:4], ["plan", "score", "alternative", "current"])
-        self.assertEqual(result.metrics[0].value.count("→"), 2)     # three seasons
+        self.assertEqual(labels, ["current_type", "plan_from", "score", "current", "sowing"])
+        plan = result.metrics[1].value.split(" → ")
+        self.assertEqual(plan[0], "crop.maize")
+        self.assertEqual(len(plan), 4)                                # three seasons after it
+        seasons = [p.split(".", 1)[1] for p in plan]
+        for before, after in zip(seasons, seasons[1:]):
+            self.assertNotEqual(family_of(before), family_of(after))  # never one family twice
         self.assertEqual(len(result.series.dates), 12)
+        self.assertEqual(result.series.label_params, {"crop": plan[1]})
+        self.assertTrue(all(0 <= v <= 100 for v in result.series.values))
+
+    def test_perennial_crop_gets_cover_crops_not_a_rotation(self):
+        result = self.run_analysis("rotation", {"crop": {"value": "wine_grape.v1",
+                                                         "source": "user"}})
+        self.assertEqual(result.summary_key, "analysis.rotation.summary_perennial")
+        labels = [m.label_key.rsplit(".", 1)[-1] for m in result.metrics]
+        self.assertEqual(labels, ["current_type", "climate_irrigated", "climate_rainfed",
+                                  "covers"])
+        self.assertEqual(result.recommendations[0].text_key, "analysis.rotation.r.perennial")
+        self.assertIsNone(result.series)                 # no misleading winter "0 %"
+        covers = result.metrics[3].value
+        for word in ("barley", "lentil", "wheat"):          # nothing to harvest in between
+            self.assertNotIn(word, covers)
 
     def test_unavailable_data_is_said_not_invented(self):
         from fieldshift.analysis import sources
