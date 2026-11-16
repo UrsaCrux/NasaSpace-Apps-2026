@@ -3,9 +3,9 @@ This is the official Nasa Space Apps 2026 Repository for the contributions of th
 
 ![PACHI main window](docs/images/screenshot.png)
 
-| Field data | Analysis | Status and trends |
-|---|---|---|
-| ![Field dialog](docs/images/screenshot-field-dialog.png) | ![Analysis results](docs/images/screenshot-analysis.png) | ![Status and trends](docs/images/screenshot-status.png) |
+| Field data | Analysis | Status | Trends |
+|---|---|---|---|
+| ![Field dialog](docs/images/screenshot-field-dialog.png) | ![Analysis results](docs/images/screenshot-analysis.png) | ![Status](docs/images/screenshot-status.png) | ![Trends](docs/images/screenshot-trends.png) |
 
 **PACHI** is a Python desktop app built on top of **QGIS 4 (Qt6)**: a map on the
 left, a panel on the right. The map is hidden behind an abstraction layer
