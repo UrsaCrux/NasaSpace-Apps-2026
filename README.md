@@ -31,6 +31,10 @@ the service failed) and offers **Try again**; it never shows made-up numbers.
 |---|---|
 | ![Status](docs/images/screenshot-status.png) | ![Trends](docs/images/screenshot-trends.png) |
 
+| Climate shift: today vs +2 °C / −15 % rain, and deficit irrigation | Crop growth simulation (WOFOST) |
+|---|---|
+| ![Climate shift analysis](docs/images/screenshot-climate-shift.png) | ![Crop growth analysis](docs/images/screenshot-crop-growth.png) |
+
 | Analysis: frost risk with a 3-month outlook | Analysis: soil texture triangle |
 |---|---|
 | ![Frost risk analysis](docs/images/screenshot-analysis.png) | ![Soil texture analysis](docs/images/screenshot-texture.png) |
