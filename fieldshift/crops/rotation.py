@@ -37,7 +37,7 @@ THIRD_ROLE = {CEREAL: BREAK, LEGUME: BREAK, BREAK: LEGUME, None: LEGUME}
 # cover crops sown between the rows of perennial crops: a legume (nitrogen)
 # and a grass (soil structure, erosion)
 COVER_LEGUMES = ("vetch", "red_clover")
-COVER_GRASSES = ("oat", "barley", "ryegrass")
+COVER_GRASSES = ("oat", "ryegrass")
 
 
 # (str crop_id, CropInfo info = None)

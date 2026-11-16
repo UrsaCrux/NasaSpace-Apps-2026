@@ -52,6 +52,7 @@ class MapFrames:
     low: float
     high: float
     palette: str
+    label_params: dict = field(default_factory=dict)    # fills label_key ("{crop}")
 
 
 # one number of the result ("Frost days: 23"); value is already formatted

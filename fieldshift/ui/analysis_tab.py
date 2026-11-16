@@ -96,7 +96,7 @@ class AnalysisTab(QtWidgets.QWidget):
         self.value_label.setText(tr("analysis.value_at", label=series_title(series),
                                     date=date, value=value))
         if self.result.frames is not None:
-            self.map_title.setText(f"{tr(self.result.frames.label_key)} — {date}")
+            self.map_title.setText(f"{series_title(self.result.frames)} — {date}")
 
     # ()
     # index of the date shown

@@ -457,25 +457,28 @@ def run_rotation(field):
     recs, metrics = [], []
     if current and rotation.is_perennial(current, current_info) or \
             (not current and current_info is not None and rotation.is_perennial("", current_info)):
-        # perennial crop: no rotation; cover crops between the rows, and a
-        # break before replanting
+        # perennial crop (vines, orchards...): it stays for years, so there is
+        # no rotation and no crop to harvest in between; only cover crops
+        # sown between the rows and cut, never harvested. no monthly chart: a
+        # dormant perennial in winter is not "unsuitable"
         legume = best(rotation.COVER_LEGUMES)
         grass = best(rotation.COVER_GRASSES)
-        covers = [c for c in (legume, grass) if c]
-        break_plan = [c for c in (best(CEREALS, recent_families), best(LEGUMES, recent_families))
-                      if c]
-        chart_name, chart_info = current_name, current_info
+        with_water = crop_score(current_info, climate, soil, True)[0] if current_info else None
+        rainfed = current_score[0] if current_score else None
+        chart_info = None
         summary, summary_params = "analysis.rotation.summary_perennial", {"crop": current_name}
         metrics = [
             Metric("analysis.rotation.m.current_type", "analysis.rotation.perennial"),
-            Metric("analysis.rotation.m.current",
-                   f"{current_score[0]} %" if current_score else "—",
-                   LEVEL_NEUTRAL if not current_score else
-                   LEVEL_GOOD if current_score[0] >= 65 else LEVEL_WARNING),
-            Metric("analysis.rotation.m.covers",
-                   " + ".join(f"crop.{c}" for c in covers) or "—"),
-            Metric("analysis.rotation.m.replant", " → ".join(f"crop.{c}" for c in break_plan)
-                   or "—"),
+            Metric("analysis.rotation.m.climate_irrigated",
+                   f"{with_water} %" if with_water is not None else "—",
+                   LEVEL_NEUTRAL if with_water is None else
+                   LEVEL_GOOD if with_water >= 65 else LEVEL_WARNING),
+            Metric("analysis.rotation.m.climate_rainfed",
+                   f"{rainfed} %" if rainfed is not None else "—",
+                   LEVEL_NEUTRAL if rainfed is None else
+                   LEVEL_GOOD if rainfed >= 65 else LEVEL_WARNING),
+            Metric("analysis.rotation.m.covers", " + ".join(
+                f"crop.{c}" for c in (legume, grass) if c) or "—"),
         ]
         recs.append(Recommendation("analysis.rotation.r.perennial", {"crop": current_name},
                                    PRIORITY_HIGH))
@@ -484,11 +487,11 @@ def run_rotation(field):
                                        {"crop": f"crop.{legume}"}, PRIORITY_MEDIUM))
         if grass:
             recs.append(Recommendation("analysis.rotation.r.cover_grass",
-                                       {"crop": f"crop.{grass}"}, PRIORITY_MEDIUM))
-        if break_plan:
-            recs.append(Recommendation("analysis.rotation.r.replant",
-                                       {"crops": " → ".join(f"crop.{c}" for c in break_plan)},
-                                       PRIORITY_LOW))
+                                       {"crop": f"crop.{grass}"}, PRIORITY_LOW))
+        if rainfed is not None and with_water is not None and with_water - rainfed >= 30:
+            recs.append(Recommendation("analysis.rotation.r.perennial_water",
+                                       {"crop": current_name, "mm": f"{climate['rain']:.0f}"},
+                                       PRIORITY_MEDIUM))
     else:
         # annual crop (or none): the next seasons start from the current crop,
         # never two of one family in a row, alternating the roles
@@ -511,6 +514,8 @@ def run_rotation(field):
             return unavailable("rotation", field, ROTATION_SOURCES, "no suitable crop")
         plan_score = round(sum(scores[c][0] for c in plan) / len(plan))
         chart_name, chart_info = f"crop.{plan[0]}", infos[plan[0]]
+        if not current_name:
+            recs.append(Recommendation("analysis.rotation.r.no_crop", {}, PRIORITY_MEDIUM))
         summary = "analysis.rotation.summary_after" if current_name else "analysis.rotation.summary"
         summary_params = {"first": f"crop.{plan[0]}", "score": str(plan_score),
                           "crop": current_name}
@@ -537,7 +542,7 @@ def run_rotation(field):
         if current_name:
             recs.append(Recommendation("analysis.rotation.r.avoid", {"crop": current_name},
                                        PRIORITY_LOW))
-    if not irrigated and climate["rain"] < 600:
+    if not irrigated and climate["rain"] < 600 and chart_info is not None:
         recs.append(Recommendation("analysis.rotation.r.rainfed",
                                    {"mm": f"{climate['rain']:.0f}"}, PRIORITY_MEDIUM))
     recs.append(Recommendation("analysis.rotation.r.data", {}, PRIORITY_LOW))
@@ -549,8 +554,8 @@ def run_rotation(field):
                             for _ in range(sources.GRID)) for v in values)
         series = Series("analysis.var.suitability_of", "%", tuple(dates), tuple(values),
                         {"crop": chart_name})
-        frames = MapFrames("analysis.var.suitability", "%", tuple(dates), grids, 0.0, 100.0,
-                           "suitability")
+        frames = MapFrames("analysis.var.suitability_of", "%", tuple(dates), grids, 0.0, 100.0,
+                           "suitability", {"crop": chart_name})
     return AnalysisResult("rotation", field.name, ROTATION_SOURCES, series, frames,
                           tuple(metrics), summary, summary_params, tuple(recs),
                           placeholder=False)

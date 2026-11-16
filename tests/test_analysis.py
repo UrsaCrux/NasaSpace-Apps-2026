@@ -364,8 +364,13 @@ class RealAnalysesTest(unittest.TestCase):
                                                          "source": "user"}})
         self.assertEqual(result.summary_key, "analysis.rotation.summary_perennial")
         labels = [m.label_key.rsplit(".", 1)[-1] for m in result.metrics]
-        self.assertIn("covers", labels)
+        self.assertEqual(labels, ["current_type", "climate_irrigated", "climate_rainfed",
+                                  "covers"])
         self.assertEqual(result.recommendations[0].text_key, "analysis.rotation.r.perennial")
+        self.assertIsNone(result.series)                 # no misleading winter "0 %"
+        covers = result.metrics[3].value
+        for word in ("barley", "lentil", "wheat"):          # nothing to harvest in between
+            self.assertNotIn(word, covers)
 
     def test_unavailable_data_is_said_not_invented(self):
         from fieldshift.analysis import sources

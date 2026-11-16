@@ -63,7 +63,7 @@ what the map shows over time: for each date a square grid of values covering the
 class Metric
 ```
 
-- **Line:** 59
+- **Line:** 60
 
 one number of the result ("Frost days: 23"); value is already formatted
 
@@ -73,7 +73,7 @@ one number of the result ("Frost days: 23"); value is already formatted
 class Recommendation
 ```
 
-- **Line:** 67
+- **Line:** 68
 
 one piece of advice: text_key filled with params, and how urgent it is
 
@@ -83,7 +83,7 @@ one piece of advice: text_key filled with params, and how urgent it is
 class TextureFigure
 ```
 
-- **Line:** 77
+- **Line:** 78
 
 a soil texture triangle (USDA classes) with the field's point: clay, sand and silt in % (None when unknown) and its texture class key (schema.TEXTURES, None when unknown)
 
@@ -93,7 +93,7 @@ a soil texture triangle (USDA classes) with the field's point: clay, sand and si
 class AnalysisResult
 ```
 
-- **Line:** 89
+- **Line:** 90
 
 everything one analysis found for one field. placeholder is True while the numbers are made up (the UI says so). series / frames may be None for results without a time line (then the tab shows the figure, e.g. a TextureFigure, in their place)
 
@@ -103,7 +103,7 @@ everything one analysis found for one field. placeholder is True while the numbe
 class Analysis
 ```
 
-- **Line:** 106
+- **Line:** 107
 
 an analysis the user can choose. title_key / short_key / description_key are i18n keys; run(field) returns an AnalysisResult
 
@@ -301,7 +301,7 @@ def last_months(n=MONTHS)
 ```
 
 - **Arguments:** `(int n = MONTHS)`
-- **Line:** 43
+- **Line:** 47
 
 the last n complete months, oldest first: ["2024-11", ..., "2026-10"]
 
@@ -312,7 +312,7 @@ def center(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 56
+- **Line:** 60
 
 (lon, lat) of the field's centre
 
@@ -323,7 +323,7 @@ def grid_points(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 63
+- **Line:** 67
 
 (lon, lat) of the centres of the GRID x GRID cells, rows north to south
 
@@ -334,7 +334,7 @@ def clear_cache()
 ```
 
 - **Arguments:** `()`
-- **Line:** 83
+- **Line:** 87
 
 forgets everything downloaded (tests, or to force new downloads)
 
@@ -345,7 +345,7 @@ def power_daily(lon, lat, start, end)
 ```
 
 - **Arguments:** `(float lon, float lat, dt.date start, dt.date end)`
-- **Line:** 91
+- **Line:** 95
 
 {"T2M_MIN" | "T2M_MAX" | "PRECTOTCORR" | "GWETROOT": {date: value}} (fill values dropped). Raises on failure
 
@@ -356,7 +356,7 @@ def power_climatology(lon, lat)
 ```
 
 - **Arguments:** `(float lon, float lat)`
-- **Line:** 108
+- **Line:** 112
 
 {"T2M" | "T2M_MIN" | "T2M_MAX" | "PRECTOTCORR" | "FROST_DAYS": {"JAN".. "ANN": value}}
 
@@ -367,9 +367,20 @@ def wapor_grids(mapset, field, months)
 ```
 
 - **Arguments:** `(str mapset, Field field, list months)`
-- **Line:** 120
+- **Line:** 124
 
 {month: GRID x GRID physical values or None} of a WaPOR monthly mapset ("L1-NPP-M", "L1-AETI-M"...), months read in parallel
+
+#### `disk_cache_dir`
+
+```python
+def disk_cache_dir()
+```
+
+- **Arguments:** `()`
+- **Line:** 145
+
+folder of the downloaded values kept between runs (published WaPOR months never change): FIELDSHIFT_CACHE_DIR, else ~/.cache/fieldshift. None when the app runs offline (tests)
 
 #### `dem_grid`
 
@@ -378,7 +389,7 @@ def dem_grid(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 166
+- **Line:** 210
 
 GRID x GRID elevations (m) from the Copernicus DEM, or None when unavailable
 
@@ -389,7 +400,7 @@ def forecast(lon, lat)
 ```
 
 - **Arguments:** `(float lon, float lat)`
-- **Line:** 189
+- **Line:** 233
 
 fieldshift.api.forecast.Forecast; raises when the service fails
 
@@ -400,7 +411,7 @@ def crop_requirements(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 196
+- **Line:** 240
 
 ecocrop.CropInfo of the field's crop, or None (no crop, no EcoCrop data)
 
@@ -411,7 +422,7 @@ def crop_requirements_of(target)
 ```
 
 - **Arguments:** `(int|str target)`
-- **Line:** 207
+- **Line:** 251
 
 ecocrop.CropInfo of an EcoCrop id or scientific name, or None on failure
 
@@ -419,9 +430,10 @@ ecocrop.CropInfo of an EcoCrop id or scientific name, or None on failure
 
 | Name | Description | Line |
 |------|-------------|------|
-| `GRID` | cells per side of the map grids | 23 |
-| `MONTHS` | months covered by the time series | 25 |
-| `TODAY` | today's date used by the analyses (tests set it) | 31 |
+| `GRID` | cells per side of the map grids | 27 |
+| `MONTHS` | months covered by the time series | 29 |
+| `TODAY` | today's date used by the analyses (tests set it) | 35 |
+| `WAPOR_WORKERS` | WaPOR files read at the same time | 138 |
 
 ## `fieldshift/analysis/texture.py`
 
