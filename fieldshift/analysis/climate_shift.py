@@ -215,13 +215,11 @@ def run_climate_indices(field, scenario):
         recs.append(Recommendation("analysis.climate_shift.r.frost_less", {}, PRIORITY_LOW))
     recs.append(Recommendation("analysis.climate_shift.r.indices_about", {}, PRIORITY_LOW))
 
-    # chart: degree-days building up over the year in the shifted climate
-    by_month, total = [], 0.0
-    for month in months:
-        total += sum(max(0.0, (tmax[d] + tmin[d]) / 2 + scenario.temp_offset_c - 10)
-                     for d in tmax if d in tmin and real._month_of(d) == month
-                     and d.month in growing)
-        by_month.append(round(total))
+    # chart: the degree-days of each month in the shifted climate (a sum of
+    # daily °C above 10 °C, not a temperature); 0 outside the growing season
+    by_month = [round(sum(max(0.0, (tmax[d] + tmin[d]) / 2 + scenario.temp_offset_c - 10)
+                          for d in tmax if d in tmin and real._month_of(d) == month
+                          and d.month in growing)) for month in months]
     series = Series("analysis.var.gdd_shift", "°C·d", tuple(months), tuple(by_month))
     return AnalysisResult("climate_shift", field.name, INDEX_SOURCES, series, None,
                           tuple(metrics), "analysis.climate_shift.summary_indices",

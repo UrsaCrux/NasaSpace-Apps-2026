@@ -391,7 +391,7 @@
   "analysis.climate_shift.m.frost": "Días de helada en primavera: hoy → cambiado",
   "analysis.climate_shift.m.rain": "Lluvia en un año: hoy → cambiado",
   "analysis.climate_shift.summary_indices": "{crop} no tiene modelo de crecimiento, así que el cambio se mide en su clima: aptitud {now} % → {shift} %, y {gdd} grados-día más de calor en la temporada.",
-  "analysis.var.gdd_shift": "Grados-día acumulados, clima cambiado",
+  "analysis.var.gdd_shift": "Grados-día de cada mes, clima cambiado (suma de los °C diarios sobre 10 °C, no es una temperatura)",
   "analysis.climate_shift.r.winkler": "El viñedo pasaría de la región Winkler {before} a {after}: la uva madura más rápido y con menos acidez; considera variedades más tardías, sombra de follaje o sitios más frescos.",
   "analysis.climate_shift.r.hot": "Unos {days} días más al año sobre {limit} °C: planifica malla sombra, riego de noche o temprano y la fecha de cosecha.",
   "analysis.climate_shift.r.suitability": "{crop} perdería unos {pct} puntos de aptitud climática: vigila su rendimiento y calidad en las próximas temporadas.",

@@ -391,7 +391,7 @@
   "analysis.climate_shift.m.frost": "Spring frost days: today → shifted",
   "analysis.climate_shift.m.rain": "Rain in a year: today → shifted",
   "analysis.climate_shift.summary_indices": "{crop} has no growth model, so the shift is measured on its climate: suitability {now} % → {shift} %, and {gdd} more degree-days of heat in the season.",
-  "analysis.var.gdd_shift": "Degree-days building up, shifted climate",
+  "analysis.var.gdd_shift": "Degree-days of each month, shifted climate (sum of the daily °C above 10 °C, not a temperature)",
   "analysis.climate_shift.r.winkler": "The vineyard would move from Winkler region {before} to {after}: grapes ripen faster with less acidity; consider later-ripening varieties, canopy shade or cooler sites.",
   "analysis.climate_shift.r.hot": "About {days} more days above {limit} °C a year: plan shade nets, irrigation at night or early morning and harvest timing.",
   "analysis.climate_shift.r.suitability": "{crop} would lose about {pct} points of climate suitability: watch its yield and quality in the coming seasons.",
