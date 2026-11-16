@@ -80,13 +80,20 @@ class MaipoScenarioTest(unittest.TestCase):
         self.assertIn("yield_rdi", labels)
         self.assertEqual(result.series.unit, "t/ha")
 
-    def test_perennial_has_no_model_and_says_so(self):
+    def test_perennial_gets_the_shift_on_climate_indices(self):
+        import fake_sources
         from fieldshift.analysis.climate_shift import run_climate_shift
+        restore = fake_sources.install()
+        self.addCleanup(restore)
         field = self.store.create("Viña", MAIPO, data={"crop": {"value": "wine_grape.v1",
                                                                 "source": "user"}})
         result = run_climate_shift(field)
-        self.assertEqual(result.summary_key, "analysis.crop_growth.summary_no_model")
-        self.assertIsNone(result.series)
+        self.assertEqual(result.summary_key, "analysis.climate_shift.summary_indices")
+        values = {m.label_key.rsplit(".", 1)[1]: m.value for m in result.metrics}
+        now, shifted = (float(v) for v in values["gdd"].split(" (")[0].split(" → "))
+        self.assertGreater(shifted, now)                     # +2 °C: more heat
+        self.assertIn("(", values["gdd"])                    # Winkler region for grapes
+        self.assertEqual(result.series.unit, "°C·d")
 
 
 class CultivarTest(unittest.TestCase):

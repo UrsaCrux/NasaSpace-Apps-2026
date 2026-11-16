@@ -89,8 +89,12 @@ the water-stress days (`RFTRA` < 0.7, transpiration under 70 % of potential).
 It is a simple scenario on the season's weather, not a climate projection.
 WOFOST 7.2 has no CO2 response, so CO2 is not a scenario parameter.
 
-Perennial crops (vines, orchards) have no WOFOST model: both analyses say so
-instead of using made-up parameters.
+Perennial crops (vines, orchards, berries) have no WOFOST model: Crop growth
+says so, and Climate shift measures the same shift on climate indices of the
+last 12 months (NASA POWER daily) instead of a yield: growing degree-days base
+10 °C over the growing season (and the Winkler region for grapes), hot days
+above the crop's EcoCrop limit, spring frost days, yearly rain, and the crop's
+EcoCrop climate suitability with irrigation — no made-up crop parameters.
 
 ## Cultivar names
 

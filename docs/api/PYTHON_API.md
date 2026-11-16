@@ -13,15 +13,39 @@ def run_climate_shift(field, run=None)
 ```
 
 - **Arguments:** `(Field field, callable run = None)`
-- **Line:** 40
+- **Line:** 52
 
 AnalysisResult comparing today's climate with the shifted one (yield over the season of the shifted climate as the chart); a result that explains the reason when the field cannot be simulated
+
+#### `winkler_region`
+
+```python
+def winkler_region(gdd)
+```
+
+- **Arguments:** `(float gdd)`
+- **Line:** 133
+
+Winkler region name of a growing-degree-day sum
+
+#### `run_climate_indices`
+
+```python
+def run_climate_indices(field, scenario)
+```
+
+- **Arguments:** `(Field field, Scenario scenario)`
+- **Line:** 140
+
+AnalysisResult for a crop without a growth model: the scenario's shift on the last 12 months of daily weather and on the crop's EcoCrop suitability
 
 ### Variables
 
 | Name | Description | Line |
 |------|-------------|------|
-| `STRESS_RFTRA` | a day with the transpiration below this share of the potential is stressed | 15 |
+| `INDEX_SOURCES` | sources of the climate-index comparison (crops without a model) | 21 |
+| `WINKLER` | Winkler regions (growing degree-days base 10 °C, Oct-Apr south / Apr-Oct north) | 24 |
+| `STRESS_RFTRA` | a day with the transpiration below this share of the potential is stressed | 27 |
 
 ## `fieldshift/analysis/crop_growth.py`
 
