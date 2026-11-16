@@ -53,7 +53,7 @@ the values the analysis looks at over time: one value per date ("2025-07"), in u
 class MapFrames
 ```
 
-- **Line:** 46
+- **Line:** 47
 
 what the map shows over time: for each date a square grid of values covering the field's bounding box (rows north to south). palette is one of "temperature", "vegetation", "water", "suitability"; low / high fix the colour scale
 
@@ -63,7 +63,7 @@ what the map shows over time: for each date a square grid of values covering the
 class Metric
 ```
 
-- **Line:** 58
+- **Line:** 59
 
 one number of the result ("Frost days: 23"); value is already formatted
 
@@ -73,7 +73,7 @@ one number of the result ("Frost days: 23"); value is already formatted
 class Recommendation
 ```
 
-- **Line:** 66
+- **Line:** 67
 
 one piece of advice: text_key filled with params, and how urgent it is
 
@@ -83,7 +83,7 @@ one piece of advice: text_key filled with params, and how urgent it is
 class TextureFigure
 ```
 
-- **Line:** 76
+- **Line:** 77
 
 a soil texture triangle (USDA classes) with the field's point: clay, sand and silt in % (None when unknown) and its texture class key (schema.TEXTURES, None when unknown)
 
@@ -93,7 +93,7 @@ a soil texture triangle (USDA classes) with the field's point: clay, sand and si
 class AnalysisResult
 ```
 
-- **Line:** 88
+- **Line:** 89
 
 everything one analysis found for one field. placeholder is True while the numbers are made up (the UI says so). series / frames may be None for results without a time line (then the tab shows the figure, e.g. a TextureFigure, in their place)
 
@@ -103,7 +103,7 @@ everything one analysis found for one field. placeholder is True while the numbe
 class Analysis
 ```
 
-- **Line:** 105
+- **Line:** 106
 
 an analysis the user can choose. title_key / short_key / description_key are i18n keys; run(field) returns an AnalysisResult
 
@@ -1874,6 +1874,43 @@ JPEG bytes of the crop's picture (cached), or None when it has none
 | `BRIEF_SECTIONS` | sections used as the short description, best first | 153 |
 | `NOT_DESCRIPTION` | sections that are not description | 155 |
 
+## `fieldshift/crops/rotation.py`
+
+### Functions
+
+#### `is_perennial`
+
+```python
+def is_perennial(crop_id, info=None)
+```
+
+- **Arguments:** `(str crop_id, CropInfo info = None)`
+- **Line:** 45
+
+True for crops that stay for years (orchards, vines, berries, alfalfa)
+
+#### `family_of`
+
+```python
+def family_of(crop_id, info=None)
+```
+
+- **Arguments:** `(str crop_id, CropInfo info = None)`
+- **Line:** 56
+
+the botanical family ("Fabaceae"), or "" when unknown
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `PERENNIAL` | perennial crops of the catalogue: they stay for years, so no rotation | 10 |
+| `FAMILY` | botanical family of the catalogue's annual crops | 16 |
+| `CEREAL` | roles in a rotation | 28 |
+| `NEXT_ROLE` | what comes after each role in a rotation: a legume feeds the next cereal with nitrogen; a break crop cuts the cereals' pests and diseases | 33 |
+| `THIRD_ROLE` | the role after the next one (third season) | 35 |
+| `COVER_LEGUMES` | cover crops sown between the rows of perennial crops: a legume (nitrogen) and a grass (soil structure, erosion) | 39 |
+
 ## `fieldshift/crops/wofost_crops.py`
 
 ### Functions
@@ -2171,9 +2208,9 @@ data (already normalized) with the hidden model inputs recomputed
 class Record
 ```
 
-- **Line:** 43
+- **Line:** 44
 
-one record: time "YYYY-MM-DDTHH:MM" (local), kind (a KINDS key), value (None for events such as sowing), a free note and how it was made
+one record: time "YYYY-MM-DDTHH:MM" (local), kind (a KINDS key), value (None for events such as sowing), a free note, how it was made and, for sowing / harvest, the crop id (crops.json) sown or harvested
 
 ### Functions
 
@@ -2184,7 +2221,7 @@ def date(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 52
+- **Line:** 54
 
 the date part, "YYYY-MM-DD"
 
@@ -2195,7 +2232,7 @@ def unit(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 57
+- **Line:** 59
 
 the unit of the kind
 
@@ -2206,7 +2243,7 @@ def now()
 ```
 
 - **Arguments:** `()`
-- **Line:** 63
+- **Line:** 65
 
 the current local time as a record time
 
@@ -2217,7 +2254,7 @@ def parse_records(raw)
 ```
 
 - **Arguments:** `(any raw)`
-- **Line:** 69
+- **Line:** 71
 
 Records read from a file (bad entries are skipped), oldest first
 
@@ -2228,7 +2265,7 @@ def dump_records(records)
 ```
 
 - **Arguments:** `(tuple records)`
-- **Line:** 88
+- **Line:** 91
 
 list of plain dicts for the file
 
@@ -2239,9 +2276,20 @@ def latest(records, kind, date=None)
 ```
 
 - **Arguments:** `(tuple records, str kind, str date = None)`
-- **Line:** 94
+- **Line:** 97
 
 the newest record of a kind (on that date "YYYY-MM-DD", when given), or None
+
+#### `past_crops`
+
+```python
+def past_crops(records, today, years=3)
+```
+
+- **Arguments:** `(tuple records, str today, int years = 3)`
+- **Line:** 108
+
+crop ids sown or harvested in the last years (newest first, no repeats)
 
 #### `of_kind`
 
@@ -2250,7 +2298,7 @@ def of_kind(records, kind)
 ```
 
 - **Arguments:** `(tuple records, str kind)`
-- **Line:** 101
+- **Line:** 120
 
 the records of a kind, oldest first
 
@@ -2260,6 +2308,7 @@ the records of a kind, oldest first
 |------|-------------|------|
 | `KINDS` | record kinds: key -> (unit, decimals, DATA_FIELDS key or None, has a value) | 20 |
 | `MEASURED` | how a record was made | 36 |
+| `CROP_KINDS` | kinds that name a crop | 103 |
 
 ## `fieldshift/fields/schema.py`
 
@@ -3840,7 +3889,7 @@ the crop follow-up from the two newest NDVI images, or None when MODIS has none;
 class TodayTile
 ```
 
-- **Line:** 30
+- **Line:** 37
 
 one value of today: label_key + value in unit, and a short note under it (note_key filled with note_params). value None: not available. measured is the time ("HH:MM") of the farmer's measurement used instead of the forecast's value, "" when the value is the forecast's
 
@@ -3850,7 +3899,7 @@ one value of today: label_key + value in unit, and a short note under it (note_k
 class StatusAlert
 ```
 
-- **Line:** 46
+- **Line:** 53
 
 a light warning about a coming day (date "YYYY-MM-DD"): text_key filled with params
 
@@ -3860,7 +3909,7 @@ a light warning about a coming day (date "YYYY-MM-DD"): text_key filled with par
 class Tracking
 ```
 
-- **Line:** 56
+- **Line:** 63
 
 follow-up of the crop: its name and the two newest NDVI images (value and date "YYYY-MM-DD"; previous None when there is only one)
 
@@ -3870,11 +3919,22 @@ follow-up of the crop: its name and the two newest NDVI images (value and date "
 class StatusReport
 ```
 
-- **Line:** 75
+- **Line:** 82
 
 everything shown for one field: today's tiles, the forecast (api.forecast.Forecast: days, today first, and hours) and the warnings of the coming days. example True when the numbers are made up (tests)
 
 ### Functions
+
+#### `num`
+
+```python
+def num(value, decimals=0)
+```
+
+- **Arguments:** `(float value, int decimals = 0)`
+- **Line:** 21
+
+the value as text, never "-0" ("-0.2" with 0 decimals is "0")
 
 #### `Tracking.change_pct`
 
@@ -3883,7 +3943,7 @@ def change_pct(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 65
+- **Line:** 72
 
 change of the NDVI against the image before, %, or None
 
@@ -3894,7 +3954,7 @@ def alerts_within(self, days)
 ```
 
 - **Arguments:** `(int days)`
-- **Line:** 84
+- **Line:** 91
 
 the warnings of the first days of the forecast
 
@@ -3904,7 +3964,7 @@ the warnings of the first days of the forecast
 |------|-------------|------|
 | `LEVEL_OK` | how a value or a warning looks: decides its colour in the UI | 11 |
 | `CHART_LINE` | how a series is drawn in a chart (Trends) | 16 |
-| `HORIZONS` | how many coming days the user can choose to see (the forecast service gives at most 16) | 21 |
+| `HORIZONS` | how many coming days the user can choose to see (the forecast service gives at most 16) | 28 |
 
 ## `fieldshift/status/progress.py`
 
@@ -4329,7 +4389,7 @@ starts or stops moving through the dates
 class LineChart(QtWidgets.QWidget)
 ```
 
-- **Line:** 68
+- **Line:** 75
 
 line chart of one Series, with a vertical cursor on the selected date
 
@@ -4339,7 +4399,7 @@ line chart of one Series, with a vertical cursor on the selected date
 class FieldPreview(QtWidgets.QWidget)
 ```
 
-- **Line:** 140
+- **Line:** 164
 
 the field's outline filled with a grid of coloured cells (one MapFrames date at a time), with a colour legend below
 
@@ -4349,7 +4409,7 @@ the field's outline filled with a grid of coloured cells (one MapFrames date at 
 class TextureTriangle(QtWidgets.QWidget)
 ```
 
-- **Line:** 255
+- **Line:** 279
 
 the USDA texture triangle with the classes coloured, the field's class outlined and its point (clay, sand, silt) marked. Sand grows to the left along the base, silt to the right, clay to the top
 
@@ -4388,6 +4448,17 @@ def palette_color(palette, t)
 
 colour of the position t (0..1) of a palette
 
+#### `series_title`
+
+```python
+def series_title(series)
+```
+
+- **Arguments:** `(Series series)`
+- **Line:** 64
+
+the series name in the current language, with its parameters ("of Barley")
+
 #### `LineChart.__init__`
 
 ```python
@@ -4395,7 +4466,7 @@ def __init__(self, series, parent=None)
 ```
 
 - **Arguments:** `(Series series, QWidget parent = None)`
-- **Line:** 72
+- **Line:** 79
 
 draws series; the cursor starts on its last date
 
@@ -4406,7 +4477,7 @@ def set_cursor(self, index)
 ```
 
 - **Arguments:** `(int index)`
-- **Line:** 80
+- **Line:** 87
 
 moves the cursor to the date number index
 
@@ -4417,7 +4488,7 @@ def __init__(self, vertices, frames, parent=None)
 ```
 
 - **Arguments:** `(list vertices, MapFrames frames, QWidget parent = None)`
-- **Line:** 144
+- **Line:** 168
 
 draws the last date of frames inside the polygon of vertices (lon, lat)
 
@@ -4428,7 +4499,7 @@ def set_frame(self, index)
 ```
 
 - **Arguments:** `(int index)`
-- **Line:** 153
+- **Line:** 177
 
 shows the grid of the date number index
 
@@ -4439,7 +4510,7 @@ def cell_colors(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 159
+- **Line:** 183
 
 colour of every cell of the shown date, row by row (for tests)
 
@@ -4450,7 +4521,7 @@ def __init__(self, figure, parent=None)
 ```
 
 - **Arguments:** `(TextureFigure figure, QWidget parent = None)`
-- **Line:** 258
+- **Line:** 282
 
 #### `TextureTriangle.point`
 
@@ -4459,7 +4530,7 @@ def point(self, sand, clay)
 ```
 
 - **Arguments:** `(float sand, float clay)`
-- **Line:** 265
+- **Line:** 289
 
 widget coordinates of a composition
 
@@ -4470,7 +4541,7 @@ def figure_widget(figure)
 ```
 
 - **Arguments:** `(object figure)`
-- **Line:** 349
+- **Line:** 373
 
 the widget that draws a result's figure, or None for an unknown kind
 
@@ -4479,8 +4550,8 @@ the widget that draws a result's figure, or None for an unknown kind
 | Name | Description | Line |
 |------|-------------|------|
 | `PALETTES` | colour scales: list of (position 0..1, colour) | 21 |
-| `TEXTURE_POLYGONS` | USDA texture classes: polygon corners as (sand %, clay %), and the colour of each class (like the usual Spanish/English textbook triangle) | 226 |
-| `TEXTURE_LABEL_AT` | label positions (sand %, clay %) of the classes too small for their centre | 249 |
+| `TEXTURE_POLYGONS` | USDA texture classes: polygon corners as (sand %, clay %), and the colour of each class (like the usual Spanish/English textbook triangle) | 250 |
+| `TEXTURE_LABEL_AT` | label positions (sand %, clay %) of the classes too small for their centre | 273 |
 
 ## `fieldshift/ui/analyze_dialog.py`
 
@@ -5225,7 +5296,7 @@ a box that says why data is missing, with a "Try again" button
 class FieldPanel(QtWidgets.QFrame)
 ```
 
-- **Line:** 64
+- **Line:** 69
 
 the panel. subclasses set title_key and implement make_report(field) (any thread) and build(report) (UI thread, fills content_layout)
 
@@ -5258,7 +5329,7 @@ def __init__(self, view, fields, parent=None)
 ```
 
 - **Arguments:** `(MapView view, FieldsManager fields, QWidget parent = None)`
-- **Line:** 74
+- **Line:** 79
 
 #### `FieldPanel.open`
 
@@ -5267,7 +5338,7 @@ def open(self, layer_id=None)
 ```
 
 - **Arguments:** `(str layer_id)`
-- **Line:** 129
+- **Line:** 136
 
 shows that field (the first one when None). returns True when a field is shown (its report may still be loading)
 
@@ -5278,7 +5349,7 @@ def refresh(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 142
+- **Line:** 149
 
 loads the report of the field shown again
 
@@ -5289,7 +5360,7 @@ def make_report(self, field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 168
+- **Line:** 175
 
 the report of the field (runs in a background thread)
 
@@ -5300,7 +5371,7 @@ def build(self, report)
 ```
 
 - **Arguments:** `(report)`
-- **Line:** 173
+- **Line:** 180
 
 fills content_layout with the report (UI thread)
 
@@ -5310,8 +5381,9 @@ fills content_layout with the report (UI thread)
 |------|-------------|------|
 | `MIN_WIDTH_PX` | smallest width of the panel (pixels) | 18 |
 | `OFFLINE_ENV` | when set to "1" reports are built at once in the UI thread (offline: they fail at once, or are example numbers in the tests) | 21 |
-| `FieldPanel.loading_key` | i18n key of the "loading" text, filled with {field} | 68 |
-| `FieldPanel.suggestion_requested` | emitted with (str layer_id) when a "See suggestion" link is clicked | 84 |
+| `FieldPanel.loading_key` | i18n key of the "loading" text, filled with {field} | 73 |
+| `FieldPanel.suggestion_requested` | emitted with (str layer_id) when a "See suggestion" link is clicked | 89 |
+| `FieldPanel.field_box` | drawn by the style sheet (the native macOS combo showed no text here) | 96 |
 
 ## `fieldshift/ui/fields_bar.py`
 
@@ -5824,7 +5896,7 @@ def fill(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 79
+- **Line:** 86
 
 shows the field's records, newest first
 
@@ -5835,7 +5907,7 @@ def add_from_form(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 94
+- **Line:** 105
 
 adds the record of the form; returns it
 
@@ -5846,7 +5918,7 @@ def delete_selected(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 107
+- **Line:** 119
 
 deletes the selected records, after asking
 
@@ -5855,6 +5927,7 @@ deletes the selected records, after asking
 | Name | Description | Line |
 |------|-------------|------|
 | `RecordsDialog.kind_box` | the form of a new record | 42 |
+| `RecordsDialog.crop_box` | the crop sown / harvested (crops.json), for rotations | 49 |
 
 ## `fieldshift/ui/scale_bar.py`
 
@@ -6054,7 +6127,7 @@ def open_records(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 97
+- **Line:** 98
 
 opens the measurements window of the field shown
 
@@ -6074,7 +6147,7 @@ opens the measurements window of the field shown
 class TodayTile(QtWidgets.QFrame)
 ```
 
-- **Line:** 36
+- **Line:** 37
 
 a tile of today: icon, name, value and a short note
 
@@ -6084,7 +6157,7 @@ a tile of today: icon, name, value and a short note
 class ForecastChart(QtWidgets.QWidget)
 ```
 
-- **Line:** 104
+- **Line:** 105
 
 chart of the next 7 days for one variable (temperature: max and min), with the chosen day marked. click a day to choose it
 
@@ -6094,7 +6167,7 @@ chart of the next 7 days for one variable (temperature: max and min), with the c
 class ForecastCard(QtWidgets.QFrame)
 ```
 
-- **Line:** 263
+- **Line:** 264
 
 the coming days: how many (7 / 14), a chart of the chosen variable, a slider through the days, the chosen day's details, the light warnings and a link to Analyze for more
 
@@ -6104,7 +6177,7 @@ the coming days: how many (7 / 14), a chart of the chosen variable, a slider thr
 class TrackingCard(QtWidgets.QFrame)
 ```
 
-- **Line:** 426
+- **Line:** 427
 
 the crop follow-up: crop name, newest NDVI and its change against the image before. starts "loading"; set_tracking() fills it
 
@@ -6117,7 +6190,7 @@ def short_date(iso_date)
 ```
 
 - **Arguments:** `(str iso_date)`
-- **Line:** 25
+- **Line:** 26
 
 short date: "8 Nov" / "8 nov"
 
@@ -6128,7 +6201,7 @@ def source_text(source)
 ```
 
 - **Arguments:** `(str source)`
-- **Line:** 31
+- **Line:** 32
 
 a source name, translated when it is an i18n key ("status.source.farmer")
 
@@ -6139,7 +6212,7 @@ def __init__(self, tile, parent=None)
 ```
 
 - **Arguments:** `(status.TodayTile tile)`
-- **Line:** 39
+- **Line:** 40
 
 #### `day_label`
 
@@ -6148,7 +6221,7 @@ def day_label(index, iso_date)
 ```
 
 - **Arguments:** `(int index, str iso_date)`
-- **Line:** 84
+- **Line:** 85
 
 "Today" / "Tomorrow" / "Mon 17" for the day number index of the forecast
 
@@ -6159,7 +6232,7 @@ def day_values(day, variable)
 ```
 
 - **Arguments:** `(DayForecast day, str variable)`
-- **Line:** 95
+- **Line:** 96
 
 (main value, second value or None) of a day for a FORECAST_VARIABLES key
 
@@ -6170,7 +6243,7 @@ def __init__(self, days, parent=None)
 ```
 
 - **Arguments:** `(tuple days)`
-- **Line:** 107
+- **Line:** 108
 
 #### `ForecastChart.show_day`
 
@@ -6179,7 +6252,7 @@ def show_day(self, variable, selected, days=None)
 ```
 
 - **Arguments:** `(str variable, int selected, tuple days = None)`
-- **Line:** 119
+- **Line:** 120
 
 draws a variable with the day number selected marked (and other days)
 
@@ -6190,7 +6263,7 @@ def __init__(self, report, horizon=HORIZONS[0], parent=None)
 ```
 
 - **Arguments:** `(StatusReport report, int horizon = HORIZONS[0])`
-- **Line:** 266
+- **Line:** 267
 
 #### `ForecastCard.days`
 
@@ -6199,7 +6272,7 @@ def days(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 354
+- **Line:** 355
 
 the days shown (today first)
 
@@ -6210,7 +6283,7 @@ def set_horizon(self, days)
 ```
 
 - **Arguments:** `(int days)`
-- **Line:** 359
+- **Line:** 360
 
 shows the next days (one of HORIZONS)
 
@@ -6221,7 +6294,7 @@ def set_variable(self, variable)
 ```
 
 - **Arguments:** `(str variable)`
-- **Line:** 371
+- **Line:** 372
 
 draws another FORECAST_VARIABLES key in the chart
 
@@ -6232,7 +6305,7 @@ def show_day(self, index)
 ```
 
 - **Arguments:** `(int index)`
-- **Line:** 378
+- **Line:** 379
 
 marks the day number index and shows its details
 
@@ -6243,7 +6316,7 @@ def set_progress(self, progress)
 ```
 
 - **Arguments:** `(Progress progress)`
-- **Line:** 463
+- **Line:** 464
 
 the part from the farmer's records (days since sowing, plant height)
 
@@ -6254,7 +6327,7 @@ def set_tracking(self, tracking, error=None)
 ```
 
 - **Arguments:** `(Tracking tracking or None, Exception error = None)`
-- **Line:** 479
+- **Line:** 480
 
 shows the follow-up; with an error, why it failed and "Try again"
 
@@ -6262,12 +6335,12 @@ shows the follow-up; with an error, why it failed and "Try again"
 
 | Name | Description | Line |
 |------|-------------|------|
-| `LEVEL_COLORS` | colour of each level | 12 |
-| `FORECAST_VARIABLES` | variables of the forecast chart: key, i18n label, unit, decimals | 73 |
-| `ForecastChart.day_clicked` | emitted with (int index) when the user clicks a day | 113 |
-| `ForecastCard.analyze_requested` | emitted with no arguments when "More in Analyze" is clicked | 273 |
-| `TrackingCard.retry_requested` | emitted with no arguments when "Try again" is clicked | 442 |
-| `TrackingCard.records_requested` | emitted with no arguments when "Measurements…" is clicked | 449 |
+| `LEVEL_COLORS` | colour of each level | 13 |
+| `FORECAST_VARIABLES` | variables of the forecast chart: key, i18n label, unit, decimals | 74 |
+| `ForecastChart.day_clicked` | emitted with (int index) when the user clicks a day | 114 |
+| `ForecastCard.analyze_requested` | emitted with no arguments when "More in Analyze" is clicked | 274 |
+| `TrackingCard.retry_requested` | emitted with no arguments when "Try again" is clicked | 443 |
+| `TrackingCard.records_requested` | emitted with no arguments when "Measurements…" is clicked | 450 |
 
 ## `fieldshift/ui/trends_panel.py`
 
@@ -6493,7 +6566,7 @@ def __init__(self, crop, parent=None)
 class WeatherCard(QtWidgets.QFrame)
 ```
 
-- **Line:** 48
+- **Line:** 49
 
 the floating weather card. fetch(lon, lat) -> Forecast replaces the real service (tests); without it and with FIELDSHIFT_OFFLINE=1 the card stays hidden
 
@@ -6506,7 +6579,7 @@ def weekday_name(iso_date)
 ```
 
 - **Arguments:** `(str iso_date)`
-- **Line:** 42
+- **Line:** 43
 
 short weekday name of "YYYY-MM-DD" in the current language ("Mon")
 
@@ -6517,7 +6590,7 @@ def __init__(self, view, fetch=None, zone_name=None)
 ```
 
 - **Arguments:** `(MapView view, callable fetch = None, callable zone_name = None)`
-- **Line:** 57
+- **Line:** 58
 
 puts the card over view.widget() and follows the view. zone_name(lon, lat) -> str names the zone for the title (default: OpenStreetMap; with a test fetch and no zone_name the title stays generic)
 
@@ -6528,7 +6601,7 @@ def reload(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 99
+- **Line:** 100
 
 loads the forecast of the centre of the map now, unless it is the zone already shown. returns True when a load started
 
@@ -6536,8 +6609,8 @@ loads the forecast of the centre of the map now, unless it is the zone already s
 
 | Name | Description | Line |
 |------|-------------|------|
-| `MARGIN_PX` | distance (pixels) from the top-right corner of the map | 20 |
-| `SETTLE_MS` | wait this long (ms) after the last map movement before loading | 22 |
-| `HOUR_COUNT` | hours shown in the strip, and the step between them | 24 |
-| `OFFLINE_ENV` | when set to "1" the card never contacts the service (tests) | 27 |
-| `SKY_ICONS` | icon of each sky kind of the forecast | 30 |
+| `MARGIN_PX` | distance (pixels) from the top-right corner of the map | 21 |
+| `SETTLE_MS` | wait this long (ms) after the last map movement before loading | 23 |
+| `HOUR_COUNT` | hours shown in the strip, and the step between them | 25 |
+| `OFFLINE_ENV` | when set to "1" the card never contacts the service (tests) | 28 |
+| `SKY_ICONS` | icon of each sky kind of the forecast | 31 |

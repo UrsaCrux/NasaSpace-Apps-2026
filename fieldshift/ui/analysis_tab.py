@@ -18,7 +18,7 @@ from fieldshift.analysis.registry import get_analysis
 from fieldshift.i18n import tr
 from fieldshift.qt import QtCore, QtWidgets
 from fieldshift.ui.analysis_widgets import (
-    FieldPreview, LineChart, figure_widget, format_date, localize)
+    FieldPreview, LineChart, figure_widget, format_date, localize, series_title)
 
 # time between dates while playing (ms)
 PLAY_STEP_MS = 600
@@ -93,7 +93,7 @@ class AnalysisTab(QtWidgets.QWidget):
         date = format_date(series.dates[index])
         value = f"{series.values[index]:g} {series.unit}".strip()
         self.date_label.setText(date)
-        self.value_label.setText(tr("analysis.value_at", label=tr(series.label_key),
+        self.value_label.setText(tr("analysis.value_at", label=series_title(series),
                                     date=date, value=value))
         if self.result.frames is not None:
             self.map_title.setText(f"{tr(self.result.frames.label_key)} — {date}")

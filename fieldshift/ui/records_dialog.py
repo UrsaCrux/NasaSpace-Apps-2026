@@ -4,7 +4,7 @@ add one, measured now or at another moment. Values typed in "Edit field"
 show here too (as "edited"): both write the same records.
 """
 
-from fieldshift.fields.records import KINDS, Record
+from fieldshift.fields.records import CROP_KINDS, KINDS, Record
 from fieldshift.i18n import tr
 from fieldshift.qt import QtCore, QtWidgets
 from fieldshift.ui import dialogs
@@ -45,6 +45,12 @@ class RecordsDialog(CenteredDialog):
         self.kind_box.currentIndexChanged.connect(self._on_kind)
         self.value_box = QtWidgets.QDoubleSpinBox()
         self.value_box.setRange(-1_000_000, 1_000_000)
+        # the crop sown / harvested (crops.json), for rotations
+        self.crop_box = QtWidgets.QComboBox()
+        self.crop_box.addItem(tr("records.crop_none"), "")
+        from fieldshift.crops import _load, crop_name
+        for crop in _load():
+            self.crop_box.addItem(crop_name(crop["id"]), crop["id"])
         self.time_box = QtWidgets.QDateTimeEdit(QtCore.QDateTime.currentDateTime())
         self.time_box.setCalendarPopup(True)
         self.time_box.setDisplayFormat("yyyy-MM-dd HH:mm")
@@ -55,6 +61,7 @@ class RecordsDialog(CenteredDialog):
         form = QtWidgets.QFormLayout()
         form.addRow(tr("records.col.kind"), self.kind_box)
         form.addRow(tr("records.col.value"), self.value_box)
+        form.addRow(tr("records.col.crop"), self.crop_box)
         form.addRow(tr("records.col.time"), self.time_box)
         form.addRow(tr("records.col.note"), self.note_box)
         box = QtWidgets.QGroupBox(tr("records.new"))
@@ -82,7 +89,11 @@ class RecordsDialog(CenteredDialog):
         for row, record in enumerate(self.records):
             unit, decimals = KINDS[record.kind][0], KINDS[record.kind][1]
             value = "—" if record.value is None else f"{record.value:.{decimals}f} {unit}".strip()
-            cells = (record.time.replace("T", " "), tr(f"records.kind.{record.kind}"), value,
+            what = tr(f"records.kind.{record.kind}")
+            if record.crop:
+                from fieldshift.crops import crop_name
+                what += f" · {crop_name(record.crop)}"
+            cells = (record.time.replace("T", " "), what, value,
                      tr(f"records.origin.{record.origin}"), record.note)
             for column, text in enumerate(cells):
                 self.table.setItem(row, column, QtWidgets.QTableWidgetItem(text))
@@ -96,7 +107,8 @@ class RecordsDialog(CenteredDialog):
         has_value = KINDS[kind][3]
         record = Record(self.time_box.dateTime().toString("yyyy-MM-ddTHH:mm"), kind,
                         self.value_box.value() if has_value else None,
-                        self.note_box.text().strip())
+                        self.note_box.text().strip(),
+                        crop=self.crop_box.currentData() if kind in CROP_KINDS else "")
         self.fields.add_record(self.layer_id, record)
         self.note_box.clear()
         self.fill()
@@ -122,3 +134,4 @@ class RecordsDialog(CenteredDialog):
         self.value_box.setEnabled(has_value)
         self.value_box.setDecimals(decimals)
         self.value_box.setSuffix(f" {unit}" if unit else "")
+        self.crop_box.setEnabled(kind in CROP_KINDS)

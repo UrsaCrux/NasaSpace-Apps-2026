@@ -53,6 +53,11 @@ class ErrorBox(QtWidgets.QFrame):
 
 _STYLE = """
 QFrame#fieldPanel { background: #f4f6f4; }
+QComboBox#fieldChooser { color: #1b1b1b; background: white; border: 1px solid #c9d1c9;
+                         border-radius: 4px; padding: 4px 8px; font-weight: bold; }
+QComboBox#fieldChooser QAbstractItemView { color: #1b1b1b; background: white;
+                                           selection-background-color: #c8e6c9;
+                                           selection-color: #1b1b1b; }
 QScrollArea, QWidget#panelContent { background: transparent; border: none; }
 QPushButton#period { border: 1px solid #9aa39a; padding: 3px 10px; background: white; }
 QPushButton#period:checked { background: #00796b; color: white; border-color: #00796b; }
@@ -87,7 +92,9 @@ class FieldPanel(QtWidgets.QFrame):
 
         title = QtWidgets.QLabel(f"<b>{tr(self.title_key)}</b>")
         title.setStyleSheet("font-size: 17px;")
+        # drawn by the style sheet (the native macOS combo showed no text here)
         self.field_box = QtWidgets.QComboBox()
+        self.field_box.setObjectName("fieldChooser")
         self.field_box.setMinimumWidth(160)
         self.field_box.setToolTip(tr("status.field_tooltip"))
         self.field_box.activated.connect(self._on_field_chosen)

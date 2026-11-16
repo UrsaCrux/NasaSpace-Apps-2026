@@ -38,7 +38,8 @@ EDITED = "edited"              # a value changed in "Edit field"
 
 
 # one record: time "YYYY-MM-DDTHH:MM" (local), kind (a KINDS key), value
-# (None for events such as sowing), a free note and how it was made
+# (None for events such as sowing), a free note, how it was made and, for
+# sowing / harvest, the crop id (crops.json) sown or harvested
 @dataclass(frozen=True)
 class Record:
     time: str
@@ -46,6 +47,7 @@ class Record:
     value: float = None
     note: str = ""
     origin: str = MEASURED
+    crop: str = ""
 
     # ()
     # the date part, "YYYY-MM-DD"
@@ -79,7 +81,8 @@ def parse_records(raw):
             continue
         if kind in KINDS:
             records.append(Record(time, kind, value, str(item.get("note") or ""),
-                                  EDITED if item.get("origin") == EDITED else MEASURED))
+                                  EDITED if item.get("origin") == EDITED else MEASURED,
+                                  str(item.get("crop") or "")))
     return tuple(sorted(records, key=lambda r: r.time))
 
 
@@ -94,6 +97,22 @@ def dump_records(records):
 def latest(records, kind, date=None):
     found = [r for r in records if r.kind == kind and (date is None or r.date() == date)]
     return found[-1] if found else None
+
+
+# kinds that name a crop
+CROP_KINDS = ("sowing", "harvest")
+
+
+# (tuple records, str today, int years = 3)
+# crop ids sown or harvested in the last years (newest first, no repeats)
+def past_crops(records, today, years=3):
+    since = f"{int(today[:4]) - years}{today[4:10]}"
+    out = []
+    for record in reversed(records):
+        if record.kind in CROP_KINDS and record.crop and record.time[:10] >= since \
+                and record.crop not in out:
+            out.append(record.crop)
+    return out
 
 
 # (tuple records, str kind)

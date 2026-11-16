@@ -406,11 +406,14 @@ def _field_climate(field):
 # cereal / legume / break-crop rotation and a soil-building one
 def run_rotation(field):
     from concurrent.futures import ThreadPoolExecutor
+    from fieldshift.crops import rotation
+    from fieldshift.fields.records import past_crops
     try:
         climate = _field_climate(field)
     except Exception as exc:
         return unavailable("rotation", field, ROTATION_SOURCES, exc)
-    candidates = CEREALS + LEGUMES + SOIL_BUILDERS + BREAK_CROPS
+    candidates = tuple(dict.fromkeys(CEREALS + LEGUMES + SOIL_BUILDERS + BREAK_CROPS
+                                     + rotation.COVER_GRASSES))
     with ThreadPoolExecutor(max_workers=8) as pool:
         infos = dict(zip(candidates, pool.map(
             lambda c: sources.crop_requirements_of(crops.ecocrop_name(f"{c}.v1")), candidates)))
@@ -420,64 +423,136 @@ def run_rotation(field):
     if not scores:
         return unavailable("rotation", field, ROTATION_SOURCES, "no EcoCrop data")
 
-    def best(group, exclude=()):
-        ranked = sorted((c for c in group if c in scores and c not in exclude),
+    # the current crop: its id, data sheet, score and role
+    current_value = _value(field, "crop")
+    variety = crops.variety_by_id(current_value) if current_value else None
+    current = variety.crop if variety else None
+    current_info = _safe(lambda: sources.crop_requirements(field))
+    current_score = crop_score(current_info, climate, soil, irrigated) if current_info else None
+    current_name = f"crop.{current}" if current else \
+        ((field.data or {}).get("crop") or {}).get("name", "")
+    today = sources.today()
+    # families grown lately (the current crop and the farmer's sowing records)
+    recent = ([current] if current else []) + past_crops(field.records, today.isoformat())
+    recent_families = {rotation.family_of(c, infos.get(c)) for c in recent} - {""}
+    if current_info is not None and current_info.family:
+        recent_families.add(current_info.family)
+
+    def best(group, avoid_families=(), exclude=()):
+        ranked = sorted((c for c in group if c in scores and c not in exclude
+                         and rotation.family_of(c, infos.get(c)) not in avoid_families),
                         key=lambda c: -scores[c][0])
         return ranked[0] if ranked else None
 
-    plan = [c for c in (best(CEREALS), best(LEGUMES), best(BREAK_CROPS)) if c]
-    soil_plan = [c for c in (best(SOIL_BUILDERS), best(CEREALS, plan[:1]), best(LEGUMES, plan))
-                 if c]
-    plan_score = round(sum(scores[c][0] for c in plan) / len(plan))
-    soil_score = round(sum(scores[c][0] for c in soil_plan) / len(soil_plan)) if soil_plan else 0
-    current_value = _value(field, "crop")
-    current_crop = crops.variety_by_id(current_value).crop if crops.variety_by_id(current_value) \
-        else None
-    current_info = _safe(lambda: sources.crop_requirements(field))
-    current_score = crop_score(current_info, climate, soil, irrigated)[0] if current_info \
-        else None
-    first = plan[0]
-    sow = scores[first][1]
-    # month-by-month temperature suitability of the first crop, next 12 months
-    today = sources.today()
-    dates, values = [], []
-    for i in range(12):
-        m = (today.month + i) % 12 + 1
-        y = today.year + (today.month + i) // 12
-        dates.append(f"{y}-{m:02d}")
-        values.append(round(100 * _ramp(climate["temps"][m - 1], infos[first].temperature)))
-    grids = tuple(tuple(tuple(float(v) for _ in range(sources.GRID)) for _ in range(sources.GRID))
-                  for v in values)
-    series = Series("analysis.var.suitability", "%", tuple(dates), tuple(values))
-    frames = MapFrames("analysis.var.suitability", "%", tuple(dates), grids, 0.0, 100.0,
-                       "suitability")
-    arrow = " → ".join(f"crop.{c}" for c in plan)
-    metrics = [
-        Metric("analysis.rotation.m.plan", arrow, LEVEL_NEUTRAL),
-        Metric("analysis.rotation.m.score", f"{plan_score} %",
-               LEVEL_GOOD if plan_score >= 65 else LEVEL_WARNING),
-        Metric("analysis.rotation.m.alternative",
-               " → ".join(f"crop.{c}" for c in soil_plan) + f" ({soil_score} %)"),
-        Metric("analysis.rotation.m.current",
-               f"{current_score} %" if current_score is not None else "—",
-               LEVEL_NEUTRAL if current_score is None else
-               LEVEL_GOOD if current_score >= 65 else LEVEL_WARNING),
-        Metric("analysis.rotation.m.sowing", f"month.{sow}"),
-    ]
-    recs = [Recommendation("analysis.rotation.r.season1",
-                           {"crop": f"crop.{plan[0]}", "month": f"month.{sow}"}, PRIORITY_HIGH)]
-    for i, c in enumerate(plan[1:], start=2):
-        recs.append(Recommendation(f"analysis.rotation.r.season{i}", {"crop": f"crop.{c}"},
-                                   PRIORITY_MEDIUM))
-    if current_crop or current_value:
-        name = f"crop.{current_crop}" if current_crop else \
-            ((field.data or {}).get("crop") or {}).get("name", "—")
-        recs.append(Recommendation("analysis.rotation.r.avoid", {"crop": name}, PRIORITY_LOW))
+    def monthly(info):
+        # month-by-month temperature suitability of a crop, next 12 months (%)
+        dates, values = [], []
+        for i in range(12):
+            m = (today.month + i) % 12 + 1
+            y = today.year + (today.month + i) // 12
+            dates.append(f"{y}-{m:02d}")
+            values.append(round(100 * min(1.0, _ramp(climate["temps"][m - 1], info.temperature))))
+        return dates, values
+
+    recs, metrics = [], []
+    if current and rotation.is_perennial(current, current_info) or \
+            (not current and current_info is not None and rotation.is_perennial("", current_info)):
+        # perennial crop: no rotation; cover crops between the rows, and a
+        # break before replanting
+        legume = best(rotation.COVER_LEGUMES)
+        grass = best(rotation.COVER_GRASSES)
+        covers = [c for c in (legume, grass) if c]
+        break_plan = [c for c in (best(CEREALS, recent_families), best(LEGUMES, recent_families))
+                      if c]
+        chart_name, chart_info = current_name, current_info
+        summary, summary_params = "analysis.rotation.summary_perennial", {"crop": current_name}
+        metrics = [
+            Metric("analysis.rotation.m.current_type", "analysis.rotation.perennial"),
+            Metric("analysis.rotation.m.current",
+                   f"{current_score[0]} %" if current_score else "—",
+                   LEVEL_NEUTRAL if not current_score else
+                   LEVEL_GOOD if current_score[0] >= 65 else LEVEL_WARNING),
+            Metric("analysis.rotation.m.covers",
+                   " + ".join(f"crop.{c}" for c in covers) or "—"),
+            Metric("analysis.rotation.m.replant", " → ".join(f"crop.{c}" for c in break_plan)
+                   or "—"),
+        ]
+        recs.append(Recommendation("analysis.rotation.r.perennial", {"crop": current_name},
+                                   PRIORITY_HIGH))
+        if legume:
+            recs.append(Recommendation("analysis.rotation.r.cover_legume",
+                                       {"crop": f"crop.{legume}"}, PRIORITY_MEDIUM))
+        if grass:
+            recs.append(Recommendation("analysis.rotation.r.cover_grass",
+                                       {"crop": f"crop.{grass}"}, PRIORITY_MEDIUM))
+        if break_plan:
+            recs.append(Recommendation("analysis.rotation.r.replant",
+                                       {"crops": " → ".join(f"crop.{c}" for c in break_plan)},
+                                       PRIORITY_LOW))
+    else:
+        # annual crop (or none): the next seasons start from the current crop,
+        # never two of one family in a row, alternating the roles
+        role = (rotation.CEREAL if current in CEREALS else rotation.LEGUME if current in LEGUMES
+                else rotation.BREAK if current else None)
+        groups = {rotation.CEREAL: CEREALS, rotation.LEGUME: LEGUMES + SOIL_BUILDERS,
+                  rotation.BREAK: BREAK_CROPS}
+        reasons = {rotation.CEREAL: "analysis.rotation.why.cereal",
+                   rotation.LEGUME: "analysis.rotation.why.legume",
+                   rotation.BREAK: "analysis.rotation.why.break"}
+        plan, roles, used = [], [], set(recent_families)
+        for next_role in (rotation.NEXT_ROLE[role], rotation.THIRD_ROLE[role],
+                          rotation.NEXT_ROLE[rotation.THIRD_ROLE[role]]):
+            crop = best(groups[next_role], used, plan) or best(groups[next_role], (), plan)
+            if crop:
+                plan.append(crop)
+                roles.append(next_role)
+                used = {rotation.family_of(crop, infos.get(crop))}
+        if not plan:
+            return unavailable("rotation", field, ROTATION_SOURCES, "no suitable crop")
+        plan_score = round(sum(scores[c][0] for c in plan) / len(plan))
+        chart_name, chart_info = f"crop.{plan[0]}", infos[plan[0]]
+        summary = "analysis.rotation.summary_after" if current_name else "analysis.rotation.summary"
+        summary_params = {"first": f"crop.{plan[0]}", "score": str(plan_score),
+                          "crop": current_name}
+        metrics = [
+            Metric("analysis.rotation.m.current_type",
+                   "analysis.rotation.annual" if current_name else "—"),
+            Metric("analysis.rotation.m.plan_from", " → ".join(
+                ([current_name] if current_name else []) + [f"crop.{c}" for c in plan])),
+            Metric("analysis.rotation.m.score", f"{plan_score} %",
+                   LEVEL_GOOD if plan_score >= 65 else LEVEL_WARNING),
+            Metric("analysis.rotation.m.current",
+                   f"{current_score[0]} %" if current_score else "—",
+                   LEVEL_NEUTRAL if not current_score else
+                   LEVEL_GOOD if current_score[0] >= 65 else LEVEL_WARNING),
+            Metric("analysis.rotation.m.sowing", f"month.{scores[plan[0]][1]}"),
+        ]
+        for i, (crop, crop_role) in enumerate(zip(plan, roles), start=1):
+            recs.append(Recommendation(
+                "analysis.rotation.r.season", {
+                    "n": str(i), "crop": f"crop.{crop}", "why": reasons[crop_role],
+                    "score": str(scores[crop][0]),
+                    "month": f"month.{scores[crop][1]}"},
+                PRIORITY_HIGH if i == 1 else PRIORITY_MEDIUM))
+        if current_name:
+            recs.append(Recommendation("analysis.rotation.r.avoid", {"crop": current_name},
+                                       PRIORITY_LOW))
     if not irrigated and climate["rain"] < 600:
         recs.append(Recommendation("analysis.rotation.r.rainfed",
                                    {"mm": f"{climate['rain']:.0f}"}, PRIORITY_MEDIUM))
     recs.append(Recommendation("analysis.rotation.r.data", {}, PRIORITY_LOW))
+
+    series = frames = None
+    if chart_info is not None:
+        dates, values = monthly(chart_info)
+        grids = tuple(tuple(tuple(float(v) for _ in range(sources.GRID))
+                            for _ in range(sources.GRID)) for v in values)
+        series = Series("analysis.var.suitability_of", "%", tuple(dates), tuple(values),
+                        {"crop": chart_name})
+        frames = MapFrames("analysis.var.suitability", "%", tuple(dates), grids, 0.0, 100.0,
+                           "suitability")
     return AnalysisResult("rotation", field.name, ROTATION_SOURCES, series, frames,
-                          tuple(metrics), "analysis.rotation.summary",
-                          {"first": f"crop.{first}", "score": str(plan_score)}, tuple(recs),
+                          tuple(metrics), summary, summary_params, tuple(recs),
                           placeholder=False)
+
+

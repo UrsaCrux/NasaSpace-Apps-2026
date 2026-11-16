@@ -34,7 +34,8 @@ class TrendsPanel(FieldPanel):
     def build(self, report):
         self.sections = {}
         first, last = report.months[0], report.months[-1]
-        self.info_label.setText(tr("trends.info", start=long_month(first), end=long_month(last)))
+        self.info_label.setText(f"<b>{report.field_name}</b> · "
+                                + tr("trends.info", start=long_month(first), end=long_month(last)))
         if report.milestones:
             self.milestones = MilestonesCard(report.milestones)
             self.content_layout.addWidget(self.milestones)

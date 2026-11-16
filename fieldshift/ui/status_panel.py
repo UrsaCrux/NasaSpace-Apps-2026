@@ -43,8 +43,9 @@ class StatusPanel(FieldPanel):
 
     def build(self, report):
         day = report.forecast.days[0]
-        self.info_label.setText(tr("status.info_today", date=format_date(day.date),
-                                   time=report.forecast.now[11:16] or "—"))
+        self.info_label.setText(f"<b>{report.field_name}</b> · " + tr(
+            "status.info_today", date=format_date(day.date),
+            time=report.forecast.now[11:16] or "—"))
         today = QtWidgets.QLabel(f"<b>{tr('status.today')}</b>")
         today.setStyleSheet("font-size: 15px;")
         self.content_layout.addWidget(today)

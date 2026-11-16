@@ -59,6 +59,13 @@ def palette_color(palette, t):
     return QtGui.QColor(stops[-1][1])
 
 
+# (Series series)
+# the series name in the current language, with its parameters ("of Barley")
+def series_title(series):
+    params = {k: localize(v) for k, v in (getattr(series, "label_params", None) or {}).items()}
+    return tr(series.label_key, **params)
+
+
 def _number(value, unit):
     text = f"{value:g}"
     return f"{text} {unit}" if unit else text
@@ -86,15 +93,22 @@ class LineChart(QtWidgets.QWidget):
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         metrics = self.fontMetrics()
-        left, right = metrics.horizontalAdvance("-000.0") + 8, 10
-        top, bottom = 10, metrics.height() + 8
+        unit = self.series.unit
+        data_low, data_high = min(values), max(values)
+        if unit == "%":
+            low, high = 0.0, 100.0            # a share: always the whole 0-100 scale
+        else:
+            low, high = data_low, data_high
+            if high == low:
+                high, low = high + 1, low - 1
+            pad = (high - low) * 0.08
+            low, high = low - pad, high + pad
+        labels = [_number(round(v, 1), unit) for v in (low, high)] if unit == "%" else \
+            [_number(round(v, 1), unit) for v in (data_low, data_high)]
+        left = max(metrics.horizontalAdvance(t) for t in labels) + 10
+        right, top, bottom = 10, metrics.height() + 12, metrics.height() + 8
         plot = QtCore.QRectF(left, top, self.width() - left - right,
                              self.height() - top - bottom)
-        low, high = min(values), max(values)
-        if high == low:
-            high, low = high + 1, low - 1
-        pad = (high - low) * 0.08
-        low, high = low - pad, high + pad
 
         def point(i, v):
             x = plot.left() + plot.width() * i / max(1, len(values) - 1)
@@ -106,12 +120,22 @@ class LineChart(QtWidgets.QWidget):
         painter.drawRect(plot)
         if low < 0 < high:
             painter.drawLine(point(0, 0), point(len(values) - 1, 0))
+        # title (with the unit), and the value scale on the left: 0 and 100
+        # for shares, else the lowest and highest value with dashed guides
         painter.setPen(_INK)
-        painter.drawText(QtCore.QRectF(0, plot.top() - 2, left - 6, metrics.height()),
-                         QtCore.Qt.AlignmentFlag.AlignRight, f"{high:.1f}")
-        painter.drawText(QtCore.QRectF(0, plot.bottom() - metrics.height() + 2, left - 6,
-                                       metrics.height()),
-                         QtCore.Qt.AlignmentFlag.AlignRight, f"{low:.1f}")
+        title = series_title(self.series) + (f" ({unit})" if unit else "")
+        painter.drawText(QtCore.QPointF(2, metrics.ascent() + 2), metrics.elidedText(
+            title, QtCore.Qt.TextElideMode.ElideRight, int(self.width() - 4)))
+        marks = (low, high) if unit == "%" else (data_low, data_high)
+        for v, text in zip(marks, labels):
+            if unit != "%":
+                painter.setPen(QtGui.QPen(_GRID, 1, QtCore.Qt.PenStyle.DashLine))
+                painter.drawLine(point(0, v), point(len(values) - 1, v))
+                painter.setPen(_INK)
+            painter.drawText(QtCore.QRectF(0, point(0, v).y() - metrics.height() / 2, left - 6,
+                                           metrics.height()),
+                             QtCore.Qt.AlignmentFlag.AlignRight
+                             | QtCore.Qt.AlignmentFlag.AlignVCenter, text)
         dates = self.series.dates
         painter.drawText(QtCore.QPointF(plot.left(), self.height() - 4), format_date(dates[0]))
         last = format_date(dates[-1])

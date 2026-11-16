@@ -36,6 +36,7 @@ class Series:
     unit: str
     dates: tuple
     values: tuple
+    label_params: dict = field(default_factory=dict)    # fills label_key ("{crop}")
 
 
 # what the map shows over time: for each date a square grid of values

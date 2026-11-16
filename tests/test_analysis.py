@@ -343,13 +343,29 @@ class RealAnalysesTest(unittest.TestCase):
         self.assertEqual(limit(general), "32 °C")
         self.assertEqual(limit(crop), "26 °C (EcoCrop)")       # fake crop: optimum up to 26
 
-    def test_rotation_compares_three_strategies(self):
+    def test_rotation_starts_from_the_current_crop(self):
+        from fieldshift.crops.rotation import family_of
         result = self.run_analysis("rotation", {"crop": {"value": "maize.v1", "source": "user"},
                                                 "irrigated": {"value": True, "source": "user"}})
         labels = [m.label_key.rsplit(".", 1)[-1] for m in result.metrics]
-        self.assertEqual(labels[:4], ["plan", "score", "alternative", "current"])
-        self.assertEqual(result.metrics[0].value.count("→"), 2)     # three seasons
+        self.assertEqual(labels, ["current_type", "plan_from", "score", "current", "sowing"])
+        plan = result.metrics[1].value.split(" → ")
+        self.assertEqual(plan[0], "crop.maize")
+        self.assertEqual(len(plan), 4)                                # three seasons after it
+        seasons = [p.split(".", 1)[1] for p in plan]
+        for before, after in zip(seasons, seasons[1:]):
+            self.assertNotEqual(family_of(before), family_of(after))  # never one family twice
         self.assertEqual(len(result.series.dates), 12)
+        self.assertEqual(result.series.label_params, {"crop": plan[1]})
+        self.assertTrue(all(0 <= v <= 100 for v in result.series.values))
+
+    def test_perennial_crop_gets_cover_crops_not_a_rotation(self):
+        result = self.run_analysis("rotation", {"crop": {"value": "wine_grape.v1",
+                                                         "source": "user"}})
+        self.assertEqual(result.summary_key, "analysis.rotation.summary_perennial")
+        labels = [m.label_key.rsplit(".", 1)[-1] for m in result.metrics]
+        self.assertIn("covers", labels)
+        self.assertEqual(result.recommendations[0].text_key, "analysis.rotation.r.perennial")
 
     def test_unavailable_data_is_said_not_invented(self):
         from fieldshift.analysis import sources
