@@ -19,7 +19,8 @@ import fake_sources  # noqa: E402
 
 SQUARE = [(-70.70, -33.40), (-70.69, -33.40), (-70.69, -33.41), (-70.70, -33.41)]
 # analyses with real data (the others are placeholders)
-REAL_ANALYSES = {"texture", "crop_growth", "vegetation", "frost", "water", "heat", "rotation"}
+REAL_ANALYSES = {"texture", "crop_growth", "vegetation", "frost", "water", "heat", "rotation",
+                 "climate_shift"}
 FIELD = Field("Viña", tuple(SQUARE), 100.0, "2026-01-01T00:00:00+00:00", None)
 
 

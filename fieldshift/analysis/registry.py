@@ -1,5 +1,5 @@
 """The ONE list of analyses the user can choose. All use real data
-(fieldshift/analysis/real.py, texture.py, crop_growth.py); placeholders.py
+(fieldshift/analysis/real.py, texture.py, crop_growth.py, climate_shift.py); placeholders.py
 keeps the old made-up versions for UI tests.
 
 To add an analysis: write its run(field) function (returning an
@@ -10,6 +10,8 @@ follow this list.
 
 from fieldshift.analysis import real
 from fieldshift.analysis.crop_growth import SOURCES_BASE as CROP_GROWTH_SOURCES
+from fieldshift.analysis.climate_shift import SOURCES as CLIMATE_SHIFT_SOURCES
+from fieldshift.analysis.climate_shift import run_climate_shift
 from fieldshift.analysis.crop_growth import run_crop_growth
 from fieldshift.analysis.models import Analysis
 from fieldshift.analysis.texture import SOURCES as TEXTURE_SOURCES
@@ -30,6 +32,8 @@ ANALYSES = (
              "analysis.texture.description", TEXTURE_SOURCES, run_texture),
     Analysis("crop_growth", "analysis.crop_growth.title", "analysis.crop_growth.short",
              "analysis.crop_growth.description", CROP_GROWTH_SOURCES, run_crop_growth),
+    Analysis("climate_shift", "analysis.climate_shift.title", "analysis.climate_shift.short",
+             "analysis.climate_shift.description", CLIMATE_SHIFT_SOURCES, run_climate_shift),
     Analysis("rotation", "analysis.rotation.title", "analysis.rotation.short",
              "analysis.rotation.description", real.ROTATION_SOURCES, real.run_rotation),
 )

@@ -1,596 +1,629 @@
 {
- "_comment": "PLACEHOLDER catalogue: crop names are real, the varieties are made up ('variety 1', 'variety 2'...). Ids: '<crop id>.v<number>'. 'ecocrop' is the crop's scientific name in FAO EcoCrop (description, picture, requirements).",
- "crops": [
-  {
-   "id": "peach",
-   "names": {
-    "en": "Peach",
-    "es": "Durazno"
-   },
-   "aliases": {
-    "es": [
-     "melocotón"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Prunus persica"
-  },
-  {
-   "id": "nectarine",
-   "names": {
-    "en": "Nectarine",
-    "es": "Nectarín"
-   },
-   "aliases": {
-    "es": [
-     "nectarina"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Prunus persica"
-  },
-  {
-   "id": "plum",
-   "names": {
-    "en": "Plum",
-    "es": "Ciruelo"
-   },
-   "aliases": {
-    "es": [
-     "ciruela"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Prunus domestica"
-  },
-  {
-   "id": "cherry",
-   "names": {
-    "en": "Cherry",
-    "es": "Cerezo"
-   },
-   "aliases": {
-    "es": [
-     "cereza"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Prunus avium"
-  },
-  {
-   "id": "apple",
-   "names": {
-    "en": "Apple",
-    "es": "Manzano"
-   },
-   "aliases": {
-    "es": [
-     "manzana"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Malus domestica"
-  },
-  {
-   "id": "pear",
-   "names": {
-    "en": "Pear",
-    "es": "Peral"
-   },
-   "aliases": {
-    "es": [
-     "pera"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Pyrus communis"
-  },
-  {
-   "id": "apricot",
-   "names": {
-    "en": "Apricot",
-    "es": "Damasco"
-   },
-   "aliases": {
-    "es": [
-     "albaricoque",
-     "chabacano"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Prunus armeniaca"
-  },
-  {
-   "id": "table_grape",
-   "names": {
-    "en": "Table grape",
-    "es": "Uva de mesa"
-   },
-   "varieties": 3,
-   "ecocrop": "Vitis vinifera"
-  },
-  {
-   "id": "wine_grape",
-   "names": {
-    "en": "Wine grape",
-    "es": "Uva vinífera"
-   },
-   "aliases": {
-    "es": [
-     "vid",
-     "parra"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Vitis vinifera"
-  },
-  {
-   "id": "blueberry",
-   "names": {
-    "en": "Blueberry",
-    "es": "Arándano"
-   },
-   "varieties": 3,
-   "ecocrop": "Vaccinium corymbosum"
-  },
-  {
-   "id": "raspberry",
-   "names": {
-    "en": "Raspberry",
-    "es": "Frambuesa"
-   },
-   "varieties": 3,
-   "ecocrop": "Rubus idaeus ssp. idaeus"
-  },
-  {
-   "id": "strawberry",
-   "names": {
-    "en": "Strawberry",
-    "es": "Frutilla"
-   },
-   "aliases": {
-    "es": [
-     "fresa"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Fragaria x ananassa"
-  },
-  {
-   "id": "avocado",
-   "names": {
-    "en": "Avocado",
-    "es": "Palto"
-   },
-   "aliases": {
-    "es": [
-     "palta",
-     "aguacate"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Persea americana"
-  },
-  {
-   "id": "walnut",
-   "names": {
-    "en": "Walnut",
-    "es": "Nogal"
-   },
-   "aliases": {
-    "es": [
-     "nuez"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Juglans regia"
-  },
-  {
-   "id": "almond",
-   "names": {
-    "en": "Almond",
-    "es": "Almendro"
-   },
-   "aliases": {
-    "es": [
-     "almendra"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Prunus amygdalus"
-  },
-  {
-   "id": "hazelnut",
-   "names": {
-    "en": "Hazelnut",
-    "es": "Avellano europeo"
-   },
-   "aliases": {
-    "es": [
-     "avellana"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Corylus avellana"
-  },
-  {
-   "id": "olive",
-   "names": {
-    "en": "Olive",
-    "es": "Olivo"
-   },
-   "aliases": {
-    "es": [
-     "aceituna",
-     "oliva"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Olea europaea"
-  },
-  {
-   "id": "lemon",
-   "names": {
-    "en": "Lemon",
-    "es": "Limonero"
-   },
-   "aliases": {
-    "es": [
-     "limón"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Citrus limon"
-  },
-  {
-   "id": "orange",
-   "names": {
-    "en": "Orange",
-    "es": "Naranjo"
-   },
-   "aliases": {
-    "es": [
-     "naranja"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Citrus sinensis"
-  },
-  {
-   "id": "mandarin",
-   "names": {
-    "en": "Mandarin",
-    "es": "Mandarino"
-   },
-   "aliases": {
-    "es": [
-     "mandarina",
-     "clementina"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Citrus reticulata"
-  },
-  {
-   "id": "kiwi",
-   "names": {
-    "en": "Kiwifruit",
-    "es": "Kiwi"
-   },
-   "aliases": {
-    "en": [
-     "kiwi"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Actinidia chinensis"
-  },
-  {
-   "id": "wheat",
-   "names": {
-    "en": "Wheat",
-    "es": "Trigo"
-   },
-   "varieties": 3,
-   "ecocrop": "Triticum aestivum"
-  },
-  {
-   "id": "maize",
-   "names": {
-    "en": "Maize",
-    "es": "Maíz"
-   },
-   "aliases": {
-    "en": [
-     "corn"
-    ],
-    "es": [
-     "choclo"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Zea mays"
-  },
-  {
-   "id": "rice",
-   "names": {
-    "en": "Rice",
-    "es": "Arroz"
-   },
-   "varieties": 3,
-   "ecocrop": "Oryza sativa"
-  },
-  {
-   "id": "oat",
-   "names": {
-    "en": "Oat",
-    "es": "Avena"
-   },
-   "varieties": 3,
-   "ecocrop": "Avena sativa"
-  },
-  {
-   "id": "barley",
-   "names": {
-    "en": "Barley",
-    "es": "Cebada"
-   },
-   "varieties": 3,
-   "ecocrop": "Hordeum vulgare"
-  },
-  {
-   "id": "canola",
-   "names": {
-    "en": "Canola",
-    "es": "Raps"
-   },
-   "aliases": {
-    "en": [
-     "rapeseed"
-    ],
-    "es": [
-     "canola",
-     "colza"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Brassica napus"
-  },
-  {
-   "id": "lupin",
-   "names": {
-    "en": "Lupin",
-    "es": "Lupino"
-   },
-   "aliases": {
-    "es": [
-     "lupín",
-     "altramuz"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Lupinus albus"
-  },
-  {
-   "id": "bean",
-   "names": {
-    "en": "Common bean",
-    "es": "Poroto"
-   },
-   "aliases": {
-    "en": [
-     "bean"
-    ],
-    "es": [
-     "frijol",
-     "judía"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Phaseolus vulgaris"
-  },
-  {
-   "id": "chickpea",
-   "names": {
-    "en": "Chickpea",
-    "es": "Garbanzo"
-   },
-   "varieties": 3,
-   "ecocrop": "Cicer arietinum"
-  },
-  {
-   "id": "lentil",
-   "names": {
-    "en": "Lentil",
-    "es": "Lenteja"
-   },
-   "varieties": 3,
-   "ecocrop": "Lens culinaris"
-  },
-  {
-   "id": "pea",
-   "names": {
-    "en": "Pea",
-    "es": "Arveja"
-   },
-   "aliases": {
-    "es": [
-     "guisante"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Pisum sativum"
-  },
-  {
-   "id": "potato",
-   "names": {
-    "en": "Potato",
-    "es": "Papa"
-   },
-   "aliases": {
-    "es": [
-     "patata"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Solanum tuberosum"
-  },
-  {
-   "id": "sugar_beet",
-   "names": {
-    "en": "Sugar beet",
-    "es": "Remolacha azucarera"
-   },
-   "aliases": {
-    "es": [
-     "betarraga"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Beta vulgaris var. saccharifera"
-  },
-  {
-   "id": "tomato",
-   "names": {
-    "en": "Tomato",
-    "es": "Tomate"
-   },
-   "varieties": 3,
-   "ecocrop": "Lycopersicon esculentum"
-  },
-  {
-   "id": "onion",
-   "names": {
-    "en": "Onion",
-    "es": "Cebolla"
-   },
-   "varieties": 3,
-   "ecocrop": "Allium cepa"
-  },
-  {
-   "id": "garlic",
-   "names": {
-    "en": "Garlic",
-    "es": "Ajo"
-   },
-   "varieties": 3,
-   "ecocrop": "Allium sativum"
-  },
-  {
-   "id": "lettuce",
-   "names": {
-    "en": "Lettuce",
-    "es": "Lechuga"
-   },
-   "varieties": 3,
-   "ecocrop": "Lactuca sativa var. capitata"
-  },
-  {
-   "id": "pumpkin",
-   "names": {
-    "en": "Pumpkin",
-    "es": "Zapallo"
-   },
-   "aliases": {
-    "es": [
-     "calabaza"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Cucurbita maxima"
-  },
-  {
-   "id": "sunflower",
-   "names": {
-    "en": "Sunflower",
-    "es": "Maravilla"
-   },
-   "aliases": {
-    "es": [
-     "girasol"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Helianthus annuus"
-  },
-  {
-   "id": "alfalfa",
-   "names": {
-    "en": "Alfalfa",
-    "es": "Alfalfa"
-   },
-   "aliases": {
-    "en": [
-     "lucerne"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Medicago sativa"
-  },
-  {
-   "id": "red_clover",
-   "names": {
-    "en": "Red clover",
-    "es": "Trébol rosado"
-   },
-   "aliases": {
-    "es": [
-     "trébol rojo"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Trifolium pratense"
-  },
-  {
-   "id": "ryegrass",
-   "names": {
-    "en": "Ryegrass",
-    "es": "Ballica"
-   },
-   "aliases": {
-    "es": [
-     "raigrás"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Lolium perenne"
-  },
-  {
-   "id": "vetch",
-   "names": {
-    "en": "Vetch",
-    "es": "Vicia"
-   },
-   "aliases": {
-    "es": [
-     "arvejilla"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Vicia sativa ssp. sativa"
-  },
-  {
-   "id": "quinoa",
-   "names": {
-    "en": "Quinoa",
-    "es": "Quínoa"
-   },
-   "aliases": {
-    "es": [
-     "quinua"
-    ]
-   },
-   "varieties": 3,
-   "ecocrop": "Chenopodium quinoa"
-  },
-  {
-   "id": "hemp",
-   "names": {
-    "en": "Hemp",
-    "es": "Cáñamo"
-   },
-   "varieties": 3,
-   "ecocrop": "Cannabis sativa ssp. indica"
-  }
- ]
+  "_comment": "PLACEHOLDER catalogue: crop names are real, the varieties are made up ('variety 1', 'variety 2'...). Ids: '<crop id>.v<number>'. 'ecocrop' is the crop's scientific name in FAO EcoCrop (description, picture, requirements). 'variety_names' (optional) names the first varieties with real cultivars (Chile); the rest stay 'variety N'.",
+  "crops": [
+    {
+      "id": "peach",
+      "names": {
+        "en": "Peach",
+        "es": "Durazno"
+      },
+      "aliases": {
+        "es": [
+          "melocotón"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Prunus persica"
+    },
+    {
+      "id": "nectarine",
+      "names": {
+        "en": "Nectarine",
+        "es": "Nectarín"
+      },
+      "aliases": {
+        "es": [
+          "nectarina"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Prunus persica"
+    },
+    {
+      "id": "plum",
+      "names": {
+        "en": "Plum",
+        "es": "Ciruelo"
+      },
+      "aliases": {
+        "es": [
+          "ciruela"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Prunus domestica"
+    },
+    {
+      "id": "cherry",
+      "names": {
+        "en": "Cherry",
+        "es": "Cerezo"
+      },
+      "aliases": {
+        "es": [
+          "cereza"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Prunus avium",
+      "variety_names": [
+        "Santina",
+        "Lapins",
+        "Regina"
+      ]
+    },
+    {
+      "id": "apple",
+      "names": {
+        "en": "Apple",
+        "es": "Manzano"
+      },
+      "aliases": {
+        "es": [
+          "manzana"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Malus domestica",
+      "variety_names": [
+        "Gala",
+        "Fuji",
+        "Pink Lady"
+      ]
+    },
+    {
+      "id": "pear",
+      "names": {
+        "en": "Pear",
+        "es": "Peral"
+      },
+      "aliases": {
+        "es": [
+          "pera"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Pyrus communis"
+    },
+    {
+      "id": "apricot",
+      "names": {
+        "en": "Apricot",
+        "es": "Damasco"
+      },
+      "aliases": {
+        "es": [
+          "albaricoque",
+          "chabacano"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Prunus armeniaca"
+    },
+    {
+      "id": "table_grape",
+      "names": {
+        "en": "Table grape",
+        "es": "Uva de mesa"
+      },
+      "varieties": 3,
+      "ecocrop": "Vitis vinifera",
+      "variety_names": [
+        "Thompson Seedless",
+        "Red Globe",
+        "Crimson Seedless"
+      ]
+    },
+    {
+      "id": "wine_grape",
+      "names": {
+        "en": "Wine grape",
+        "es": "Uva vinífera"
+      },
+      "aliases": {
+        "es": [
+          "vid",
+          "parra"
+        ]
+      },
+      "varieties": 4,
+      "ecocrop": "Vitis vinifera",
+      "variety_names": [
+        "Cabernet Sauvignon",
+        "Carménère",
+        "Merlot",
+        "Sauvignon Blanc"
+      ]
+    },
+    {
+      "id": "blueberry",
+      "names": {
+        "en": "Blueberry",
+        "es": "Arándano"
+      },
+      "varieties": 3,
+      "ecocrop": "Vaccinium corymbosum",
+      "variety_names": [
+        "Duke",
+        "Legacy",
+        "Brigitta"
+      ]
+    },
+    {
+      "id": "raspberry",
+      "names": {
+        "en": "Raspberry",
+        "es": "Frambuesa"
+      },
+      "varieties": 3,
+      "ecocrop": "Rubus idaeus ssp. idaeus"
+    },
+    {
+      "id": "strawberry",
+      "names": {
+        "en": "Strawberry",
+        "es": "Frutilla"
+      },
+      "aliases": {
+        "es": [
+          "fresa"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Fragaria x ananassa"
+    },
+    {
+      "id": "avocado",
+      "names": {
+        "en": "Avocado",
+        "es": "Palto"
+      },
+      "aliases": {
+        "es": [
+          "palta",
+          "aguacate"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Persea americana",
+      "variety_names": [
+        "Hass"
+      ]
+    },
+    {
+      "id": "walnut",
+      "names": {
+        "en": "Walnut",
+        "es": "Nogal"
+      },
+      "aliases": {
+        "es": [
+          "nuez"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Juglans regia",
+      "variety_names": [
+        "Chandler",
+        "Serr"
+      ]
+    },
+    {
+      "id": "almond",
+      "names": {
+        "en": "Almond",
+        "es": "Almendro"
+      },
+      "aliases": {
+        "es": [
+          "almendra"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Prunus amygdalus"
+    },
+    {
+      "id": "hazelnut",
+      "names": {
+        "en": "Hazelnut",
+        "es": "Avellano europeo"
+      },
+      "aliases": {
+        "es": [
+          "avellana"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Corylus avellana"
+    },
+    {
+      "id": "olive",
+      "names": {
+        "en": "Olive",
+        "es": "Olivo"
+      },
+      "aliases": {
+        "es": [
+          "aceituna",
+          "oliva"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Olea europaea"
+    },
+    {
+      "id": "lemon",
+      "names": {
+        "en": "Lemon",
+        "es": "Limonero"
+      },
+      "aliases": {
+        "es": [
+          "limón"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Citrus limon"
+    },
+    {
+      "id": "orange",
+      "names": {
+        "en": "Orange",
+        "es": "Naranjo"
+      },
+      "aliases": {
+        "es": [
+          "naranja"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Citrus sinensis"
+    },
+    {
+      "id": "mandarin",
+      "names": {
+        "en": "Mandarin",
+        "es": "Mandarino"
+      },
+      "aliases": {
+        "es": [
+          "mandarina",
+          "clementina"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Citrus reticulata"
+    },
+    {
+      "id": "kiwi",
+      "names": {
+        "en": "Kiwifruit",
+        "es": "Kiwi"
+      },
+      "aliases": {
+        "en": [
+          "kiwi"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Actinidia chinensis"
+    },
+    {
+      "id": "wheat",
+      "names": {
+        "en": "Wheat",
+        "es": "Trigo"
+      },
+      "varieties": 3,
+      "ecocrop": "Triticum aestivum"
+    },
+    {
+      "id": "maize",
+      "names": {
+        "en": "Maize",
+        "es": "Maíz"
+      },
+      "aliases": {
+        "en": [
+          "corn"
+        ],
+        "es": [
+          "choclo"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Zea mays"
+    },
+    {
+      "id": "rice",
+      "names": {
+        "en": "Rice",
+        "es": "Arroz"
+      },
+      "varieties": 3,
+      "ecocrop": "Oryza sativa"
+    },
+    {
+      "id": "oat",
+      "names": {
+        "en": "Oat",
+        "es": "Avena"
+      },
+      "varieties": 3,
+      "ecocrop": "Avena sativa"
+    },
+    {
+      "id": "barley",
+      "names": {
+        "en": "Barley",
+        "es": "Cebada"
+      },
+      "varieties": 3,
+      "ecocrop": "Hordeum vulgare"
+    },
+    {
+      "id": "canola",
+      "names": {
+        "en": "Canola",
+        "es": "Raps"
+      },
+      "aliases": {
+        "en": [
+          "rapeseed"
+        ],
+        "es": [
+          "canola",
+          "colza"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Brassica napus"
+    },
+    {
+      "id": "lupin",
+      "names": {
+        "en": "Lupin",
+        "es": "Lupino"
+      },
+      "aliases": {
+        "es": [
+          "lupín",
+          "altramuz"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Lupinus albus"
+    },
+    {
+      "id": "bean",
+      "names": {
+        "en": "Common bean",
+        "es": "Poroto"
+      },
+      "aliases": {
+        "en": [
+          "bean"
+        ],
+        "es": [
+          "frijol",
+          "judía"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Phaseolus vulgaris"
+    },
+    {
+      "id": "chickpea",
+      "names": {
+        "en": "Chickpea",
+        "es": "Garbanzo"
+      },
+      "varieties": 3,
+      "ecocrop": "Cicer arietinum"
+    },
+    {
+      "id": "lentil",
+      "names": {
+        "en": "Lentil",
+        "es": "Lenteja"
+      },
+      "varieties": 3,
+      "ecocrop": "Lens culinaris"
+    },
+    {
+      "id": "pea",
+      "names": {
+        "en": "Pea",
+        "es": "Arveja"
+      },
+      "aliases": {
+        "es": [
+          "guisante"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Pisum sativum"
+    },
+    {
+      "id": "potato",
+      "names": {
+        "en": "Potato",
+        "es": "Papa"
+      },
+      "aliases": {
+        "es": [
+          "patata"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Solanum tuberosum"
+    },
+    {
+      "id": "sugar_beet",
+      "names": {
+        "en": "Sugar beet",
+        "es": "Remolacha azucarera"
+      },
+      "aliases": {
+        "es": [
+          "betarraga"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Beta vulgaris var. saccharifera"
+    },
+    {
+      "id": "tomato",
+      "names": {
+        "en": "Tomato",
+        "es": "Tomate"
+      },
+      "varieties": 3,
+      "ecocrop": "Lycopersicon esculentum"
+    },
+    {
+      "id": "onion",
+      "names": {
+        "en": "Onion",
+        "es": "Cebolla"
+      },
+      "varieties": 3,
+      "ecocrop": "Allium cepa"
+    },
+    {
+      "id": "garlic",
+      "names": {
+        "en": "Garlic",
+        "es": "Ajo"
+      },
+      "varieties": 3,
+      "ecocrop": "Allium sativum"
+    },
+    {
+      "id": "lettuce",
+      "names": {
+        "en": "Lettuce",
+        "es": "Lechuga"
+      },
+      "varieties": 3,
+      "ecocrop": "Lactuca sativa var. capitata"
+    },
+    {
+      "id": "pumpkin",
+      "names": {
+        "en": "Pumpkin",
+        "es": "Zapallo"
+      },
+      "aliases": {
+        "es": [
+          "calabaza"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Cucurbita maxima"
+    },
+    {
+      "id": "sunflower",
+      "names": {
+        "en": "Sunflower",
+        "es": "Maravilla"
+      },
+      "aliases": {
+        "es": [
+          "girasol"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Helianthus annuus"
+    },
+    {
+      "id": "alfalfa",
+      "names": {
+        "en": "Alfalfa",
+        "es": "Alfalfa"
+      },
+      "aliases": {
+        "en": [
+          "lucerne"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Medicago sativa"
+    },
+    {
+      "id": "red_clover",
+      "names": {
+        "en": "Red clover",
+        "es": "Trébol rosado"
+      },
+      "aliases": {
+        "es": [
+          "trébol rojo"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Trifolium pratense"
+    },
+    {
+      "id": "ryegrass",
+      "names": {
+        "en": "Ryegrass",
+        "es": "Ballica"
+      },
+      "aliases": {
+        "es": [
+          "raigrás"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Lolium perenne"
+    },
+    {
+      "id": "vetch",
+      "names": {
+        "en": "Vetch",
+        "es": "Vicia"
+      },
+      "aliases": {
+        "es": [
+          "arvejilla"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Vicia sativa ssp. sativa"
+    },
+    {
+      "id": "quinoa",
+      "names": {
+        "en": "Quinoa",
+        "es": "Quínoa"
+      },
+      "aliases": {
+        "es": [
+          "quinua"
+        ]
+      },
+      "varieties": 3,
+      "ecocrop": "Chenopodium quinoa"
+    },
+    {
+      "id": "hemp",
+      "names": {
+        "en": "Hemp",
+        "es": "Cáñamo"
+      },
+      "varieties": 3,
+      "ecocrop": "Cannabis sativa ssp. indica"
+    }
+  ]
 }
