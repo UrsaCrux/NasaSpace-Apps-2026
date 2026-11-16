@@ -1958,6 +1958,97 @@ hidden WOFOST data stored with a field for its crop ("peach.v1", "ecocrop:2175".
 | `WOFOST_CROPS` | WOFOST crop -> (scientific name, default variety, sowing (month, day) in the southern hemisphere, longest season in days). Northern hemisphere: +6 months | 26 |
 | `PROXIES` | catalogue crops simulated with another, similar crop's model ("proxy") | 53 |
 
+## `fieldshift/export/collect.py`
+
+### Classes
+
+#### `ExportOptions`
+
+```python
+class ExportOptions
+```
+
+- **Line:** 8
+
+what the user chose to export. analyses: ids of fieldshift.analysis.ANALYSES
+
+#### `FieldBundle`
+
+```python
+class FieldBundle
+```
+
+- **Line:** 24
+
+everything exported for one field: the reports, or the Exception that explains why one is missing (api.errors.DataError)
+
+### Functions
+
+#### `ExportOptions.offline_only`
+
+```python
+def offline_only(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 17
+
+True when nothing has to be downloaded (fast)
+
+#### `collect`
+
+```python
+def collect(field, options, step=None, cancelled=None)
+```
+
+- **Arguments:** `(Field field, ExportOptions options, callable step = None, callable cancelled = None)`
+- **Line:** 35
+
+downloads / computes the chosen reports of a field. step(text) is called before each part; cancelled() -> True stops early. never raises: a failed part keeps its exception
+
+## `fieldshift/export/write.py`
+
+### Functions
+
+#### `safe_name`
+
+```python
+def safe_name(name)
+```
+
+- **Arguments:** `(str name)`
+- **Line:** 26
+
+a folder / file name safe on every system
+
+#### `write_zip`
+
+```python
+def write_zip(path, bundles, options)
+```
+
+- **Arguments:** `(str path, list bundles, ExportOptions options)`
+- **Line:** 272
+
+writes the ZIP of the fields; returns the names of the files in it
+
+#### `write_analysis_zip`
+
+```python
+def write_analysis_zip(path, result, field)
+```
+
+- **Arguments:** `(str path, AnalysisResult result, Field field)`
+- **Line:** 281
+
+writes the ZIP of one analysis (its report, JSON, CSV and pictures)
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `CHART_SIZE` | size of the chart pictures, pixels | 20 |
+
 ## `fieldshift/fields/manager.py`
 
 ### Classes
@@ -4373,6 +4464,17 @@ def set_playing(self, playing)
 
 starts or stops moving through the dates
 
+#### `AnalysisTab.export`
+
+```python
+def export(self, path=None)
+```
+
+- **Arguments:** `(str path = None)`
+- **Line:** 129
+
+writes this analysis (report, JSON, CSV, pictures) to a ZIP, asking where when no path is given. returns the files written, or []
+
 ### Variables
 
 | Name | Description | Line |
@@ -4918,6 +5020,111 @@ shows a message with an OK button
 |------|-------------|------|
 | `DANGER_STYLE` | style of the button that deletes something | 12 |
 
+## `fieldshift/ui/export_dialog.py`
+
+### Classes
+
+#### `ExportDialog`
+
+```python
+class ExportDialog(CenteredDialog)
+```
+
+- **Line:** 22
+
+the options window; options() / layer_ids() after it is accepted
+
+#### `ExportProgress`
+
+```python
+class ExportProgress(CenteredDialog)
+```
+
+- **Line:** 124
+
+progress window: collects every field in a worker thread, then writes the ZIP (charts are drawn here, in the UI thread). result() after accept
+
+### Functions
+
+#### `ExportDialog.__init__`
+
+```python
+def __init__(self, fields, checked=None, parent=None)
+```
+
+- **Arguments:** `(FieldsManager fields, list checked = None, QWidget parent = None)`
+- **Line:** 25
+
+#### `ExportDialog.apply_preset`
+
+```python
+def apply_preset(self, preset)
+```
+
+- **Arguments:** `(str preset)`
+- **Line:** 86
+
+"geojson" (only the fields), "status_trends" or "all"
+
+#### `ExportDialog.options`
+
+```python
+def options(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 95
+
+the chosen ExportOptions
+
+#### `ExportDialog.layer_ids`
+
+```python
+def layer_ids(self)
+```
+
+- **Arguments:** `()`
+- **Line:** 105
+
+layer ids of the chosen fields
+
+#### `ExportProgress.__init__`
+
+```python
+def __init__(self, fields, options, path, parent=None)
+```
+
+- **Arguments:** `(list fields, ExportOptions options, str path, QWidget parent = None)`
+- **Line:** 127
+
+#### `ask_zip_path`
+
+```python
+def ask_zip_path(parent, default_name)
+```
+
+- **Arguments:** `(QWidget parent, str default_name)`
+- **Line:** 206
+
+asks where to save a ZIP; returns the path or None
+
+#### `export_fields`
+
+```python
+def export_fields(parent, fields, checked=None)
+```
+
+- **Arguments:** `(QWidget parent, FieldsManager fields, list checked = None)`
+- **Line:** 217
+
+the whole flow: options, where to save, progress, done message. returns the files written (empty when cancelled)
+
+### Variables
+
+| Name | Description | Line |
+|------|-------------|------|
+| `OFFLINE_ENV` | when set to "1" (tests) the export runs at once, without the worker | 18 |
+
 ## `fieldshift/ui/field_dialog.py`
 
 ### Classes
@@ -5396,7 +5603,7 @@ fills content_layout with the report (UI thread)
 class FieldsBar(QtWidgets.QFrame)
 ```
 
-- **Line:** 54
+- **Line:** 52
 
 bar placed under the map: draws new fields and exports the checked ones (all of them when none is checked)
 
@@ -5409,7 +5616,7 @@ def __init__(self, view, fields, parent=None)
 ```
 
 - **Arguments:** `(MapView view, FieldsManager fields, QWidget parent = None)`
-- **Line:** 58
+- **Line:** 56
 
 builds the bar and listens to the drawing events of the view
 
@@ -5420,7 +5627,7 @@ def set_mode(self, mode)
 ```
 
 - **Arguments:** `(str mode)`
-- **Line:** 124
+- **Line:** 122
 
 marks "My fields" ("fields"), "Status" ("status") or "Trends" ("trends") as the one shown
 
@@ -5428,14 +5635,14 @@ marks "My fields" ("fields"), "Status" ("status") or "Trends" ("trends") as the 
 
 | Name | Description | Line |
 |------|-------------|------|
-| `BAR_STYLE` | look of the bar and of its main button | 18 |
-| `DRAW_STYLE` | the floating "Draw field" button | 42 |
-| `DRAW_MARGIN_PX` | distance (pixels) of the "Draw field" button from the bottom-right corner | 49 |
-| `FieldsBar.draw_button` | over the bottom-right corner of the map | 66 |
-| `FieldsBar.mode` | what the right column shows: "My fields", "Status" or "Trends" | 74 |
-| `FieldsBar.fields_requested` | emitted with no arguments when the user clicks "My fields" | 76 |
-| `FieldsBar.analyze_requested` | emitted with no arguments when the user clicks "Analyze…" | 86 |
-| `FieldsBar.status_requested` | emitted with no arguments when the user clicks "Status" / "Trends" | 91 |
+| `BAR_STYLE` | look of the bar and of its main button | 16 |
+| `DRAW_STYLE` | the floating "Draw field" button | 40 |
+| `DRAW_MARGIN_PX` | distance (pixels) of the "Draw field" button from the bottom-right corner | 47 |
+| `FieldsBar.draw_button` | over the bottom-right corner of the map | 64 |
+| `FieldsBar.mode` | what the right column shows: "My fields", "Status" or "Trends" | 72 |
+| `FieldsBar.fields_requested` | emitted with no arguments when the user clicks "My fields" | 74 |
+| `FieldsBar.analyze_requested` | emitted with no arguments when the user clicks "Analyze…" | 84 |
+| `FieldsBar.status_requested` | emitted with no arguments when the user clicks "Status" / "Trends" | 89 |
 
 ## `fieldshift/ui/fields_data.py`
 

@@ -123,6 +123,26 @@ class AnalysisTab(QtWidgets.QWidget):
 
     # -- building blocks ---------------------------------------------------
 
+    # (str path = None)
+    # writes this analysis (report, JSON, CSV, pictures) to a ZIP, asking
+    # where when no path is given. returns the files written, or []
+    def export(self, path=None):
+        from fieldshift.export.write import safe_name, write_analysis_zip
+        from fieldshift.ui import dialogs
+        from fieldshift.ui.export_dialog import ask_zip_path
+        if path is None:
+            path = ask_zip_path(self, f"PACHI_{safe_name(self.result.field_name)}_"
+                                      f"{self.result.analysis_id}.zip")
+            if path is None:
+                return []
+        try:
+            files = write_analysis_zip(path, self.result, self.field)
+        except OSError as exc:
+            dialogs.inform(self, tr("export.title"), tr("fields.export_failed", error=exc))
+            return []
+        dialogs.inform(self, tr("export.title"), tr("export.done_one", path=path))
+        return files
+
     def _build_header(self):
         title = QtWidgets.QLabel(f"<h2>{tr(self.analysis.title_key)} · {self.result.field_name}</h2>")
         row = QtWidgets.QHBoxLayout()
@@ -134,6 +154,9 @@ class AnalysisTab(QtWidgets.QWidget):
             period.setStyleSheet("color: #555;")
             row.addWidget(period)
         row.addStretch(1)
+        self.export_button = QtWidgets.QPushButton(tr("export.this_analysis"))
+        self.export_button.clicked.connect(lambda: self.export())
+        row.addWidget(self.export_button)
         if self.result.placeholder:
             self.example_badge = QtWidgets.QLabel(tr("analysis.example_data"))
             self.example_badge.setToolTip(tr("analysis.example_tooltip"))

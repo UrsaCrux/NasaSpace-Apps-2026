@@ -106,3 +106,32 @@ class NoMadeUpDataTest(unittest.TestCase):
             self.assertIn("working offline", panel.error_box.label.text())
             self.assertEqual(panel.error_box.retry_button.text(), "Try again")
             window.close()
+
+
+class ExportTest(unittest.TestCase):
+
+    def test_status_trends_and_analysis_in_the_zip(self):
+        import zipfile
+        from fieldshift.analysis import get_analysis
+        from fieldshift.export import ExportOptions, collect
+        from fieldshift.export.write import write_analysis_zip, write_zip
+        from fieldshift.fields.store import Field
+        i18n.set_language("es")
+        field = Field("Viña 1", tuple(SQUARE), 12.0, "2026-01-01T00:00:00+00:00", None,
+                      records=(Record("2026-11-01T09:00", "ph", 6.5),))
+        options = ExportOptions(status=True, trends=True)
+        bundle = collect(field, options)           # example data in the tests
+        with tempfile.TemporaryDirectory() as folder:
+            out = os.path.join(folder, "x.zip")
+            files = write_zip(out, [bundle], options)
+            for name in ("informe.pdf", "manifest.json", "Viña 1/terreno.geojson",
+                         "Viña 1/mediciones.csv", "Viña 1/status.json", "Viña 1/pronostico.csv",
+                         "Viña 1/trends.json", "Viña 1/trends.csv"):
+                self.assertIn(name, files)
+            with zipfile.ZipFile(out) as archive:
+                self.assertIn("pH del suelo", archive.read("Viña 1/mediciones.csv").decode())
+            # one analysis, with the reason when its data is missing
+            result = get_analysis("texture").run(field)
+            files = write_analysis_zip(os.path.join(folder, "a.zip"), result, field)
+            self.assertIn("Viña 1/analisis/texture.json", files)
+        i18n.set_language("en")

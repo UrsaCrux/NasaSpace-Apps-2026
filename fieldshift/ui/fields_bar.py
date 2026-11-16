@@ -6,8 +6,6 @@ Uses the map only through MapView and the fields through FieldsManager.
 Every text comes from fieldshift/i18n/<language>.json.
 """
 
-from pathlib import Path
-
 from fieldshift.i18n import tr
 from fieldshift.map import Event
 from fieldshift.qt import QtCore, QtWidgets
@@ -155,20 +153,8 @@ class FieldsBar(QtWidgets.QFrame):
             dialogs.inform(self, tr("fields.title"), tr("fields.save_failed", error=exc))
 
     def _on_export_clicked(self):
-        default = str(Path.home() / tr("fields.export_default_file"))
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, tr("fields.export_title"), default, tr("fields.export_filter"))
-        if not path:
-            return
-        if not path.lower().endswith((".geojson", ".json")):
-            path += ".geojson"
-        try:
-            count = self.fields.export(path, self.fields.selected() or None)
-        except OSError as exc:
-            dialogs.inform(self, tr("fields.export_title"), tr("fields.export_failed", error=exc))
-            return
-        dialogs.inform(self, tr("fields.export_title"),
-                       tr("fields.export_done", count=count, path=path))
+        from fieldshift.ui.export_dialog import export_fields
+        return export_fields(self, self.fields, self.fields.selected() or None)
 
     # -- helpers -----------------------------------------------------------
 
