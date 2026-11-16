@@ -1,7 +1,11 @@
 # NasaSpace-Apps-2026: PACHI
 This is the official Nasa Space Apps 2026 Repository for the contributions of the Ursa Crux Rocketry club located in Pontificia Universidad Católica de Chile. This repository contains the solution to the challenge Field Shift: Adapting farmers with Nasa Data
 
-![Field Shift main window](docs/images/screenshot.png)
+![PACHI main window](docs/images/screenshot.png)
+
+| Field data | Analysis | Status and trends |
+|---|---|---|
+| ![Field dialog](docs/images/screenshot-field-dialog.png) | ![Analysis results](docs/images/screenshot-analysis.png) | ![Status and trends](docs/images/screenshot-status.png) |
 
 **PACHI** is a Python desktop app built on top of **QGIS 4 (Qt6)**: a map on the
 left, a panel on the right. The map is hidden behind an abstraction layer
@@ -11,11 +15,10 @@ Python.
 
 ## Download
 
-Ready-to-run archives for **Windows, Linux and macOS** (everything inside,
+Ready-to-run archives for **Windows and Linux** (everything inside,
 nothing to install) are on the
 [Releases page](https://github.com/UrsaCrux/NasaSpace-Apps-2026/releases):
-unpack and double-click `FieldShift.bat` / `FieldShift.sh` /
-`FieldShift.command`. How they are built: [docs/release.md](docs/release.md).
+unpack and double-click `FieldShift.bat` / `FieldShift.sh`. How they are built: [docs/release.md](docs/release.md).
 
 ## Quick start
 

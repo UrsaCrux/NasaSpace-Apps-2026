@@ -1,8 +1,10 @@
-# Builds the Field Shift release for Windows, Linux and macOS and publishes it.
+# Builds the Field Shift release for Windows and Linux and publishes it.
+# (macOS is not built here: it does not compile on the GitHub runners; build
+# it locally with packaging/build_release.py, see docs/release.md.)
 #
-#   * push a tag "v<version>" (e.g. v0.1.0.14): builds the three archives and
+#   * push a tag "v<version>" (e.g. v1.0.0): builds the two archives and
 #     creates the GitHub Release with them;
-#   * or run it by hand (Actions -> Release -> Run workflow): builds the three
+#   * or run it by hand (Actions -> Release -> Run workflow): builds the two
 #     archives as workflow artifacts, without a release.
 #
 # Each archive holds QGIS 4 + Python + the data libraries (conda-forge,
@@ -30,9 +32,6 @@ jobs:
           - name: windows-x64
             os: windows-latest
             archspec: x86_64
-          - name: macos-arm64
-            os: macos-14              # Apple silicon
-            archspec: arm64
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     defaults:
@@ -100,5 +99,5 @@ jobs:
           body: |
             Field Shift ${{ github.ref_name }} — one archive per system, nothing else to install
             (QGIS 4, Qt6 and Python are inside). Unpack it and double-click the launcher:
-            `FieldShift.bat` (Windows), `FieldShift.sh` (Linux), `FieldShift.command` (macOS,
-            Apple silicon). The first start takes about a minute. See README-RELEASE.txt inside.
+            `FieldShift.bat` (Windows) or `FieldShift.sh` (Linux). The first start takes about
+            a minute. See README-RELEASE.txt inside.

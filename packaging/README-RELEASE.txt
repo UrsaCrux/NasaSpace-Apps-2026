@@ -12,9 +12,9 @@ connection is needed for the satellite map and the data sources.
 START
   Windows : double-click FieldShift.bat
   Linux   : double-click FieldShift.sh (or run ./FieldShift.sh in a terminal)
-  macOS   : double-click FieldShift.command. The first time macOS may refuse
-            to open it because it is not signed: right-click it -> Open, or
-            run in a terminal, inside this folder:
+  macOS   : (local builds only) double-click FieldShift.command. The first
+            time macOS may refuse to open it because it is not signed:
+            right-click it -> Open, or run in a terminal, inside this folder:
                 xattr -dr com.apple.quarantine .
 
 The first start takes about a minute (it prepares the bundled runtime for

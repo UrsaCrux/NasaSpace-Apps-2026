@@ -8,13 +8,15 @@ program): unpack and double-click the launcher.
 |--------|------|----------|
 | Windows (x64) | `FieldShift-<version>-windows-x64.zip` | `FieldShift.bat` |
 | Linux (x64) | `FieldShift-<version>-linux-x64.tar.gz` | `FieldShift.sh` |
-| macOS (Apple silicon) | `FieldShift-<version>-macos-arm64.tar.gz` | `FieldShift.command` |
 
 About 1 GB each. The first start prepares the bundled runtime for its
 folder (about a minute); the user's fields are saved in `app/terrenos/`.
-Not signed: macOS asks to confirm the first time (see `README-RELEASE.txt`,
-copied into every archive from `packaging/README-RELEASE.txt`). Intel Macs
-and Android are not built (Android cannot run QGIS desktop / PyQt).
+See `README-RELEASE.txt`, copied into every archive from
+`packaging/README-RELEASE.txt`. macOS is not built by the workflow (it does
+not compile on the GitHub runners); a Mac can build its own archive with the
+local build below, and its launcher is `FieldShift.command` (not signed:
+macOS asks to confirm the first time). Android is not built (it cannot run
+QGIS desktop / PyQt).
 
 ## Making a release
 
@@ -22,15 +24,15 @@ and Android are not built (Android cannot run QGIS desktop / PyQt).
 2. Push a tag with that version:
 
    ```bash
-   git tag v0.1.0.14
+   git tag v1.0.0
    ```
 
    ```bash
-   git push origin v0.1.0.14
+   git push origin v1.0.0
    ```
 
-3. `.github/workflows/release.yml` builds the three archives on Windows,
-   Linux and macOS runners (about 30-60 minutes), checks that the Linux one
+3. `.github/workflows/release.yml` builds the two archives on Windows
+   and Linux runners (about 30-60 minutes), checks that the Linux one
    starts, and publishes them as a GitHub Release.
 
 "Run workflow" on the Actions page builds the archives without publishing
@@ -51,7 +53,7 @@ conda-pack`), on the system the archive is for:
    the launcher runs `conda-unpack` once, activates the runtime and starts
    `python -m fieldshift`.
 
-Local build on Linux:
+Local build (Linux; the same commands work on macOS):
 
 ```bash
 CONDA_OVERRIDE_ARCHSPEC=x86_64 micromamba create -n fs-release -f packaging/environment.yml

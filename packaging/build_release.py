@@ -11,7 +11,7 @@
 4. writes FieldShift-<version>-<platform>.zip (Windows) or .tar.gz.
 
 Each platform's archive must be built on that platform (QGIS is native
-code): .github/workflows/release.yml does it on Windows, Linux and macOS.
+code): .github/workflows/release.yml does it on Windows and Linux.
 Needs conda-pack (pip install conda-pack).
 """
 
