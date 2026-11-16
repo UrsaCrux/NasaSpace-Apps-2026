@@ -98,7 +98,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.fields_bar.status_requested.connect(lambda: self.open_status())
         self.fields_bar.fields_requested.connect(self.show_fields)
         self.fields_bar.trends_requested.connect(lambda: self.open_trends())
-        self.setWindowTitle(f"Field Shift {__version__}")
+        self.setWindowTitle(f"PACHI {__version__}")
         self.setWindowIcon(QtGui.QIcon("fieldshift/images/logo.png"))
         self.resize(1280, 800)
         self.statusBar().showMessage(tr("status.ready"))
