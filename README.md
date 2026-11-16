@@ -27,21 +27,31 @@ the service failed) and offers **Try again**; it never shows made-up numbers.
 
 ## Screenshots
 
+### Status and Trends
+
 | Status: today and the coming days | Trends: the last 12 months |
 |---|---|
 | ![Status](docs/images/screenshot-status.png) | ![Trends](docs/images/screenshot-trends.png) |
 
-| Climate shift: today vs +2 °C / −15 % rain, and deficit irrigation | Crop growth simulation (WOFOST) |
-|---|---|
-| ![Climate shift analysis](docs/images/screenshot-climate-shift.png) | ![Crop growth analysis](docs/images/screenshot-crop-growth.png) |
+### Analyze
 
-| Analysis: frost risk with a 3-month outlook | Analysis: soil texture triangle |
+| Choosing analyses | Climate shift: today vs +2 °C / −15 % rain, and deficit irrigation |
 |---|---|
-| ![Frost risk analysis](docs/images/screenshot-analysis.png) | ![Soil texture analysis](docs/images/screenshot-texture.png) |
+| ![Analyze dialog](docs/images/screenshot-analyze-dialog.png) | ![Climate shift analysis](docs/images/screenshot-climate-shift.png) |
 
-| Field data | Choosing analyses | Export |
-|---|---|---|
-| ![Field dialog](docs/images/screenshot-field-dialog.png) | ![Analyze dialog](docs/images/screenshot-analyze-dialog.png) | ![Export dialog](docs/images/screenshot-export.png) |
+| Crop growth simulation (WOFOST) | Frost risk, with a 3-month outlook |
+|---|---|
+| ![Crop growth analysis](docs/images/screenshot-crop-growth.png) | ![Frost risk analysis](docs/images/screenshot-analysis.png) |
+
+| Soil texture triangle |
+|---|
+| ![Soil texture analysis](docs/images/screenshot-texture.png) |
+
+### Fields and export
+
+| Field data (Edit field) | Export |
+|---|---|
+| ![Field dialog](docs/images/screenshot-field-dialog.png) | ![Export dialog](docs/images/screenshot-export.png) |
 
 ## Data sources
 
