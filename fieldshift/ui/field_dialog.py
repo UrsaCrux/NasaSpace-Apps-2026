@@ -113,9 +113,10 @@ class ZoneDataLoader(QtCore.QObject):
             pass
 
 
-# dialog with the details of a field. needs a name (required, unique) and a
-# crop (required: a catalogue variety or an EcoCrop plant, whose picture and
-# description appear under the search); colour and zone data are optional.
+# dialog with the details of a field. needs a name (required, unique); the
+# crop is optional (a catalogue variety or an EcoCrop plant, whose picture and
+# description appear under the search; text that matches no crop must be
+# fixed or cleared); colour and zone data are optional.
 # with field= it edits that saved field (its own name is not a duplicate),
 # otherwise it asks for a new one drawn with vertices=. zone data that has no
 # value yet is loaded from the data sources. For tests: fetch= replaces
@@ -699,8 +700,8 @@ class FieldDialog(CenteredDialog):
         problems = []
         if self.store.name_problem(self.name_edit.text(), ignore=self._own_name) is not None:
             problems.append("name")
-        if self.crop() is None:
-            problems.append("crop")
+        if self.crop() is None and self.crop_search.text().strip():
+            problems.append("crop")              # typed text that is not a crop
         if self.is_loading() and not self.editing:
             problems.append("loading")
         return problems
@@ -716,5 +717,5 @@ class FieldDialog(CenteredDialog):
             self.crop_error.setText(tr("fields.crop_no_match", text=text))
         else:
             self.crop_error.setText(tr("fields.crop_error"))
-        self.crop_error.setVisible(self.crop() is None)
+        self.crop_error.setVisible(self.crop() is None and bool(text))
         self.save_button.setEnabled(not self._problems())

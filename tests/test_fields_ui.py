@@ -562,7 +562,7 @@ class FieldDialogTest(unittest.TestCase):
         self.store.create("Terreno 1", SQUARE)
         dialog = self.dialog(vertices=SQUARE)
         self.assertEqual(dialog.name(), "Terreno 2")
-        self.assertFalse(dialog.save_button.isEnabled())         # the crop is required
+        self.assertTrue(dialog.save_button.isEnabled())          # the crop is optional
         dialog.crop_search.choose("peach.v1")
         self.assertTrue(dialog.save_button.isEnabled())
         dialog.name_edit.setText("terreno 1")

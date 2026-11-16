@@ -24,7 +24,9 @@ from fieldshift.ui.analysis_widgets import (
 PLAY_STEP_MS = 600
 
 _LEVEL_COLORS = {LEVEL_GOOD: "#2e7d32", LEVEL_WARNING: "#ef8f00", LEVEL_BAD: "#c62828"}
-_PRIORITY_COLORS = {PRIORITY_HIGH: "#c62828", PRIORITY_MEDIUM: "#ef8f00", PRIORITY_LOW: "#2e7d32"}
+# priority tags: neutral tones (no green / red traffic light, which read like
+# the good / bad colours of the charts and maps)
+_PRIORITY_COLORS = {PRIORITY_HIGH: "#8e2b20", PRIORITY_MEDIUM: "#7a5a00", PRIORITY_LOW: "#546e7a"}
 _PRIORITY_ORDER = {PRIORITY_HIGH: 0, PRIORITY_MEDIUM: 1, PRIORITY_LOW: 2}
 
 
@@ -63,7 +65,10 @@ class AnalysisTab(QtWidgets.QWidget):
         rows = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
         rows.addWidget(top)
         rows.addWidget(bottom)
-        rows.setSizes([480, 300])
+        # nothing to draw over time (e.g. perennial crops in Rotation): the
+        # data box only lists the sources, so it takes little room
+        empty_top = not self.has_series and result.frames is None and result.figure is None
+        rows.setSizes([110, 670] if empty_top else [480, 300])
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addLayout(self._build_header())
@@ -233,8 +238,8 @@ class AnalysisTab(QtWidgets.QWidget):
             priority = tr(f"analysis.priority.{rec.priority}")
             text = tr(rec.text_key, **localize_params(rec.params))
             label = QtWidgets.QLabel(
-                f"<span style='color:{color}; font-size:16px'>●</span> "
-                f"<b style='color:{color}'>{priority}</b> — {text}")
+                f"<span style='color:{color}; font-size:11px; font-weight:bold'>"
+                f"[{priority.upper()}]</span>&nbsp; {text}")
             label.setWordWrap(True)
             label.setTextFormat(QtCore.Qt.TextFormat.RichText)
             rows.addWidget(label)

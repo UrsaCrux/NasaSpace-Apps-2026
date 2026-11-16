@@ -147,9 +147,57 @@ def run_vegetation(field):
     if change < -10:
         recs.insert(0, Recommendation("analysis.vegetation.r.decline",
                                       {"change": f"{change:.0f}"}, PRIORITY_HIGH))
+    # outlook: how the field usually grows in the next months (same months
+    # of the past years) against the newest month
+    by_month = {}
+    for m, v in zip(months, values):
+        by_month.setdefault(int(m[5:]), []).append(v)
+    ahead = [sum(by_month[m]) / len(by_month[m]) for m in _outlook_months() if by_month.get(m)]
+    if ahead and values[-1]:
+        trend = 100 * (sum(ahead) / len(ahead) - values[-1]) / values[-1]
+        metrics = metrics + (Metric("analysis.vegetation.m.outlook",
+                                    f"{trend:+.0f} % · {_outlook_span()}",
+                                    LEVEL_GOOD if trend >= 0 else LEVEL_WARNING),)
+        recs.append(Recommendation("analysis.vegetation.r.outlook_up" if trend >= 0 else
+                                   "analysis.vegetation.r.outlook_down",
+                                   {"pct": f"{abs(trend):.0f}", "span": _outlook_span()},
+                                   PRIORITY_MEDIUM))
     return AnalysisResult("vegetation", field.name, VEGETATION_SOURCES, series, frames, metrics,
                           "analysis.vegetation.summary", {"mean": f"{mean:.0f}"}, tuple(recs),
                           placeholder=False)
+
+
+# -- outlook: the next months, from what the same months were like ------------
+
+# months the outlook looks ahead
+OUTLOOK_MONTHS = 3
+
+
+# ()
+# calendar months (1-12) of the outlook: this month and the next ones
+def _outlook_months():
+    first = sources.today().month
+    return [(first - 1 + i) % 12 + 1 for i in range(OUTLOOK_MONTHS)]
+
+
+# ()
+# "December – February": the outlook months as i18n keys (localized later)
+def _outlook_span():
+    months = _outlook_months()
+    return f"month.{months[0]} – month.{months[-1]}"
+
+
+# (dict daily, callable hit)
+# expected days per outlook month where hit(value) holds: the mean over the
+# years of the daily data ({date: value}); {month: days}
+def _expected_days(daily, hit):
+    years = {}
+    for d, v in daily.items():
+        years.setdefault(d.month, {}).setdefault(d.year, 0)
+        if hit(v):
+            years[d.month][d.year] += 1
+    return {m: (sum(years[m].values()) / len(years[m]) if years.get(m) else 0.0)
+            for m in _outlook_months()}
 
 
 # -- frost --------------------------------------------------------------------
@@ -215,6 +263,17 @@ def run_frost(field):
     if coming:
         recs.insert(0, Recommendation("analysis.frost.r.coming", {"days": str(coming)},
                                       PRIORITY_HIGH))
+    # outlook: frost nights expected in the next months (same months, past years)
+    expected = _expected_days(daily, lambda v: v <= 0)
+    total = round(sum(expected.values()))
+    metrics.append(Metric("analysis.frost.m.outlook", f"{total} · {_outlook_span()}",
+                          LEVEL_BAD if total > 10 else LEVEL_WARNING if total else LEVEL_GOOD))
+    if total:
+        worst_next = max(expected, key=expected.get)
+        recs.insert(1 if coming else 0, Recommendation(
+            "analysis.frost.r.outlook", {"days": str(total), "span": _outlook_span(),
+                                         "month": f"month.{worst_next}"},
+            PRIORITY_HIGH if total > 10 else PRIORITY_MEDIUM))
     return AnalysisResult("frost", field.name, FROST_SOURCES, series, frames, tuple(metrics),
                           "analysis.frost.summary", {"days": str(frost_days),
                                                      "month": f"month.{worst}"}, tuple(recs),
@@ -262,6 +321,20 @@ def run_water(field):
         Metric("analysis.water.m.rain", f"{yearly_rain:.0f} mm"),
     )
     irrigated = bool(_value(field, "irrigated"))
+    # outlook: next months' balance = normal rain (NASA POWER climatology)
+    # minus the water the field used in the same months before (WaPOR)
+    lon, lat = sources.center(field)
+    climate = _safe(lambda: sources.power_climatology(lon, lat))
+    keys = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
+    used = {}
+    for m, v in zip(months, values):
+        used.setdefault(int(m[5:]), []).append(rain[m] - v)        # ET of that month, mm
+    outlook = {}
+    for m in _outlook_months():
+        normal = (climate or {}).get("PRECTOTCORR", {}).get(keys[m - 1])
+        if normal is not None and used.get(m):
+            outlook[m] = normal * calendar.monthrange(2001, m)[1] - sum(used[m]) / len(used[m])
+    need = -sum(v for v in outlook.values() if v < 0)
     recs = (
         Recommendation("analysis.water.r.irrigated" if irrigated else "analysis.water.r.irrigation",
                        {"mm": f"{deficit:.0f}"},
@@ -269,6 +342,16 @@ def run_water(field):
         Recommendation("analysis.water.r.crops", {}, PRIORITY_MEDIUM),
         Recommendation("analysis.water.r.mulch", {}, PRIORITY_LOW),
     )
+    if outlook:
+        plan = ", ".join(f"month.{m}: {max(0.0, -v):.0f} mm" for m, v in outlook.items())
+        metrics = metrics + (Metric("analysis.water.m.outlook", f"{-need:.0f} mm · "
+                                    f"{_outlook_span()}",
+                                    LEVEL_BAD if need > 150 else LEVEL_WARNING if need > 40
+                                    else LEVEL_GOOD),)
+        recs = (Recommendation("analysis.water.r.outlook" if need > 0 else
+                               "analysis.water.r.outlook_ok",
+                               {"mm": f"{need:.0f}", "span": _outlook_span(), "plan": plan},
+                               PRIORITY_HIGH if need > 150 else PRIORITY_MEDIUM),) + recs
     return AnalysisResult("water", field.name, WATER_SOURCES, series, frames, metrics,
                           "analysis.water.summary", {"mm": f"{deficit:.0f}", "months": str(dry)},
                           recs, placeholder=False)
@@ -316,6 +399,19 @@ def run_heat(field):
             Recommendation("analysis.heat.r.varieties", {}, PRIORITY_LOW)]
     if not limit:
         recs.append(Recommendation("analysis.heat.r.choose_crop", {}, PRIORITY_LOW))
+    # outlook: hot days expected in the next months (same months, past years)
+    expected = _expected_days(daily, lambda v: v >= threshold)
+    total = round(sum(expected.values()))
+    metrics = metrics + (Metric("analysis.heat.m.outlook", f"{total} · {_outlook_span()}",
+                                LEVEL_BAD if total > 20 else LEVEL_WARNING if total > 5
+                                else LEVEL_GOOD),)
+    if total:
+        worst_next = max(expected, key=expected.get)
+        recs.insert(0, Recommendation(
+            "analysis.heat.r.outlook", {"days": str(total), "span": _outlook_span(),
+                                        "month": f"month.{worst_next}",
+                                        "threshold": f"{threshold:.0f}"},
+            PRIORITY_HIGH if total > 20 else PRIORITY_MEDIUM))
     return AnalysisResult("heat", field.name, HEAT_SOURCES, series, frames, metrics,
                           "analysis.heat.summary", {"days": str(hot_days),
                                                     "threshold": f"{threshold:.0f}"},

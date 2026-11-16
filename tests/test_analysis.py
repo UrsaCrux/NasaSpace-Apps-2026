@@ -247,8 +247,8 @@ class AnalysisTabTest(_WithFields):
     def test_recommendations_most_urgent_first(self):
         tab = self.tab("vegetation")
         texts = [label.text() for label in tab.recommendation_labels]
-        order = {"High": 0, "Medium": 1, "Low": 2}
-        ranks = [next(order[p] for p in order if f">{p}<" in t) for t in texts]
+        order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
+        ranks = [next(order[p] for p in order if f"[{p} PRIORITY]" in t) for t in texts]
         self.assertEqual(ranks, sorted(ranks))
 
 
@@ -325,6 +325,9 @@ class RealAnalysesTest(unittest.TestCase):
                 self.assertEqual(dates[-1], "2026-10")                # last complete month
                 self.assertLessEqual(len(dates), 24)
                 self.assertEqual(result.frames.dates, dates)
+                # and a look ahead: the next 3 months from the same months before
+                self.assertTrue(any(m.label_key.endswith(".m.outlook") for m in result.metrics),
+                                analysis_id)
 
     def test_frost_counts_days_and_spreads_over_relief(self):
         result = self.run_analysis("frost")

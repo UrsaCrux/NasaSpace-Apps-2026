@@ -13,13 +13,9 @@ analysis.models.MapFrames; a cell without data is None.
 """
 
 import datetime as dt
-import hashlib
-import json
 import math
-import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 
 from fieldshift.api.providers.base import get_json
 
@@ -125,51 +121,11 @@ def wapor_grids(mapset, field, months):
     points = grid_points(field)
 
     def one(month):
-        key = ("wapor", mapset, month, tuple(field.vertices))
-        return month, _cached(key, lambda: _disk_cached(key, lambda: _sample_cog(
-            WAPOR_COG.format(mapset=mapset, month=month), points)))
-    # each month is a global file whose header alone takes seconds to read:
-    # a few at a time (many at once made the app stutter), kept on disk after
-    with ThreadPoolExecutor(max_workers=WAPOR_WORKERS) as pool:
+        return month, _cached(("wapor", mapset, month, tuple(field.vertices)),
+                              lambda: _sample_cog(WAPOR_COG.format(mapset=mapset, month=month),
+                                                  points))
+    with ThreadPoolExecutor(max_workers=12) as pool:
         return dict(pool.map(one, months))
-
-
-# WaPOR files read at the same time
-WAPOR_WORKERS = 6
-
-
-# ()
-# folder of the downloaded values kept between runs (published WaPOR months
-# never change): FIELDSHIFT_CACHE_DIR, else ~/.cache/fieldshift. None when
-# the app runs offline (tests)
-def disk_cache_dir():
-    if os.environ.get("FIELDSHIFT_OFFLINE") == "1":
-        return None
-    folder = os.environ.get("FIELDSHIFT_CACHE_DIR")
-    return Path(folder) if folder else Path.home() / ".cache" / "fieldshift"
-
-
-# (tuple key, callable compute)
-# compute() kept in a small JSON file per key; None results are not kept
-# (the month may be published later)
-def _disk_cached(key, compute):
-    folder = disk_cache_dir()
-    if folder is None:
-        return compute()
-    name = hashlib.sha1(repr(key).encode()).hexdigest()
-    path = folder / "wapor" / f"{name}.json"
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        pass
-    value = compute()
-    if value is not None:
-        try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(json.dumps(value), encoding="utf-8")
-        except OSError:
-            pass                                   # no cache: still works
-    return value
 
 
 def _sample_cog(url, points):

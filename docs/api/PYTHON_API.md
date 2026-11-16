@@ -213,7 +213,7 @@ def run_frost(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 166
+- **Line:** 214
 
 frost risk: coldest temperature of each month (NASA POWER), spread over the field's relief (DEM), frost days, and the coming week's frosts
 
@@ -224,7 +224,7 @@ def run_water(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 236
+- **Line:** 295
 
 water balance: monthly rain (NASA POWER) minus actual evapotranspiration (WaPOR, per 300 m pixel); negative months are a deficit
 
@@ -235,7 +235,7 @@ def run_heat(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 282
+- **Line:** 365
 
 heat stress: hottest temperature of each month (NASA POWER) over the field's relief, and the days above the crop's limit (EcoCrop) or 32 °C
 
@@ -246,7 +246,7 @@ def crop_score(crop, climate, soil, irrigated)
 ```
 
 - **Arguments:** `(CropInfo crop, dict field_climate, dict soil, bool irrigated)`
-- **Line:** 357
+- **Line:** 453
 
 (score 0..100, best sowing month) of a crop for this field and climate
 
@@ -257,7 +257,7 @@ def run_rotation(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 407
+- **Line:** 503
 
 crop rotation: scores the catalogue's field crops against the field's climate normals, soil pH and texture with their EcoCrop requirements, and compares three strategies: the current crop every season, a diversified cereal / legume / break-crop rotation and a soil-building one
 
@@ -267,7 +267,8 @@ crop rotation: scores the catalogue's field crops against the field's climate no
 |------|-------------|------|
 | `LAPSE_RATE` | temperature change with height (°C per metre) used to spread the 0.5° NASA POWER temperatures over the field's relief | 20 |
 | `DEFAULT_HEAT_C` | heat-stress threshold when the field's crop has no EcoCrop limit (°C) | 22 |
-| `CEREALS` | catalogue crops considered for a rotation, by role | 328 |
+| `OUTLOOK_MONTHS` | months the outlook looks ahead | 173 |
+| `CEREALS` | catalogue crops considered for a rotation, by role | 424 |
 
 ## `fieldshift/analysis/registry.py`
 
@@ -301,7 +302,7 @@ def last_months(n=MONTHS)
 ```
 
 - **Arguments:** `(int n = MONTHS)`
-- **Line:** 47
+- **Line:** 43
 
 the last n complete months, oldest first: ["2024-11", ..., "2026-10"]
 
@@ -312,7 +313,7 @@ def center(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 60
+- **Line:** 56
 
 (lon, lat) of the field's centre
 
@@ -323,7 +324,7 @@ def grid_points(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 67
+- **Line:** 63
 
 (lon, lat) of the centres of the GRID x GRID cells, rows north to south
 
@@ -334,7 +335,7 @@ def clear_cache()
 ```
 
 - **Arguments:** `()`
-- **Line:** 87
+- **Line:** 83
 
 forgets everything downloaded (tests, or to force new downloads)
 
@@ -345,7 +346,7 @@ def power_daily(lon, lat, start, end)
 ```
 
 - **Arguments:** `(float lon, float lat, dt.date start, dt.date end)`
-- **Line:** 95
+- **Line:** 91
 
 {"T2M_MIN" | "T2M_MAX" | "PRECTOTCORR" | "GWETROOT": {date: value}} (fill values dropped). Raises on failure
 
@@ -356,7 +357,7 @@ def power_climatology(lon, lat)
 ```
 
 - **Arguments:** `(float lon, float lat)`
-- **Line:** 112
+- **Line:** 108
 
 {"T2M" | "T2M_MIN" | "T2M_MAX" | "PRECTOTCORR" | "FROST_DAYS": {"JAN".. "ANN": value}}
 
@@ -367,20 +368,9 @@ def wapor_grids(mapset, field, months)
 ```
 
 - **Arguments:** `(str mapset, Field field, list months)`
-- **Line:** 124
+- **Line:** 120
 
 {month: GRID x GRID physical values or None} of a WaPOR monthly mapset ("L1-NPP-M", "L1-AETI-M"...), months read in parallel
-
-#### `disk_cache_dir`
-
-```python
-def disk_cache_dir()
-```
-
-- **Arguments:** `()`
-- **Line:** 145
-
-folder of the downloaded values kept between runs (published WaPOR months never change): FIELDSHIFT_CACHE_DIR, else ~/.cache/fieldshift. None when the app runs offline (tests)
 
 #### `dem_grid`
 
@@ -389,7 +379,7 @@ def dem_grid(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 210
+- **Line:** 166
 
 GRID x GRID elevations (m) from the Copernicus DEM, or None when unavailable
 
@@ -400,7 +390,7 @@ def forecast(lon, lat)
 ```
 
 - **Arguments:** `(float lon, float lat)`
-- **Line:** 233
+- **Line:** 189
 
 fieldshift.api.forecast.Forecast; raises when the service fails
 
@@ -411,7 +401,7 @@ def crop_requirements(field)
 ```
 
 - **Arguments:** `(Field field)`
-- **Line:** 240
+- **Line:** 196
 
 ecocrop.CropInfo of the field's crop, or None (no crop, no EcoCrop data)
 
@@ -422,7 +412,7 @@ def crop_requirements_of(target)
 ```
 
 - **Arguments:** `(int|str target)`
-- **Line:** 251
+- **Line:** 207
 
 ecocrop.CropInfo of an EcoCrop id or scientific name, or None on failure
 
@@ -430,10 +420,9 @@ ecocrop.CropInfo of an EcoCrop id or scientific name, or None on failure
 
 | Name | Description | Line |
 |------|-------------|------|
-| `GRID` | cells per side of the map grids | 27 |
-| `MONTHS` | months covered by the time series | 29 |
-| `TODAY` | today's date used by the analyses (tests set it) | 35 |
-| `WAPOR_WORKERS` | WaPOR files read at the same time | 138 |
+| `GRID` | cells per side of the map grids | 23 |
+| `MONTHS` | months covered by the time series | 25 |
+| `TODAY` | today's date used by the analyses (tests set it) | 31 |
 
 ## `fieldshift/analysis/texture.py`
 
@@ -4312,7 +4301,7 @@ the section with that id, or None
 class AnalysisTab(QtWidgets.QWidget)
 ```
 
-- **Line:** 38
+- **Line:** 40
 
 the four-part view of one AnalysisResult for one field
 
@@ -4325,7 +4314,7 @@ def localize_params(params)
 ```
 
 - **Arguments:** `(dict params)`
-- **Line:** 33
+- **Line:** 35
 
 the params of a text with their i18n keys translated ("month.7" -> "July")
 
@@ -4336,7 +4325,7 @@ def __init__(self, result, field, parent=None)
 ```
 
 - **Arguments:** `(AnalysisResult result, Field field, QWidget parent = None)`
-- **Line:** 42
+- **Line:** 44
 
 builds the four parts; the time slider starts on the last date
 
@@ -4347,7 +4336,7 @@ def tab_title(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 76
+- **Line:** 81
 
 title of the tab: "<short name> · <field>"
 
@@ -4358,7 +4347,7 @@ def set_date_index(self, index)
 ```
 
 - **Arguments:** `(int index)`
-- **Line:** 82
+- **Line:** 87
 
 shows the date number index in the chart, the map and the labels
 
@@ -4369,7 +4358,7 @@ def date_index(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 103
+- **Line:** 108
 
 index of the date shown
 
@@ -4380,7 +4369,7 @@ def set_playing(self, playing)
 ```
 
 - **Arguments:** `(bool playing)`
-- **Line:** 108
+- **Line:** 113
 
 starts or stops moving through the dates
 
@@ -4389,7 +4378,7 @@ starts or stops moving through the dates
 | Name | Description | Line |
 |------|-------------|------|
 | `PLAY_STEP_MS` | time between dates while playing (ms) | 24 |
-| `AnalysisTab.has_series` | results without a time line (series is None) show their figure instead of the chart; without map frames there is no map part | 53 |
+| `AnalysisTab.has_series` | results without a time line (series is None) show their figure instead of the chart; without map frames there is no map part | 55 |
 
 ## `fieldshift/ui/analysis_widgets.py`
 
@@ -4949,9 +4938,9 @@ runs zone_data groups in background threads and reports each result on the GUI t
 class FieldDialog(CenteredDialog)
 ```
 
-- **Line:** 124
+- **Line:** 125
 
-dialog with the details of a field. needs a name (required, unique) and a crop (required: a catalogue variety or an EcoCrop plant, whose picture and description appear under the search); colour and zone data are optional. with field= it edits that saved field (its own name is not a duplicate), otherwise it asks for a new one drawn with vertices=. zone data that has no value yet is loaded from the data sources. For tests: fetch= replaces zone_data.fetch_group, crop_info_fetch= the EcoCrop crop download and load_ecocrop= the EcoCrop list download
+dialog with the details of a field. needs a name (required, unique); the crop is optional (a catalogue variety or an EcoCrop plant, whose picture and description appear under the search; text that matches no crop must be fixed or cleared); colour and zone data are optional. with field= it edits that saved field (its own name is not a duplicate), otherwise it asks for a new one drawn with vertices=. zone data that has no value yet is loaded from the data sources. For tests: fetch= replaces zone_data.fetch_group, crop_info_fetch= the EcoCrop crop download and load_ecocrop= the EcoCrop list download
 
 ### Functions
 
@@ -5014,7 +5003,7 @@ results arriving after this are dropped (the dialog was closed)
 def __init__(self, store, vertices=None, field=None, parent=None, fetch=None, crop_info_fetch=None, load_ecocrop=None)
 ```
 
-- **Line:** 130
+- **Line:** 131
 
 (FieldStore store, list vertices = None, Field field = None, QWidget parent = None, callable fetch = None, callable crop_info_fetch = None, callable load_ecocrop = None) builds the dialog and starts loading the zone data
 
@@ -5025,7 +5014,7 @@ def default_height(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 252
+- **Line:** 253
 
 height the dialog opens with: the main window's height minus WINDOW_MARGIN_PX, never more than the screen's free height (the screen's when there is no main window)
 
@@ -5036,7 +5025,7 @@ def name(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 265
+- **Line:** 266
 
 the name typed, without surrounding spaces
 
@@ -5047,7 +5036,7 @@ def color(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 270
+- **Line:** 271
 
 the chosen colour as "#rrggbb" (grey when none was chosen)
 
@@ -5058,7 +5047,7 @@ def crop(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 275
+- **Line:** 276
 
 id of the chosen crop variety, or None
 
@@ -5069,7 +5058,7 @@ def is_loading(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 280
+- **Line:** 281
 
 True while some data source has not answered yet
 
@@ -5080,7 +5069,7 @@ def data(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 286
+- **Line:** 287
 
 the data: {key: {"value", "source"[, "prefilled"]}} for DATA_FIELDS, plus CROP_KEY
 
@@ -5091,7 +5080,7 @@ def is_modified(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 308
+- **Line:** 309
 
 True when the user changed this datum (it is not the loaded one)
 
@@ -5102,7 +5091,7 @@ def row_state(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 313
+- **Line:** 314
 
 state of a row: loading, prefilled, edited, missing or farmer
 
@@ -5113,7 +5102,7 @@ def set_value(self, key, value)
 ```
 
 - **Arguments:** `(str key, any value)`
-- **Line:** 318
+- **Line:** 319
 
 sets a datum as if the user had typed it (marks it edited)
 
@@ -5124,7 +5113,7 @@ def reload_value(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 326
+- **Line:** 327
 
 downloads this datum again from its data source (the cache is skipped) and replaces the row's value with it; a failure keeps the value there
 
@@ -5135,7 +5124,7 @@ def is_reloading(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 348
+- **Line:** 349
 
 True while that datum is being downloaded again
 
@@ -5146,7 +5135,7 @@ def reset_value(self, key)
 ```
 
 - **Arguments:** `(str key)`
-- **Line:** 376
+- **Line:** 377
 
 puts the loaded value back and marks the datum as not edited
 
@@ -5156,7 +5145,7 @@ puts the loaded value back and marks the datum as not edited
 def accept(self)
 ```
 
-- **Line:** 382
+- **Line:** 383
 
 refuses to close with Save while something is invalid or loading
 
@@ -5167,7 +5156,7 @@ def stop_loading(self)
 ```
 
 - **Arguments:** `()`
-- **Line:** 392
+- **Line:** 393
 
 stops waiting for the data sources: rows still loading become "not available" (their late answers are ignored)
 
@@ -5177,7 +5166,7 @@ stops waiting for the data sources: rows still loading become "not available" (t
 def done(self, result)
 ```
 
-- **Line:** 407
+- **Line:** 408
 
 stops the threads' results from reaching a closed dialog
 
@@ -5189,8 +5178,8 @@ stops the threads' results from reaching a closed dialog
 | `STYLE_LOADING` | looks of a row in each state | 42 |
 | `WINDOW_MARGIN_PX` | the dialog opens this many pixels shorter than the main window (and never taller than the screen); its content scrolls when it does not fit | 53 |
 | `OFFLINE_ENV` | set to "1" to never contact the data sources (tests, no internet) | 56 |
-| `FieldDialog.editing` | an existing field already has its data saved: it can be saved while the empty rows still load (saving stops the loading) | 137 |
-| `FieldDialog.tooltip_widgets` | every title and button has a tooltip from i18n/tooltips/tooltips.json | 165 |
+| `FieldDialog.editing` | an existing field already has its data saved: it can be saved while the empty rows still load (saving stops the loading) | 138 |
+| `FieldDialog.tooltip_widgets` | every title and button has a tooltip from i18n/tooltips/tooltips.json | 166 |
 
 ## `fieldshift/ui/field_list.py`
 
